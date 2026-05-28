@@ -1,0 +1,21 @@
+# ignore file
+# file.txt
+
+# ignore folder
+/data/
+__pycache__/
+/_archive/
+reports/
+/storage/
+_tmp_binance_historical/
+.venv/
+.pytest_cache/
+
+# ignore extension
+*.log
+*.csv
+*xlsx
+*.parquet
+*.jsonl
+*.jpg
+*.html
