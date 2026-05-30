@@ -14,10 +14,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from analytics.performance_metrics import calculate_performance_metrics
 from analytics.trade_log import trades_to_dataframe
-from evaluator.interpreter import evaluate_candle_against_previous_value, load_all_session_profiles
+from evaluator.interpreter import evaluate_candle_against_previous_value
 from loader.trade_loader import load_trades_window
-from scripts.chart_replay_snapshot import (
-    build_chart,
+from utils.renderer import render_snapshot
+from utils.session_utils import (
+    compute_profile_overlay_window,
     parse_iso8601_series,
     parse_session_date,
     previous_session_date,
@@ -28,6 +29,7 @@ from indicator.deep_trade import build_order_bubbles
 from indicator.ohlcv import aggregate_trades_to_ohlcv
 from indicator.volume_profile import build_volume_profile
 from utils.export import export_trade_report
+from utils.snapshot_context import SnapshotContext
 
 
 SUPPORTED_SPANS = {
@@ -170,61 +172,167 @@ def _build_session_profile_map(
 def _generate_replay_html(
     replay_date: dt.date,
     args: argparse.Namespace,
-    full_trades_window_start: pd.Timestamp,
-    full_trades_window_end: pd.Timestamp,
     backtest_start: pd.Timestamp,
     backtest_end: pd.Timestamp,
 ) -> None:
-    replay_start, replay_end = session_window_from_date(replay_date, args.session_start_hour, args.session_start_minute)
+    current_session_start, current_session_end = session_window_from_date(
+        replay_date,
+        args.session_start_hour,
+        args.session_start_minute,
+    )
 
-    if replay_start < backtest_start or replay_end > backtest_end:
+    if current_session_start < backtest_start or current_session_end > backtest_end:
         print(
             f"Warning: --chart-replay date {replay_date.isoformat()} is outside requested span "
             f"[{backtest_start.isoformat()} -> {backtest_end.isoformat()}). Skipping."
         )
         return
 
-    # Replay HTML is daily/session-level only; keep it lightweight.
-    replay_trades = load_trades_window(args.input, start=replay_start, end=replay_end)
-    if replay_trades.empty:
-        print(f"Warning: No trade data for replay date {replay_date.isoformat()}. Skipping HTML replay.")
+    reference_session_date = previous_session_date(replay_date)
+    previous_session_start, previous_session_end = session_window_from_date(
+        reference_session_date,
+        args.session_start_hour,
+        args.session_start_minute,
+    )
+
+    previous_session_trades = load_trades_window(args.input, start=previous_session_start, end=previous_session_end)
+    if previous_session_trades.empty:
+        print(
+            f"Warning: No reference-session trade data for replay date {replay_date.isoformat()} "
+            f"(reference={reference_session_date.isoformat()}). Skipping HTML replay."
+        )
         return
 
-    replay_candles = aggregate_trades_to_ohlcv(trades_df=replay_trades, symbol=args.symbol, timeframe=args.timeframe)
-    if not replay_candles:
-        print(f"Warning: No candles generated for replay date {replay_date.isoformat()}. Skipping HTML replay.")
+    previous_session_candles = aggregate_trades_to_ohlcv(
+        trades_df=previous_session_trades,
+        symbol=args.symbol,
+        timeframe=args.timeframe,
+    )
+    if not previous_session_candles:
+        print(
+            f"Warning: No reference-session candles generated for replay date {replay_date.isoformat()} "
+            f"(reference={reference_session_date.isoformat()}). Skipping HTML replay."
+        )
         return
 
-    replay_current_trades = load_trades_window(args.input, start=replay_start, end=replay_end)
-    if replay_current_trades.empty:
+    previous_session_profile = {
+        "session_id": reference_session_date.isoformat(),
+        **build_volume_profile(previous_session_trades),
+    }
+
+    current_session_trades = load_trades_window(args.input, start=current_session_start, end=current_session_end)
+    if current_session_trades.empty:
         print(f"Warning: No current-session trades for replay date {replay_date.isoformat()}. Skipping HTML replay.")
         return
 
-    replay_bubbles = build_order_bubbles(
-        trades_df=replay_current_trades,
+    current_session_candles = aggregate_trades_to_ohlcv(
+        trades_df=current_session_trades,
+        symbol=args.symbol,
+        timeframe=args.timeframe,
+    )
+    if not current_session_candles:
+        print(f"Warning: No current-session candles generated for replay date {replay_date.isoformat()}. Skipping HTML replay.")
+        return
+
+    current_session_bubbles = build_order_bubbles(
+        trades_df=current_session_trades,
         symbol=args.symbol,
         min_qty=args.min_qty,
         min_notional=args.min_notional,
     )
 
-    replay_ohlcv_df = pd.DataFrame(replay_candles)
-    replay_ohlcv_df["timestamp"] = parse_iso8601_series(replay_ohlcv_df["timestamp"])
-    replay_ohlcv_df = replay_ohlcv_df.sort_values("timestamp").reset_index(drop=True)
+    previous_session_ohlcv_df = pd.DataFrame(previous_session_candles)
+    previous_session_ohlcv_df["timestamp"] = parse_iso8601_series(previous_session_ohlcv_df["timestamp"])
+    previous_session_ohlcv_df = previous_session_ohlcv_df.sort_values("timestamp").reset_index(drop=True)
 
-    replay_bubbles_df = pd.DataFrame(replay_bubbles)
-    if not replay_bubbles_df.empty:
-        replay_bubbles_df["timestamp"] = parse_iso8601_series(replay_bubbles_df["timestamp"])
-        replay_bubbles_df["aggressive_side"] = replay_bubbles_df["aggressive_side"].astype(str).str.lower()
-        replay_bubbles_df = replay_bubbles_df.sort_values("timestamp").reset_index(drop=True)
+    current_session_ohlcv_df = pd.DataFrame(current_session_candles)
+    current_session_ohlcv_df["timestamp"] = parse_iso8601_series(current_session_ohlcv_df["timestamp"])
+    current_session_ohlcv_df = current_session_ohlcv_df.sort_values("timestamp").reset_index(drop=True)
 
-    fig = build_chart(
-        ohlcv_df=replay_ohlcv_df,
-        bubbles_df=replay_bubbles_df,
-        timeframe=args.timeframe,
-        current_session_start=replay_start,
-        current_session_end=replay_end,
-        session_label=replay_date.isoformat(),
+    current_session_bubbles_df = pd.DataFrame(current_session_bubbles)
+    if not current_session_bubbles_df.empty:
+        current_session_bubbles_df["timestamp"] = parse_iso8601_series(current_session_bubbles_df["timestamp"])
+        current_session_bubbles_df["aggressive_side"] = current_session_bubbles_df["aggressive_side"].astype(str).str.lower()
+        current_session_bubbles_df = current_session_bubbles_df.sort_values("timestamp").reset_index(drop=True)
+
+    # Use the same session execution path as backtest loop.
+    profile_by_session_id: dict[str, dict[str, Any]] = {
+        reference_session_date.isoformat(): previous_session_profile,
+    }
+
+    current_session_ohlcv_df["location"] = "unknown"
+    current_session_ohlcv_df["balance_state"] = "unknown"
+
+    for idx, row in current_session_ohlcv_df.iterrows():
+        candle_payload = {
+            "timestamp": pd.Timestamp(row["timestamp"]).isoformat(),
+            "close": float(row["close"]),
+        }
+        try:
+            evaluation = evaluate_candle_against_previous_value(
+                candle=candle_payload,
+                profile_by_session_id=profile_by_session_id,
+                session_start_hour=args.session_start_hour,
+                session_start_minute=args.session_start_minute,
+            )
+            current_session_ohlcv_df.at[idx, "location"] = str(evaluation["location"])
+            current_session_ohlcv_df.at[idx, "balance_state"] = str(evaluation["balance_state"])
+        except ValueError:
+            current_session_ohlcv_df.at[idx, "location"] = "unknown"
+            current_session_ohlcv_df.at[idx, "balance_state"] = "unknown"
+
+    interpreter_df = current_session_ohlcv_df[["location", "balance_state"]].reset_index(drop=True)
+    executed_trades = simulate_trend_following(
+        candles_df=current_session_ohlcv_df.reset_index(drop=True),
+        bubbles_df=current_session_bubbles_df.reset_index(drop=True),
+        interpreter_df=interpreter_df,
+        tick_size=float(args.tick_size),
     )
+    if executed_trades:
+        force_close_open_trades(executed_trades, current_session_ohlcv_df.iloc[-1])
+
+    profile_overlay_start, profile_overlay_end = compute_profile_overlay_window(
+        previous_session_start,
+        previous_session_end,
+        0.30,
+    )
+
+    profile_clamp_low = float(previous_session_ohlcv_df["low"].min())
+    profile_clamp_high = float(previous_session_ohlcv_df["high"].max())
+
+    snapshot_context = SnapshotContext(
+        symbol=args.symbol,
+        timeframe=args.timeframe,
+        session_date=replay_date.isoformat(),
+        previous_session_start=previous_session_start,
+        previous_session_end=previous_session_end,
+        previous_session_candles=previous_session_ohlcv_df,
+        previous_session_profile=previous_session_profile,
+        current_session_start=current_session_start,
+        current_session_end=current_session_end,
+        current_session_candles=current_session_ohlcv_df,
+        current_session_bubbles=current_session_bubbles_df,
+        executed_trades=executed_trades,
+        interpreter_states=current_session_ohlcv_df[["timestamp", "location", "balance_state"]].copy(),
+        profile_overlay_start=profile_overlay_start,
+        profile_overlay_end=profile_overlay_end,
+        profile_clamp_low=profile_clamp_low,
+        profile_clamp_high=profile_clamp_high,
+    )
+
+    print("========== SNAPSHOT CONTEXT ==========")
+    print("reference_start:", snapshot_context.previous_session_start)
+    print("reference_end:", snapshot_context.previous_session_end)
+    print("trading_start:", snapshot_context.current_session_start)
+    print("trading_end:", snapshot_context.current_session_end)
+    print("prev candles:", len(snapshot_context.previous_session_candles))
+    print("prev profile:", snapshot_context.previous_session_profile is not None)
+    print("curr candles:", len(snapshot_context.current_session_candles))
+    print("curr bubbles:", len(snapshot_context.current_session_bubbles))
+    print("trades:", len(snapshot_context.executed_trades))
+    print("======================================")
+
+    fig = render_snapshot(snapshot_context)
 
     out_dir = Path(args.chart_output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -238,7 +346,6 @@ def main() -> None:
     parser.add_argument("--input", required=True, help="Input aggTrades file (.jsonl or .parquet)")
     parser.add_argument("--symbol", required=True, help="Symbol label (e.g., BTCUSDT)")
     parser.add_argument("--session-date", required=True, help="Start session date (YYYY-MM-DD or DDMMYYYY)")
-    parser.add_argument("--profile-input", required=True, help="Session profile JSONL input (required)")
     parser.add_argument("--timeframe", required=True, choices=["1m", "5m", "15m"], help="OHLCV timeframe")
     parser.add_argument("--trade-report-output", required=True, help="Output .xlsx path for full-span report")
 
@@ -267,10 +374,6 @@ def main() -> None:
     input_path = Path(args.input)
     if not input_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
-
-    profile_input_path = Path(args.profile_input)
-    if not profile_input_path.exists():
-        raise FileNotFoundError(f"Profile input file not found: {profile_input_path}")
 
     start_session_date = parse_session_date(args.session_date)
     backtest_start, _ = session_window_from_date(start_session_date, args.session_start_hour, args.session_start_minute)
@@ -306,7 +409,7 @@ def main() -> None:
             f"available_start={loaded_start.isoformat()}, available_end={loaded_end_inclusive.isoformat()}"
         )
 
-    profile_by_session_id = load_all_session_profiles(profile_input_path)
+    profile_by_session_id: dict[str, dict[str, Any]] = {}
 
     all_trades: list[SimulatedTrade] = []
     total_raw_trade_count = 0
@@ -479,8 +582,6 @@ def main() -> None:
                 _generate_replay_html(
                     replay_date=replay_date,
                     args=args,
-                    full_trades_window_start=full_trades_window_start,
-                    full_trades_window_end=full_trades_window_end,
                     backtest_start=backtest_start,
                     backtest_end=backtest_end,
                 )
