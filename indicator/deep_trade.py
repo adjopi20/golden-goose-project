@@ -49,6 +49,41 @@ def get_minute_bucket_utc(timestamp_ms: int) -> str:
     return dt_utc.replace(second=0, microsecond=0).isoformat()
 
 
+def build_deep_trades(
+    trades_df: pd.DataFrame,
+    symbol: str,
+) -> list[dict[str, Any]]:
+    required_cols = {"timestamp", "price", "qty", "is_buyer_maker"}
+    missing_cols = sorted(required_cols - set(trades_df.columns))
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    if trades_df.empty:
+        return []
+
+    sorted_df = trades_df.sort_values(["timestamp", "price", "qty"], kind="mergesort")
+
+    deep_trades: list[dict[str, Any]] = []
+    for _, row in sorted_df.iterrows():
+        trade = _row_to_parsed_trade(row)
+        deep_trades.append(
+            {
+                "symbol": str(symbol),
+                "trade_type": "agg_trade",
+                "timestamp": timestamp_ms_to_utc_iso(trade.timestamp_ms),
+                "timestamp_ms": int(trade.timestamp_ms),
+                "minute_bucket": get_minute_bucket_utc(trade.timestamp_ms),
+                "price": float(trade.price),
+                "qty": float(trade.qty),
+                "notional": float(trade.notional),
+                "aggressive_side": str(trade.aggressive_side),
+            }
+        )
+
+    deep_trades.sort(key=lambda r: (int(r["timestamp_ms"]), float(r["price"]), float(r["qty"])))
+    return deep_trades
+
+
 def passes_threshold(
     qty: float,
     notional: float,

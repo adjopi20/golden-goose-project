@@ -2,11 +2,25 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Iterable
 
 import pandas as pd
 
 
 REQUIRED_COLUMNS = ["timestamp", "price", "qty", "is_buyer_maker"]
+
+
+def _split_input_paths(input_path: str | Iterable[str]) -> list[str]:
+    if isinstance(input_path, str):
+        parts = [part.strip() for part in input_path.split(",")]
+        paths = [part for part in parts if part]
+    else:
+        paths = [str(part).strip() for part in input_path if str(part).strip()]
+
+    if not paths:
+        raise ValueError("At least one input path must be provided")
+
+    return paths
 
 
 def _to_utc_timestamp(value: pd.Timestamp | str) -> pd.Timestamp:
@@ -132,3 +146,22 @@ def load_trades(input_path: str) -> pd.DataFrame:
         return _normalize_trade_schema(pd.DataFrame(rows))
 
     raise ValueError(f"Unsupported input extension: {suffix}. Supported: .parquet, .jsonl")
+
+
+def load_trades_from_inputs(input_paths: str | Iterable[str]) -> pd.DataFrame:
+    """
+    Load one or many trade inputs using the canonical schema.
+
+    `input_paths` may be a comma-separated string or an iterable of file paths.
+    The returned DataFrame is normalized, concatenated, sorted, and deduplicated.
+    """
+    paths = _split_input_paths(input_paths)
+    frames = [load_trades(path) for path in paths]
+    non_empty_frames = [frame for frame in frames if not frame.empty]
+
+    if not non_empty_frames:
+        return pd.DataFrame(columns=REQUIRED_COLUMNS)
+
+    combined = pd.concat(non_empty_frames, ignore_index=True)
+    combined = _normalize_trade_schema(combined)
+    return combined.drop_duplicates(subset=REQUIRED_COLUMNS, keep="first").reset_index(drop=True)

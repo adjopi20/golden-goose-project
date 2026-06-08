@@ -20,38 +20,88 @@ class SimulatedTrade:
     tp1_price: float
     risk: float
     entry_candle_index: int
+    bubble_timestamp: pd.Timestamp  # Timestamp of triggering bubble
+    bubble_price: float  # Price of triggering bubble
+    trigger_mfe: float = 0.0  # MFE at entry trigger
+    trigger_mae: float = 0.0  # MAE at entry trigger
+    continuation_condition: str = ""  # Condition that triggered entry
+    min_mfe_usd: float = 0.0  # Minimum MFE threshold used
     exit_candle_index: Optional[int] = None
     tp1_hit: bool = False
     tp1_timestamp: Optional[pd.Timestamp] = None
-    tp1_candle_index: Optional[int] = None  # Candle index where TP1 was hit
+    tp1_candle_index: Optional[int] = None
+    tp1_r: Optional[float] = None
     trail_active: bool = False
     trail_price: Optional[float] = None
-    highest_price_since_tp1: Optional[float] = None  # Tracks highest price after TP1 for long positions
-    lowest_price_since_tp1: Optional[float] = None   # Tracks lowest price after TP1 for short positions
+    highest_price_since_tp1: Optional[float] = None
+    lowest_price_since_tp1: Optional[float] = None
     exit_timestamp: Optional[pd.Timestamp] = None
     exit_price: Optional[float] = None
     result: str = "open"  # "open", "closed_win", "closed_loss"
+
+class BubbleTracker:
+    """Tracks MFE/MAE for a bubble in real-time."""
+    def __init__(self, bubble: dict, condition: str, min_mfe: float):
+        self.bubble_price = bubble['price']
+        self.bubble_timestamp = bubble['timestamp']
+        self.direction = 'sell' if bubble['aggressive_side'] == 'sell' else 'buy'
+        self.condition = condition
+        self.min_mfe = min_mfe
+        self.mfe = 0.0
+        self.mae = 0.0
+        self.expiry = self.bubble_timestamp + pd.Timedelta(seconds=5)
+    
+    def update(self, trade: pd.Series):
+        price = trade['price']
+        if self.direction == 'sell':
+            favorable = self.bubble_price - price
+            adverse = price - self.bubble_price
+        else:  # buy
+            favorable = price - self.bubble_price
+            adverse = self.bubble_price - price
+            
+        self.mfe = max(self.mfe, favorable)
+        self.mae = max(self.mae, adverse)
+    
+    def check_condition(self) -> bool:
+        if self.condition == "mfe_gt_mae":
+            return self.mfe > self.mae and self.mfe >= self.min_mfe
+        elif self.condition == "mfe_gt_2x_mae":
+            return self.mfe > 2 * self.mae and self.mfe >= self.min_mfe
+        return False
 
 class TrendFollowingExecutor:
     """Stateful executor for trend following strategy."""
     
     STATE_WAITING = "WAITING"
-    STATE_ARMED_LONG = "ARMED_LONG"
-    STATE_ARMED_SHORT = "ARMED_SHORT"
     STATE_OPEN = "OPEN"
+    STATE_TRACKING_BUBBLE = "TRACKING_BUBBLE"
 
-    def __init__(self, tick_size: float = DEFAULT_TICK_SIZE):
+    def __init__(self, 
+                 tick_size: float = DEFAULT_TICK_SIZE,
+                 min_bubble_tier: str = "medium",
+                 continuation_condition: str = "mfe_gt_mae",
+                 min_mfe_usd: float = 10.0,
+                 bubble_sl_offset_usd: float = 10.0,
+                 tp1_r: float = 4.0):
         self.tick_size = tick_size
+        self.min_bubble_tier = min_bubble_tier
+        self.continuation_condition = continuation_condition
+        self.min_mfe_usd = min_mfe_usd
+        self.bubble_sl_offset_usd = bubble_sl_offset_usd
+        self.tp1_r = tp1_r
         self.state = self.STATE_WAITING
         self.active_trade = None
-        self.pending_setup = None
+        self.active_bubble_trackers = []
         self.trade_counter = 1
+        
         
     def process_candle(
         self,
         candle: pd.Series,
         candle_index: int,
         bubbles_in_candle: pd.DataFrame,
+        trades_in_candle: pd.DataFrame,
         interpreter_state: dict
     ) -> Optional[SimulatedTrade]:
         """
@@ -61,6 +111,7 @@ class TrendFollowingExecutor:
             candle: Current OHLCV candle data
             candle_index: Position in candle sequence
             bubbles_in_candle: Order bubbles that occurred during this candle
+            trades_in_candle: Raw trades that occurred during this candle
             interpreter_state: Balance/imbalance interpretation result
             
         Returns:
@@ -75,108 +126,114 @@ class TrendFollowingExecutor:
                 self.active_trade = None
                 self.state = self.STATE_WAITING
         
-        # Check for pending_setup first (enter on next candle)
-        if self.pending_setup and not self.active_trade:
-            self._open_trade(candle, candle_index)
-            self.pending_setup = None
-            
-        # Only look for new setups if no active trade or pending_setup
-        if not self.active_trade and not self.pending_setup:
-            self._evaluate_setups(candle, bubbles_in_candle, interpreter_state)
-            
-            # If we entered ARMED state and candle confirms, store pending setup
-            if self._confirm_candle(candle) and self.state in (self.STATE_ARMED_LONG, self.STATE_ARMED_SHORT):
-                self.pending_setup = {
-                    "direction": "long" if self.state == self.STATE_ARMED_LONG else "short",
-                    "confirmation_candle_index": candle_index,
-                    "confirmation_timestamp": candle["timestamp"],
-                    "confirmation_high": candle["high"],
-                    "confirmation_low": candle["low"]
-                }
-                
-            # Reset state to WAITING after recording setup
+        # Process trades within candle to update bubble trackers
+        if not self.active_trade:
+            self._process_trades_in_candle(trades_in_candle, interpreter_state)
+        
+        # Register new bubble trackers and process trades for entry
+        if not self.active_trade:
+            self._register_bubble_trackers(bubbles_in_candle, interpreter_state)
+            self._process_trades_in_candle(trades_in_candle, interpreter_state)
+        
+        # Reset state to WAITING if no active trade and not tracking
+        if not self.active_trade and not self.active_bubble_trackers:
             self.state = self.STATE_WAITING
         
         return closed_trade
     
-    def _evaluate_setups(self, candle: pd.Series, bubbles: pd.DataFrame, interpreter: dict):
-        """Evaluate candle for potential setups based on interpreter state."""
-        if interpreter["balance_state"] != "imbalance":
+    def _register_bubble_trackers(self, bubbles: pd.DataFrame, interpreter_state: dict):
+        """Register new bubble trackers based on market conditions"""
+        # Clear existing trackers at start of new candle
+        self.active_bubble_trackers = []
+        
+        if interpreter_state["balance_state"] != "imbalance":
             return
             
-        if interpreter["location"] == "above_vah":
-            if self._has_aggressive_buy_bubble(bubbles):
-                self.state = self.STATE_ARMED_LONG
+        direction = None
+        if interpreter_state["location"] == "above_vah":
+            direction = "buy"
+        elif interpreter_state["location"] == "below_val":
+            direction = "sell"
+        else:
+            return
+            
+        # Process each bubble in candle
+        for _, bubble in bubbles.iterrows():
+            # Filter by bubble tier
+            if bubble['bubble_tier'] < self.min_bubble_tier:
+                continue
                 
-        elif interpreter["location"] == "below_val":
-            if self._has_aggressive_sell_bubble(bubbles):
-                self.state = self.STATE_ARMED_SHORT
+            # Filter by directional bias
+            if direction == "buy" and bubble['aggressive_side'] != 'buy':
+                continue
+            if direction == "sell" and bubble['aggressive_side'] != 'sell':
+                continue
+                
+            # Create tracker
+            tracker = BubbleTracker(
+                bubble,
+                self.continuation_condition,
+                self.min_mfe_usd
+            )
+            self.active_bubble_trackers.append(tracker)
+            self.state = self.STATE_TRACKING_BUBBLE
+            
+    def _process_trades_in_candle(self, trades: pd.DataFrame, interpreter_state: dict):
+        """Process raw trades within candle to update bubble trackers"""
+        if trades.empty:
+            return
+            
+        # Process each trade chronologically
+        for _, trade in trades.sort_values("timestamp").iterrows():
+            # Update existing trackers
+            for tracker in self.active_bubble_trackers[:]:
+                tracker.update(trade)
+                if tracker.check_condition():
+                    self._open_trade_at_price(tracker, trade)
+                    self.active_bubble_trackers.remove(tracker)
+                    return  # Only one trade per session
+            
+            # Check if trade is expired
+            self.active_bubble_trackers = [
+                t for t in self.active_bubble_trackers 
+                if trade["timestamp"] < t.expiry
+            ]
     
-    def _has_aggressive_buy_bubble(self, bubbles: pd.DataFrame) -> bool:
-        """Check for qualifying buy-side aggression bubbles."""
-        return ((bubbles["aggressive_side"] == "buy") & 
-                (bubbles["qty"] >= 30)).any()
-    
-    def _has_aggressive_sell_bubble(self, bubbles: pd.DataFrame) -> bool:
-        """Check for qualifying sell-side aggression bubbles."""
-        return ((bubbles["aggressive_side"] == "sell") & 
-                (bubbles["qty"] >= 30)).any()
-    
-    def _confirm_candle(self, candle: pd.Series) -> bool:
-        """Validate candle structure meets confirmation requirements."""
-        range_ = candle["high"] - candle["low"]
-        body = abs(candle["close"] - candle["open"])
-        body_ratio = body / range_
+    def _open_trade_at_price(self, tracker: BubbleTracker, trade: pd.Series):
+        """Create new trade at specific trade price"""
+        direction = tracker.direction
+        bubble_price = tracker.bubble_price
         
-        upper_wick = candle["high"] - max(candle["open"], candle["close"])
-        lower_wick = min(candle["open"], candle["close"]) - candle["low"]
-        upper_ratio = upper_wick / range_
-        lower_ratio = lower_wick / range_
-        
-        if self.state == self.STATE_ARMED_LONG:
-            return (candle["close"] > candle["open"] and
-                    body_ratio >= MIN_CONFIRMATION_BODY_RATIO and
-                    upper_ratio <= MAX_CONFIRMATION_WICK_RATIO and
-                    lower_ratio <= MAX_CONFIRMATION_WICK_RATIO)
-        
-        elif self.state == self.STATE_ARMED_SHORT:
-            return (candle["close"] < candle["open"] and
-                    body_ratio >= MIN_CONFIRMATION_BODY_RATIO and
-                    upper_ratio <= MAX_CONFIRMATION_WICK_RATIO and
-                    lower_ratio <= MAX_CONFIRMATION_WICK_RATIO)
-        
-        return False
-    
-    def _open_trade(self, candle: pd.Series, candle_index: int):
-        """Create new trade at current candle open."""
-        confirmation_low = self.pending_setup["confirmation_low"]
-        confirmation_high = self.pending_setup["confirmation_high"]
-        direction = self.pending_setup["direction"]
-        
+        # Calculate stop loss
         if direction == "long":
-            sl_price = confirmation_low - self.tick_size
-            entry_price = candle["open"]  # Enter at current candle open
+            sl_price = bubble_price - self.bubble_sl_offset_usd
+            entry_price = trade["price"]
         else:  # short
-            sl_price = confirmation_high + self.tick_size
-            entry_price = candle["open"]
+            sl_price = bubble_price + self.bubble_sl_offset_usd
+            entry_price = trade["price"]
+        
+        risk = abs(entry_price - sl_price)
         
         self.active_trade = SimulatedTrade(
             trade_id=self.trade_counter,
             direction=direction,
-            entry_timestamp=candle["timestamp"],
+            entry_timestamp=trade["timestamp"],
             entry_price=entry_price,
             sl_price=sl_price,
-            tp1_price=self._calculate_tp1(entry_price, sl_price, direction),
-            risk=abs(entry_price - sl_price),
-            entry_candle_index=candle_index
+            tp1_price=entry_price + (risk * self.tp1_r) if direction == "long" else entry_price - (risk * self.tp1_r),
+            tp1_r=self.tp1_r,
+            risk=risk,
+            entry_candle_index=-1,  # Will be set later
+            bubble_timestamp=tracker.bubble_timestamp,
+            bubble_price=bubble_price,
+            trigger_mfe=tracker.mfe,
+            trigger_mae=tracker.mae,
+            continuation_condition=tracker.condition,
+            min_mfe_usd=tracker.min_mfe
         )
         self.trade_counter += 1
         self.state = self.STATE_OPEN
     
-    def _calculate_tp1(self, entry: float, sl: float, direction: str) -> float:
-        """Calculate take profit 1 level (RR 1:2)."""
-        risk = abs(entry - sl)
-        return entry + (risk * 2) if direction == "long" else entry - (risk * 2)
     
     def _update_active_trade(self, candle: pd.Series, candle_idx: int) -> Optional[SimulatedTrade]:
         """Manage open trade positions and check exits."""

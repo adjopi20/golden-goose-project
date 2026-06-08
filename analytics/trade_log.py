@@ -33,6 +33,7 @@ def trades_to_dataframe(trades: list[Any]) -> pd.DataFrame:
     for t in trades:
         is_closed = getattr(t, "result", "open") != "open"
         tp1_hit = bool(getattr(t, "tp1_hit", False)) if is_closed else False
+        tp1_r = float(getattr(t, "tp1_r", 4.0))
         risk = abs(float(getattr(t, "entry_price", 0.0)) - float(getattr(t, "sl_price", 0.0)))
 
         runner_r: float | None = None
@@ -51,7 +52,7 @@ def trades_to_dataframe(trades: list[Any]) -> pd.DataFrame:
                         runner_r = (exit_price - entry_price) / risk
                     else:
                         runner_r = (entry_price - exit_price) / risk
-                    realized_r = 0.5 * 2.0 + 0.5 * runner_r
+                    realized_r = 0.5 * tp1_r + 0.5 * runner_r
                 else:
                     runner_r = None
                     realized_r = None

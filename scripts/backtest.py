@@ -24,7 +24,7 @@ from utils.session_utils import (
     previous_session_date,
     session_window_from_date,
 )
-from executor.trend_following_model import SimulatedTrade, simulate_trend_following
+from executor.trend_following_model import SimulatedTrade, simulate_trend_following, TrendFollowingExecutor
 from indicator.deep_trade import build_order_bubbles
 from indicator.ohlcv import aggregate_trades_to_ohlcv
 from indicator.volume_profile import build_volume_profile
@@ -48,6 +48,17 @@ SUPPORTED_SPANS = {
     "5y",
 }
 
+def timeframe_to_timedelta(timeframe: str) -> pd.Timedelta:
+    unit = timeframe[-1]
+    value = int(timeframe[:-1])
+
+    if unit == "m":
+        return pd.Timedelta(minutes=value)
+
+    if unit == "h":
+        return pd.Timedelta(hours=value)
+
+    raise ValueError(f"Unsupported timeframe: {timeframe}")
 
 def parse_span_to_timedelta_or_dateoffset(span: str) -> pd.Timedelta | pd.DateOffset:
     span = str(span).lower().strip()
@@ -362,6 +373,20 @@ def main() -> None:
     parser.add_argument("--chart-replay", default=None, help="Optional comma-separated replay dates (DDMMYYYY or YYYY-MM-DD)")
     parser.add_argument("--chart-output-dir", default="charts/backtest_replays")
     parser.add_argument("--tick-size", type=float, default=0.1, help="Strategy tick size. Default follows strategy module default.")
+    parser.add_argument("--min-bubble-tier", choices=["medium", "large", "extreme"], default="medium",
+                        help="Minimum bubble tier to consider for execution")
+    parser.add_argument("--continuation-condition", choices=["mfe_gt_mae", "mfe_gt_2x_mae"], default="mfe_gt_mae",
+                        help="Continuation confirmation condition")
+    parser.add_argument("--min-mfe-usd", type=float, default=10.0,
+                        help="Minimum MFE threshold in USD for continuation confirmation")
+    parser.add_argument("--bubble-sl-offset-usd", type=float, default=10.0,
+                        help="Stop loss offset from bubble price in USD")
+    parser.add_argument(
+        "--tp1-r",
+        type=float,
+        default=4.0,
+        help="TP1 multiple of risk"
+    )
     args = parser.parse_args()
 
     if args.min_qty is None and args.min_notional is None:
@@ -427,6 +452,7 @@ def main() -> None:
 
     current_session_start = backtest_start
     while current_session_start < backtest_end:
+        print("SESSION START", current_session_start)
         current_session_end = min(current_session_start + pd.Timedelta(days=1), backtest_end)
         session_date = current_session_start.date()
 
@@ -447,6 +473,7 @@ def main() -> None:
         )
 
         session_trades = load_trades_window(args.input, start=current_session_start, end=current_session_end)
+        
         if session_trades.empty:
             raise ValueError(
                 "No trades in session window. "
@@ -521,24 +548,80 @@ def main() -> None:
         candles_for_sim = session_ohlcv_df.reset_index(drop=True)
         bubbles_for_sim = session_bubbles_df.reset_index(drop=True)
 
-        session_simulated_trades = simulate_trend_following(
-            candles_df=candles_for_sim,
-            bubbles_df=bubbles_for_sim,
-            interpreter_df=interpreter_df,
-            tick_size=float(args.tick_size),
-        )
+        print("SESSION START", current_session_start)
+        print("CANDLES", len(candles_for_sim))
+        print("BUBBLES", len(bubbles_for_sim))
 
-        forced_close_count = force_close_open_trades(session_simulated_trades, candles_for_sim.iloc[-1])
-        total_forced_close += forced_close_count
+        # Create executor with new parameters
+        executor = TrendFollowingExecutor(
+            tick_size=float(args.tick_size),
+            min_bubble_tier=args.min_bubble_tier,
+            continuation_condition=args.continuation_condition,
+            min_mfe_usd=args.min_mfe_usd,
+            bubble_sl_offset_usd=args.bubble_sl_offset_usd,
+            tp1_r=float(args.tp1_r)
+        )
+        
+        # Process each candle with raw trades
+        session_simulated_trades = []
+        for i, candle in candles_for_sim.iterrows():
+            # Get bubbles in current candle
+            candle_start = candle["timestamp"]
+            candle_duration = timeframe_to_timedelta(args.timeframe)
+            candle_end = candle_start + candle_duration
+            
+            # Get bubbles and trades in current candle
+            bubbles_in_candle = bubbles_for_sim[
+                (bubbles_for_sim["timestamp"] >= candle_start) & 
+                (bubbles_for_sim["timestamp"] < candle_end)
+            ]
+            
+            session_trades_for_execution = session_trades.copy()
+
+            session_trades_for_execution["timestamp"] = pd.to_datetime(
+                session_trades_for_execution["timestamp"],
+                unit="ms",
+                utc=True,
+            )
+
+            trades_in_candle = session_trades_for_execution[
+                (session_trades_for_execution["timestamp"] >= candle_start) & 
+                (session_trades_for_execution["timestamp"] < candle_end)
+            ]
+            
+            # Process candle through executor
+            closed_trade = executor.process_candle(
+                candle=candle,
+                candle_index=i,
+                bubbles_in_candle=bubbles_in_candle,
+                trades_in_candle=trades_in_candle,
+                interpreter_state=interpreter_df.iloc[i].to_dict()
+            )
+            
+            if closed_trade:
+                session_simulated_trades.append(closed_trade)
+        
+        # Handle any remaining open trade
+        if executor.active_trade:
+            executor.active_trade.result = "open"
+            session_simulated_trades.append(executor.active_trade)
+
+            forced_close_count = force_close_open_trades(session_simulated_trades, candles_for_sim.iloc[-1])
+            total_forced_close += forced_close_count
         all_trades.extend(session_simulated_trades)
 
-        # Build completed current session profile for subsequent sessions.
+            # Build completed current session profile for subsequent sessions.
         profile_by_session_id[session_date.isoformat()] = {"session_id": session_date.isoformat(), **build_volume_profile(session_trades)}
-
+            
+        print("SESSION COMPLETE", current_session_start)
         current_session_start = current_session_start + pd.Timedelta(days=1)
+
+        print("TRADES GENERATED", len(session_simulated_trades))
 
     if not all_trades:
         raise ValueError("No trades generated in requested backtest span.")
+
+    print("ALL TRADES", len(all_trades))
 
     trades_df = trades_to_dataframe(all_trades)
     metrics = calculate_performance_metrics(trades_df)
