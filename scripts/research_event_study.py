@@ -22,6 +22,7 @@ BUBBLE_PERCENTILE_COMBINATIONS = {
     "loose": {"medium": 90.0, "large": 95.0, "extreme": 99.0},
     "medium": {"medium": 95.0, "large": 99.0, "extreme": 99.5},
     "strict": {"medium": 99.0, "large": 99.5, "extreme": 99.9},
+    "very_strict": {"medium": 99.5, "large": 99.9,"extreme": 99.95},
 }
 PRICE_TARGETS = [0.05, 0.10, 0.20, 0.50]
 EXPANSION_TARGETS = [0.25, 0.50, 1.00, 2.00, 3.00]
@@ -52,6 +53,16 @@ def parse_args() -> argparse.Namespace:
     # Legacy CLI compatibility only; unused by percentile-tiered v1 research flow.
     parser.add_argument("--min-notional", type=float, default=10000.0)
     parser.add_argument("--output-parquet", default="research/event_study.parquet")
+    parser.add_argument(
+        "--write-bubble-trades",
+        action="store_true",
+        help="Write candidate bubble trades that pass the configured threshold to a separate parquet file.",
+    )
+    parser.add_argument(
+        "--bubble-trades-output-parquet",
+        default="research/bubble_trades.parquet",
+        help="Output parquet path for candidate bubble trades when --write-bubble-trades is used.",
+    )
     parser.add_argument("--output-csv", default="research/event_study.csv")
     parser.add_argument("--write-csv", action="store_true", help="Write CSV output in addition to parquet")
     parser.add_argument("--session-start-hour", type=int, default=13)
@@ -372,7 +383,7 @@ def process_session_events_sequential(
     setup_mfe_threshold_pct: float,
     setup_efficiency_threshold: float,
     config_metadata: dict[str, Any],
-) -> tuple[list[dict[str, Any]], dict[str, int]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
     session_date = date.fromisoformat(session_id)
     prev_val = float(previous_session_profile["val"])
     prev_vah = float(previous_session_profile["vah"])
@@ -432,6 +443,7 @@ def process_session_events_sequential(
         "total_confirmed_setups": 0,
     }
     event_records: list[dict[str, Any]] = []
+    bubble_trade_records: list[dict[str, Any]] = []
 
     for i in candidate_indices:
         timestamp_ms = int(session_timestamps[i])
@@ -461,6 +473,40 @@ def process_session_events_sequential(
             bubble_percentile_score = float(qty_thresholds["bubble_medium_percentile"])
         else:
             continue
+
+        timestamp_utc = pd.to_datetime(timestamp_ms, unit="ms", utc=True)
+        timestamp_wib = timestamp_utc.tz_convert("Asia/Jakarta")
+        bubble_trade_records.append(
+            {
+                "bubble_trade_id": uuid.uuid4().hex,
+                "symbol": symbol,
+                "session_id": session_id,
+                "session_date": session_date,
+                "previous_session_id": prev_session_id,
+                "timestamp": timestamp_ms,
+                "timestamp_utc": timestamp_utc,
+                "timestamp_wib": timestamp_wib,
+                "price": price,
+                "qty": qty,
+                "notional": notional,
+                "is_buyer_maker": bool(session_is_buyer_maker[i]),
+                "aggressive_side": aggressive_side,
+                "directional_bias": directional_bias,
+                "location": location,
+                "previous_val": prev_val,
+                "previous_vah": prev_vah,
+                "previous_poc": prev_poc,
+                "distance_from_val_pct": (price - prev_val) / prev_val if prev_val > 0 else None,
+                "distance_from_vah_pct": (price - prev_vah) / prev_vah if prev_vah > 0 else None,
+                "distance_from_poc_pct": (price - prev_poc) / prev_poc if prev_poc > 0 else None,
+                "bubble_tier": bubble_tier,
+                "bubble_percentile_score": bubble_percentile_score,
+                **qty_thresholds,
+                "min_bubble_tier": str(min_bubble_tier),
+                "session_start_hour": int(config_metadata["session_start_hour"]),
+                "session_start_minute": int(config_metadata["session_start_minute"]),
+            }
+        )
 
         reaction_required_end = timestamp_ms + max_reaction_window_ms
         if reaction_required_end > last_available_trade_timestamp:
@@ -600,7 +646,7 @@ def process_session_events_sequential(
         event_records.append(event_data)
         stats["total_confirmed_setups"] += 1
 
-    return event_records, stats
+    return event_records, bubble_trade_records, stats
 
 
 def build_events_dataset(
@@ -619,7 +665,7 @@ def build_events_dataset(
     setup_reaction_window_seconds: int,
     setup_mfe_threshold_pct: float,
     setup_efficiency_threshold: float,
-) -> tuple[pd.DataFrame, dict[str, Any]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     print("Adding session_id column...", flush=True)
     trades_df = add_session_id_column(trades_df, session_start_hour, session_start_minute)
     print("Discovering sessions...", flush=True)
@@ -636,6 +682,7 @@ def build_events_dataset(
     max_research_window_seconds = max(research_windows)
     grouped_sessions = {session_id: session_df.copy() for session_id, session_df in trades_df.groupby("session_id", sort=True)}
     events: list[dict[str, Any]] = []
+    bubble_trades: list[dict[str, Any]] = []
     skipped_incomplete_previous_session = 0
     researched_sessions = 0
     reaction_windows_str = ",".join(str(window) for window in reaction_windows)
@@ -690,7 +737,7 @@ def build_events_dataset(
         current_session_df = grouped_sessions[session_id]
         previous_session_profile = build_volume_profile(previous_session_df, n_bins=50)
         qty_thresholds = build_qty_percentile_thresholds(previous_session_df, bubble_percentile_combination)
-        session_events, session_stats = process_session_events_sequential(
+        session_events, session_bubble_trades, session_stats = process_session_events_sequential(
             current_session_df=current_session_df,
             previous_session_profile=previous_session_profile,
             qty_thresholds=qty_thresholds,
@@ -717,6 +764,7 @@ def build_events_dataset(
 
         researched_sessions += 1
         events.extend(session_events)
+        bubble_trades.extend(session_bubble_trades)
         for key in aggregate_stats:
             aggregate_stats[key] += int(session_stats.get(key, 0))
 
@@ -726,6 +774,7 @@ def build_events_dataset(
         )
 
     events_df = pd.DataFrame(events)
+    bubble_trades_df = pd.DataFrame(bubble_trades)
     if not events_df.empty:
         if not events_df["event_id"].is_unique:
             raise ValueError("event_id must be unique")
@@ -760,7 +809,7 @@ def build_events_dataset(
         "average_cluster_size": (float(events_df["cluster_bubble_count"].mean()) if aggregate_stats["total_confirmed_setups"] > 0 else None),
     }
 
-    return events_df, stats
+    return events_df, bubble_trades_df, stats
 
 
 def normalize_output_precision(events_df: pd.DataFrame) -> pd.DataFrame:
@@ -846,6 +895,57 @@ def normalize_output_precision(events_df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def normalize_bubble_trade_output_precision(bubble_trades_df: pd.DataFrame) -> pd.DataFrame:
+    out = bubble_trades_df.copy()
+
+    pct_columns = [column for column in out.columns if "_pct" in column]
+    price_columns = [
+        "price",
+        "previous_val",
+        "previous_vah",
+        "previous_poc",
+    ]
+    notional_columns = ["notional"]
+    quantity_columns = [
+        "qty",
+        "bubble_medium_qty_threshold",
+        "bubble_large_qty_threshold",
+        "bubble_extreme_qty_threshold",
+    ]
+    score_columns = ["bubble_percentile_score"]
+    percentile_columns = [
+        "bubble_medium_percentile",
+        "bubble_large_percentile",
+        "bubble_extreme_percentile",
+    ]
+
+    for column in pct_columns:
+        if column in out.columns:
+            out[column] = out[column].round(4)
+
+    for column in price_columns:
+        if column in out.columns:
+            out[column] = out[column].round(2)
+
+    for column in notional_columns:
+        if column in out.columns:
+            out[column] = out[column].round(2)
+
+    for column in quantity_columns:
+        if column in out.columns:
+            out[column] = out[column].round(3)
+
+    for column in score_columns:
+        if column in out.columns:
+            out[column] = out[column].round(3)
+
+    for column in percentile_columns:
+        if column in out.columns:
+            out[column] = out[column].round(4)
+
+    return out
+
+
 def main() -> None:
     args = parse_args()
     reaction_windows = parse_windows(args.reaction_windows, "--reaction-windows")
@@ -854,6 +954,10 @@ def main() -> None:
     output_dir = os.path.dirname(args.output_parquet)
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
+    if args.write_bubble_trades:
+        bubble_output_dir = os.path.dirname(args.bubble_trades_output_parquet)
+        if bubble_output_dir:
+            os.makedirs(bubble_output_dir, exist_ok=True)
     if args.write_csv:
         csv_output_dir = os.path.dirname(args.output_csv)
         if csv_output_dir:
@@ -863,7 +967,7 @@ def main() -> None:
     if trades_df.empty:
         raise ValueError("No trades were loaded from the provided input dataset")
     print("Processing dataset-driven session event study...")
-    events_df, stats = build_events_dataset(
+    events_df, bubble_trades_df, stats = build_events_dataset(
         trades_df=trades_df,
         symbol=args.symbol,
         session_start_hour=args.session_start_hour,
@@ -880,6 +984,14 @@ def main() -> None:
         setup_mfe_threshold_pct=args.setup_mfe_threshold_pct,
         setup_efficiency_threshold=args.setup_efficiency_threshold,
     )
+    if args.write_bubble_trades:
+        print(f"Bubble trade rows: {len(bubble_trades_df)}")
+        print(f"Bubble trade output: {args.bubble_trades_output_parquet}")
+        if bubble_trades_df.empty:
+            print("No bubble trades detected; skipping bubble trade parquet write")
+        else:
+            bubble_trades_df = normalize_bubble_trade_output_precision(bubble_trades_df)
+            bubble_trades_df.to_parquet(args.bubble_trades_output_parquet)
     if events_df.empty:
         print("No complete event-study rows detected")
         print("\nValidation Statistics:")
