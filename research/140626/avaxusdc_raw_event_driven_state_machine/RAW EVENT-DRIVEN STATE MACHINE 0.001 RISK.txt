@@ -1,0 +1,138 @@
+RAW EVENT-DRIVEN STATE MACHINE RESULT — AVAXUSDC
+
+Test setup:
+This test used raw Binance AVAXUSDC aggTrade data from 2024-06-01 to 2026-05-31. The system rebuilt everything from raw trades: session profiles, previous-session VAL/VAH/POC, quantity bubble thresholds, outside-value directional bubbles, 30-second reaction confirmation, calibration features, and final event-driven non-overlapping trade episodes.
+
+Main configuration:
+
+* Symbol: AVAXUSDC
+* Raw trades: 35,498,092
+* Sessions: 731
+* Session start: 13:30 UTC
+* Value area: 70%
+* Profile bin size: 0.001
+* Bubble mode: single aggTrade
+* Bubble threshold: previous-session qty percentile
+* Minimum bubble tier: medium / Q99
+* Confirmation window: 30 seconds
+* Confirmation rule: MFE >= 0.10% and efficiency >= 0.80
+* Stop buffer: 0.10%
+* TP1: 1R
+* Candidate timeout: 900 seconds
+* Continuation window: 900 seconds
+* Threshold mode: rolling 30 sessions
+* Primary threshold quantile: Q80
+
+Signal funnel:
+
+* Raw trades: 35,498,092
+* Qualified bubbles: 374,557
+* Outside-value bubbles: 126,576
+* Confirmed bubbles: 28,759
+* Final non-overlapping candidate episodes: 9,504
+* Entered trades: 321
+* Expired candidates without entry: 8,885
+* Insufficient calibration / warmup episodes: 298
+
+Interpretation of funnel:
+The system is highly selective. Many large aggressive trades appear, and many occur outside previous value, but only 28,759 pass the 30-second reaction confirmation. From those confirmed bubbles, the non-overlapping state machine only produced 321 actual trades. This means the system is not simply trading every bubble. Most confirmed bubbles are treated as market information, not as entries. This is structurally positive because the entry filter is doing real work.
+
+Reaction confirmation evidence:
+
+* Outside-value bubbles: 126,576
+* Confirmed bubbles: 28,759
+* Confirmation pass rate: approximately 22.7%
+
+Interpretation:
+The corrected raw-based confirmation process is now working. The earlier zero-confirmed-bubble result was caused by timestamp conversion / nanosecond alignment bugs, not by market behavior. After the timestamp fix, the confirmation funnel became reasonable.
+
+Primary Q80 result:
+
+* Total episodes: 9,504
+* Entered trades: 321
+* Win rate: 52.34%
+* Loss rate: 46.11%
+* Breakeven rate: 1.56%
+* Mean final R: +0.534R
+* Median final R: +0.143R
+* Total final R: +171.44R
+* Profit factor: 2.18
+* Mean max favorable R before close: 2.27R
+* Median max favorable R before close: 1.21R
+* Approximate max drawdown from trade-only equity curve: -13.16R
+
+Interpretation:
+The Q80 result is promising on gross R terms. A profit factor of 2.18, positive mean R, positive median R, and +171.44R total across 321 trades suggest that the event-driven structure may be capturing a real continuation behavior after confirmed outside-value aggressive activity. However, this is still a gross research result before fees, slippage, latency, and live execution assumptions.
+
+Close reason evidence:
+
+* SL before TP1: 128 trades, mean -1.00R, median -1.00R
+* TP1 then 50% retracement: 191 trades, mean +1.27R, median +0.69R
+* TP1 then no continuation timeout: 2 trades, mean +28.08R, median +28.08R
+
+Interpretation:
+The system loses in a clean and bounded way when SL is hit before TP1. The positive expectancy mainly comes from trades that first reach TP1 and are then managed by the 50% retracement rule. This suggests that TP1 is functioning well as a proof-of-continuation checkpoint. However, the two “TP1 then no continuation timeout” trades are extremely large and must be manually inspected because they contribute a lot to total R.
+
+Direction evidence:
+
+* Long trades: 114, mean +0.518R, median +0.204R, total +59.09R
+* Short trades: 207, mean +0.543R, median +0.106R, total +112.34R
+
+Interpretation:
+Both long and short sides are positive. Shorts contributed more total R mainly because there were more short trades, but mean R is similar between long and short. This is a good sign because the result is not entirely dependent on one market direction.
+
+Threshold robustness:
+
+* Q75: 440 trades, mean +0.210R, median +0.156R, total +92.28R
+* Q80: 321 trades, mean +0.534R, median +0.143R, total +171.44R
+* Q90: 135 trades, mean +0.207R, median -0.305R, total +27.98R
+
+Interpretation:
+All three tested threshold quantiles are positive in total R, which is encouraging. However, the result is not monotonic. Q80 is much stronger than both Q75 and Q90, while Q90 has a negative median R. This means Q80 may be a useful sweet spot, but it may also be overfit to this sample. The next validation must test whether Q80 remains strong under fixed-train / out-of-sample mode.
+
+Continuation evidence:
+
+* No continuation extension: 9,497 episodes, mean +0.161R, median +0.102R
+* Continuation with confirmation: 6 episodes, mean +16.42R, median +10.94R
+* Continuation without confirmation: 1 episode, mean +22.34R, median +22.34R
+
+Interpretation:
+Most episodes do not receive continuation extensions. The few continuation-extension cases are extremely profitable, but the sample is very small. These large continuation trades are important but cannot be trusted blindly. They should be manually inspected to ensure they are not caused by timestamp issues, stale prices, abnormal market events, or unrealistic execution assumptions.
+
+Right-tail concentration:
+
+* Top 1 trade contributed approximately 18.4% of total R
+* Top 2 trades contributed approximately 32.8% of total R
+* Top 3 trades contributed approximately 45.8% of total R
+* Top 10 trades contributed approximately 89.1% of total R
+* Top 10% of trades contributed approximately 126% of total R
+
+Interpretation:
+The result is heavily right-tail dependent. This is common in trend-following systems, but it is still a major warning. The system’s profitability depends strongly on a small number of large winners. Therefore, the strategy should not be judged only by total R or profit factor. The top winners must be inspected manually, and the system must be tested out-of-sample to see whether similar tail events repeat.
+
+Holding-time evidence:
+
+* Median holding time: 2.63 seconds
+* 61.4% of trades closed within 5 seconds
+* 91.6% of trades closed within 30 seconds
+* 96.3% of trades closed within 60 seconds
+
+Interpretation:
+This is the biggest execution warning. The gross result may look good, but most trades are extremely short-lived. That means live profitability may be highly sensitive to fees, spread, slippage, latency, and order execution quality. The strategy may require very fast execution and realistic cost modeling. Without execution-cost testing, the result cannot be considered live-tradable.
+
+Overall conclusion:
+The raw-based event-driven state-machine design is now mechanically working and produces a promising gross edge candidate. The Q80 configuration produced +171.44R over 321 trades with a 52.34% win rate and 2.18 profit factor. The model appears to correctly separate many confirmed bubbles into “information only” versus actual entry candidates, and both long and short directions are positive.
+
+However, this is not yet a validated trading system. The result is highly dependent on a small number of large winners, Q80 is much stronger than neighboring quantiles, and most trades close within seconds. These factors create serious robustness and execution-risk concerns.
+
+Research status:
+Promising gross edge candidate, but not yet proven robust or live-executable.
+
+Next validation steps:
+
+1. Add realistic fees and slippage.
+2. Run fixed_train_1year / out-of-sample validation.
+3. Manually inspect the top 10 winners and worst 10 losers on chart replay.
+4. Check whether the large continuation trades are real and executable.
+5. Create equity curve, drawdown curve, and monthly breakdown.
+6. Test whether Q80 remains superior outside this sample.

@@ -1,0 +1,76 @@
+{
+  "RAW_AGGTRADES_PATH": "storage/avaxusdc/parquet/AVAXUSDC-aggTrades-2024-06_to_2026-05.parquet",
+  "OUTPUT_DIR": "research/140626/avaxusdc_raw_event_driven_state_machine",
+  "SYMBOL": "AVAXUSDC",
+  "SESSION_START_UTC": "13:30:00",
+  "VALUE_AREA_PCT": 0.7,
+  "PROFILE_PRICE_BIN_SIZE": null,
+  "PROFILE_PRICE_BIN_METHOD": "auto",
+  "selected_profile_bin_size": 0.001,
+  "BUBBLE_MODE": "single_aggtrade",
+  "BUBBLE_SIZE_METRIC": "qty",
+  "BUBBLE_Q_MEDIUM": 0.99,
+  "BUBBLE_Q_LARGE": 0.995,
+  "BUBBLE_Q_EXTREME": 0.999,
+  "MIN_BUBBLE_TIER": "medium",
+  "SETUP_REACTION_WINDOW_SECONDS": 30,
+  "SETUP_MFE_THRESHOLD_PCT": 0.001,
+  "SETUP_EFFICIENCY_THRESHOLD": 0.8,
+  "STOP_BUFFER_PCT": 0.001,
+  "TP1_R": 1.0,
+  "CANDIDATE_TIMEOUT_SECONDS": 900,
+  "CONTINUATION_WINDOW_SECONDS": 900,
+  "MIN_TRIGGER_SECONDS": 30,
+  "RETRACEMENT_INVALIDATION_PCT": 0.5,
+  "THRESHOLD_MODE": "rolling_30_session",
+  "THRESHOLD_LOOKBACK_SESSIONS": 30,
+  "THRESHOLD_QUANTILES": [
+    0.75,
+    0.8,
+    0.9
+  ],
+  "PRIMARY_THRESHOLD_QUANTILE": 0.8,
+  "FIXED_TRAIN_START": "2024-06-01",
+  "FIXED_TRAIN_END": "2025-06-01",
+  "FIXED_TEST_START": "2025-06-01",
+  "FIXED_TEST_END": "2026-06-01",
+  "RUN_ROBUSTNESS_QUANTILES": true,
+  "diagnostics": {
+    "missing_previous_profile_count": 0,
+    "incomplete_reaction_window_count": 0,
+    "incomplete_calibration_window_count": 0,
+    "ambiguous_touch_sequence_count": 0,
+    "end_of_data_open_trade_count": 0,
+    "insufficient_calibration_history_count": 298,
+    "warmup_session_count": 30
+  },
+  "diagnostics_by_quantile": {
+    "q75": {
+      "missing_previous_profile_count": 0,
+      "incomplete_reaction_window_count": 0,
+      "incomplete_calibration_window_count": 0,
+      "ambiguous_touch_sequence_count": 0,
+      "end_of_data_open_trade_count": 0,
+      "insufficient_calibration_history_count": 298,
+      "warmup_session_count": 0
+    },
+    "q80": {
+      "missing_previous_profile_count": 0,
+      "incomplete_reaction_window_count": 0,
+      "incomplete_calibration_window_count": 0,
+      "ambiguous_touch_sequence_count": 0,
+      "end_of_data_open_trade_count": 0,
+      "insufficient_calibration_history_count": 298,
+      "warmup_session_count": 0
+    },
+    "q90": {
+      "missing_previous_profile_count": 0,
+      "incomplete_reaction_window_count": 0,
+      "incomplete_calibration_window_count": 0,
+      "ambiguous_touch_sequence_count": 0,
+      "end_of_data_open_trade_count": 0,
+      "insufficient_calibration_history_count": 298,
+      "warmup_session_count": 0
+    }
+  }
+}

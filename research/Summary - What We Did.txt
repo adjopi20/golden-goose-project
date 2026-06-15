@@ -1,0 +1,168 @@
+Based on the last Golden Goose research conversations, the useful summary is this:
+
+Overall answer
+
+Yes, the work was useful, but not because we already found a tradable edge.
+
+It was useful because we eliminated weak ideas, clarified what has signal, and found that most simple order-flow variables are not strong enough alone.
+
+The main conclusion:
+
+Nth bubble / confirmed setup rank has some structure.
+Post-rank bubble activity has some information.
+But the pattern is not clean enough yet to become a trading rule.
+What we tested and found
+1. MFE + efficiency confirmation
+
+We tested whether a bubble that immediately creates favorable movement and efficient movement has better future result.
+
+Finding:
+
+Yes, MFE and efficiency are useful as setup confirmation filters.
+
+This helped define a “confirmed setup” instead of treating every large bubble as meaningful.
+
+Useful? Yes.
+This became the foundation of the confirmed setup generator.
+
+2. Nth confirmed setup / Nth bubble rank
+
+We tested whether the Nth confirmed bubble inside an impulse group relates to max_R_before_SL.
+
+Finding:
+
+Rank 1 is useful as impulse anchor, but not always the best entry.
+Rank 3–5 looked more stable.
+Rank 9 sometimes looked interesting, but sample was smaller and less reliable.
+
+The relationship was not linear.
+
+Meaning:
+
+More bubbles does not simply mean better result.
+The useful zone is delayed, but not endlessly delayed.
+
+Useful? Yes, but not final.
+It gave us a direction: do not blindly enter first impulse confirmation.
+
+3. Master export architecture
+
+We changed the architecture so impulse_bubble_master.parquet becomes the main source of truth.
+
+Finding:
+
+This was useful technically, not statistically.
+
+It made later research easier because we can reconstruct:
+
+confirmed setups
+rank positions
+same-side/opposite-side bubbles
+impulse groups
+
+Useful? Yes.
+This improves research workflow and avoids fragmented outputs.
+
+4. Post-rank-3 900s evidence window
+
+We tested:
+
+After rank 3 appears, wait 900 seconds.
+Observe same-side/opposite-side bubble activity.
+Then enter after 900s and calculate max_R_before_SL.
+
+Finding:
+
+Blind rank3 + 900s entry was not strong.
+Overall median was below 1R.
+
+But the fight-state filter had some separation:
+
+neither_same_nor_opposite was best.
+both_same_and_opposite was weak.
+opposite contra-move was dangerous.
+qty imbalance was useless.
+
+Most interesting sub-finding:
+
+short + no qualified bubble activity after rank 3 looked strongest.
+
+Useful? Partially.
+It showed that post-rank evidence contains information, but not clean enough.
+
+5. Post-rank-3 300s evidence window
+
+We tested the same logic with 300 seconds instead of 900 seconds.
+
+Finding:
+
+300s was also weak as a blind rule.
+The best states were only slightly better than others.
+No clean separation.
+
+Interpretation:
+
+300s may preserve more opportunity for longs.
+900s looked better for short no-fight continuation.
+But neither was strong enough overall.
+
+Useful? Mostly as elimination.
+It told us not to keep parameter-hunting this branch too much.
+
+6. Same-side vs opposite-side bubble behavior
+
+Across several tests, we examined whether same-side or opposite-side bubble behavior explains result.
+
+Finding:
+
+Raw same-side count/qty is not enough.
+Raw opposite-side count/qty is not enough.
+Qty imbalance correlation was basically zero.
+
+But reaction type mattered more:
+
+opposite contra-move = warning
+opposite absorbed = not necessarily bad
+mixed same+opposite fight = usually noisy / weak
+
+Useful? Yes conceptually, weak statistically.
+It tells us that “bubble side” alone is too crude. Reaction quality matters more than raw bubble count.
+
+Final summary of usefulness
+Useful findings
+1. MFE + efficiency confirmation is useful.
+2. Rank / Nth confirmed setup has some structure.
+3. Rank 3–5 is more interesting than rank 1 as final entry.
+4. Opposite-side contra-move is a consistent warning.
+5. Mixed two-sided fight usually weakens the setup.
+6. Quantity imbalance is not useful.
+7. Master export architecture is useful for future research.
+Not useful enough
+1. Blind rank3 entry is not enough.
+2. Blind rank3 + 300s delay is not enough.
+3. Blind rank3 + 900s delay is not enough.
+4. Same-side-only after rank 3 is not a strong standalone signal.
+5. Bubble count and bubble qty are not strong predictors.
+6. The post-rank-3 fight-state idea is not strong enough to continue deeply right now.
+Practical conclusion
+
+This research branch produced a clear answer:
+
+There is structure, but not enough edge yet.
+
+So the work was not wasted. It helped narrow the search.
+
+The current strongest research direction is not:
+
+Find the best Nth bubble.
+
+It is more likely:
+
+Use confirmed setup rank as context, then search for a better market-state or invalidation condition.
+
+In other words:
+
+Nth bubble tells us where we are in the impulse.
+It does not by itself tell us whether the trade is worth taking.
+
+So yes, moving to the next research is the correct decision.

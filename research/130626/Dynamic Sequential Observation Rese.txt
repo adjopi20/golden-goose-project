@@ -1,0 +1,406 @@
+Dynamic Sequential Observation Research — Simple Finding Report
+
+This test observed AVAXUSDC after the first confirmed impulse bubble. The anchor was the rank-1 confirmed setup. After the anchor, the notebook observed a 900-second evidence window, entered at the end of that window, then measured future result over the next 3600 seconds. Overlapping observations were allowed for pattern discovery.
+
+Total observations: 10,770.
+
+Overall result:
+
+* Median max_R_before_SL: 1.0235R
+* Mean max_R_before_SL: 3.3128R
+* Hit >=1R: 50.55%
+* Hit >=2R: 35.44%
+* Hit >=3R: 27.65%
+* Hit >=5R: 18.74%
+* SL touch rate: 89.50%
+
+Main interpretation:
+The dynamic rank-1 observation framework is slightly better than the previous post-rank-3 delayed-entry framework, but it still does not produce a strong standalone trading edge. The median result is only slightly above 1R, meaning many trades are still mediocre.
+
+Useful findings:
+
+1. Strong directional migration during the evidence window is mildly positive.
+   The top 10% net_migration_R group produced better mean, median, and >=2R hit rate than baseline.
+
+2. Market activity / volatility helps the right tail.
+   High price range and high trade activity improved mean result and tail result, but did not dramatically improve the median.
+
+3. Recovery by entry may be useful.
+   Trades where price recovered from adverse movement before entry showed better mean and tail behavior.
+
+4. Contra reaction is not automatically bad.
+   High contra reaction did not clearly worsen the result. This supports the idea that contra movement can be a pullback instead of invalidation.
+
+5. Same-side bubble count alone is not useful.
+   More same-side bubbles did not meaningfully improve the median. In some combinations, too many same-side bubbles may even indicate exhaustion or a late entry.
+
+6. Same-side price slope is not reliable in current form.
+   The current slope metric has extreme outliers and should be replaced with simpler metrics such as first-to-last same-side price change, same-side new extreme count, and median same-side price position.
+
+7. Value reacceptance using previous VAL/VAH is not useful yet.
+   Most observations had no value reacceptance, and the small group with reacceptance was not clearly worse.
+
+8. Percentile-sum metrics are broken in this run.
+   bubble_percentile_score is null, causing same_side_qty_percentile_sum and opposite_qty_percentile_sum to be unusable. Tier-weight metrics still work.
+
+Conclusion:
+This branch is better than the old post-rank-3 framework, but the current metrics still do not kill enough mediocre trades. The most promising direction is not simple bubble count. The better direction is to test interaction conditions: strong directional migration, enough market activity, efficient same-side price movement, and recovery from pullback before entry.
+
+Next action:
+Fix the percentile-score issue, replace unstable same-side slope with more robust price-migration metrics, and test whether strong directional expansion within a shorter configurable sub-window can filter out mediocre trades.
+
+
+Main interpretation
+
+Reducing the evidence window to 300s and reaction window to 30s did not materially improve the edge.
+
+Overall result:
+
+N = 10,770
+
+Median max_R_before_SL: 1.0024R
+Mean max_R_before_SL:   3.4203R
+
+Hit >=1R: 50.04%
+Hit >=2R: 35.25%
+Hit >=3R: 27.43%
+Hit >=5R: 19.03%
+
+SL touch rate: 89.09%
+Zero-R rate: 15.64%
+
+Compared to the previous 900s / 60s result:
+
+900s / 60s:
+Median R: 1.0235R
+Mean R:   3.3128R
+Hit >=2R: 35.44%
+Hit >=5R: 18.74%
+
+300s / 30s:
+Median R: 1.0024R
+Mean R:   3.4203R
+Hit >=2R: 35.25%
+Hit >=5R: 19.03%
+
+So the shorter window gives:
+
+slightly lower median
+slightly lower >=2R hit rate
+slightly higher mean
+slightly higher >=5R tail
+
+That means 300s is not clearly better. It may capture faster volatility/tail moves slightly better, but it does not kill the mediocre trades.
+
+Direction split
+
+Shorts are still slightly better.
+
+Long:
+N = 4,926
+Median R = 0.9760R
+Hit >=2R = 34.49%
+Hit >=5R = 18.94%
+
+Short:
+N = 5,844
+Median R = 1.0212R
+Hit >=2R = 35.88%
+Hit >=5R = 19.11%
+
+Same interpretation as before:
+
+short side is slightly cleaner,
+but not enough to become a standalone filter.
+Evidence activity
+
+The 300s evidence window produced:
+
+Evidence bubble rows: 24,630
+Same-side bubbles:    12,663
+Opposite-side bubbles: 11,967
+
+So there is still enough evidence activity, but obviously less than the longer 900s version.
+
+Important: the percentile issue still exists.
+
+bubble_percentile_score = all null
+same_side_qty_percentile_sum = always 0
+opposite_qty_percentile_sum = always 0
+
+So percentile-sum metrics are still unusable. Tier-weight metrics are still usable.
+
+Same/opposite presence state
+
+This result is interesting:
+
+same_side_only:
+N = 1,855
+Median R = 1.0508R
+Hit >=2R = 36.50%
+
+opposite_side_only:
+N = 1,828
+Median R = 1.0366R
+Hit >=2R = 37.36%
+
+both same + opposite:
+N = 2,698
+Median R = 1.0054R
+Hit >=2R = 34.54%
+
+neither:
+N = 4,389
+Median R = 0.9511R
+Hit >=2R = 34.27%
+
+This is different from the 900s version.
+
+In 300s:
+
+same_side_only and opposite_side_only are slightly better
+neither is clearly weaker
+both-side fight is not best anymore
+
+Interpretation:
+
+A shorter 300s window makes activity presence more important. No-bubble / quiet conditions are weaker. That supports your idea that inactive conditions should probably be skipped.
+
+But still, the difference is small.
+
+Correlations are still basically weak
+
+The strongest Spearman correlations are still tiny:
+
+qualified_bubble_qty:      +0.0173
+net_migration_R:           +0.0147
+entry_position_R:          +0.0147
+total_trade_count:         +0.0122
+opposite_bubble_count:     +0.0118
+recovery_by_entry_R:       +0.0099
+unresolved_adverse_R:      -0.0221
+
+This means:
+
+No single metric is explaining future max_R_before_SL well.
+
+So the answer is still not one simple variable.
+
+Directional migration became weaker in 300s
+
+Top 10% net_migration_R:
+
+Median R = 1.0096R
+Mean R = 4.1502R
+Hit >=2R = 33.98%
+Hit >=5R = 19.41%
+
+Bottom 10% net_migration_R:
+
+Median R = 0.8896R
+Mean R = 3.4838R
+Hit >=2R = 33.89%
+Hit >=5R = 17.64%
+
+The top migration group has better median and tail than the bottom group, but hit >=2R barely improves.
+
+Compared to the 900s version, directional migration is less useful in 300s.
+
+Possible interpretation:
+
+300s may be too short to prove real directional acceptance.
+It captures initial movement, but not enough auction confirmation.
+Activity / volatility still helps the tail
+
+Top 10% price_range_R:
+
+Median R = 1.0508R
+Mean R = 4.9747R
+Hit >=2R = 36.95%
+Hit >=5R = 19.96%
+
+Bottom 10% price_range_R:
+
+Median R = 0.9273R
+Mean R = 2.7542R
+Hit >=2R = 33.43%
+Hit >=5R = 17.27%
+
+Top 10% total_trade_count:
+
+Median R = 1.0162R
+Mean R = 4.3704R
+Hit >=2R = 35.37%
+Hit >=5R = 19.81%
+
+Bottom 10% total_trade_count:
+
+Median R = 0.8290R
+Mean R = 2.7416R
+Hit >=2R = 32.50%
+Hit >=5R = 16.71%
+
+This is one of the clearer findings:
+
+Dead / low-activity market is bad.
+High activity helps the tail, but still does not strongly improve median.
+Contra reaction is not a clean warning
+
+Top 10% contra_reaction_total_R:
+
+Median R = 0.9822R
+Mean R = 3.8509R
+Hit >=2R = 33.70%
+Hit >=5R = 18.20%
+
+Top 10% contra_reaction_max_R:
+
+Median R = 0.9391R
+Mean R = 3.7923R
+Hit >=2R = 34.26%
+Hit >=5R = 17.83%
+
+So high contra reaction is slightly worse in median/hit rate, but not dramatically.
+
+Interpretation:
+
+Contra reaction alone is still not enough to invalidate.
+But strong contra reaction is not attractive either.
+
+It is probably only useful when combined with:
+
+unresolved adverse position
+failure to recover by entry
+value reacceptance
+weak directional migration
+Recovery by entry is one of the better signals
+
+Top 10% recovery_by_entry_R:
+
+Median R = 1.1527R
+Mean R = 4.5542R
+Hit >=2R = 36.40%
+Hit >=5R = 21.08%
+
+Bottom 10%:
+
+Median R = 0.9663R
+Mean R = 3.0788R
+Hit >=2R = 34.26%
+Hit >=5R = 18.57%
+
+This is useful.
+
+It says:
+
+Pullback/reaction is okay if price recovers before entry.
+Unresolved adverse movement is more dangerous.
+
+Also, observations with low unresolved adverse movement are better:
+
+unresolved_adverse_R = 0 group:
+Median R = 1.0457R
+Hit >=2R = 35.96%
+
+high unresolved adverse group:
+Median R = 0.8896R
+Hit >=2R = 33.89%
+
+This is probably more useful than raw contra reaction.
+
+Interaction test
+
+The best-looking simple interaction was:
+
+top 10% net_migration_R
++ top 10% price_range_R
++ top 10% total_trade_count
+
+Result:
+
+N = 242
+Median R = 1.1922R
+Mean R = 6.5154R
+Hit >=2R = 40.08%
+Hit >=3R = 33.06%
+Hit >=5R = 24.79%
+
+This is better than baseline.
+
+Baseline:
+
+Median R = 1.0024R
+Hit >=2R = 35.25%
+Hit >=5R = 19.03%
+
+So your idea has some support, but with an important correction:
+
+It is not “many same-side bubbles” that works.
+It is “directional migration + range/volatility + market activity.”
+
+When adding same-side bubble count, it does not improve as much:
+
+top 10% net_migration_R
++ top 10% same_side_bubble_count
+
+N = 400
+Median R = 0.9800R
+Hit >=2R = 35.25%
+Hit >=5R = 20.75%
+
+So same-side count still does not kill mediocre trades.
+
+Best interpretation
+
+The 300s / 30s version tells us:
+
+Shorter evidence horizon is not better overall.
+It makes inactive/no-bubble conditions look worse.
+It slightly improves tail behavior when the market is active.
+But it weakens the directional-migration signal compared with 900s.
+
+So my conclusion is:
+
+300s is useful as an urgency/activity detector,
+but not enough as the full evidence window.
+
+The more promising design may be:
+
+Use 300s to detect fast activity/urgency.
+Use 900s to confirm whether the auction actually accepts the new price level.
+
+In other words:
+
+300s = impulse urgency
+900s = auction acceptance
+What this means for your “kill mediocre trades” idea
+
+Yes, possible, but not by using many same-side bubbles.
+
+The better filter shape is:
+
+1. price moves directionally within 300s
+2. evidence window has high range / high trade activity
+3. price is not unresolved adverse by entry
+4. recovery_by_entry_R is strong
+5. do not require too many same-side bubbles
+
+Current best candidate:
+
+net_migration_R top 10%
++ price_range_R top 10%
++ total_trade_count top 10%
+
+This improved:
+
+median: 1.0024R → 1.1922R
+hit >=2R: 35.25% → 40.08%
+hit >=5R: 19.03% → 24.79%
+
+But sample drops to 242, so this is promising but not proven.
+
+Final conclusion
+
+This 300s / 30s run is not a breakthrough, but it gives one useful insight:
+
+The market needs activity and directional range quickly after the first confirmed bubble. But same-side bubble count alone is not the answer.

@@ -1,0 +1,31 @@
+{
+  "master_path": "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\research\\130626\\avaxusdc_0022\\0022-master.parquet",
+  "raw_aggtrades_paths": [
+    "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\storage\\avaxusdc\\parquet\\AVAXUSDC-aggTrades-2024-06_to_2026-05.parquet"
+  ],
+  "output_dir": "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\research\\130626\\avaxusdc_0022\\dynamic_sequential_observation\\evidence_300s_result_3600s_reaction_30s",
+  "evidence_seconds": 300,
+  "result_seconds": 3600,
+  "reaction_seconds": 30,
+  "price_path_sample_seconds": 3,
+  "default_stop_buffer_pct": 0.001,
+  "keep_incomplete_result_windows": false,
+  "notes": [
+    "Master parquet remains canonical for anchor generation and setup metadata.",
+    "Raw aggTrades are used for evidence-window reconstruction, behavior metrics, and result calculation.",
+    "Metric names are horizon-agnostic; horizons are stored in config metadata instead.",
+    "Overlapping observations are allowed and should not be over-claimed as statistically independent."
+  ],
+  "skip_stats": {
+    "anchors_total": 10770,
+    "anchors_processed": 10770,
+    "anchors_skipped_incomplete_evidence": 0,
+    "anchors_skipped_incomplete_result": 0,
+    "anchors_skipped_missing_entry_price": 0
+  },
+  "output_files": {
+    "dynamic_observation_summary": "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\research\\130626\\avaxusdc_0022\\dynamic_sequential_observation\\evidence_300s_result_3600s_reaction_30s\\dynamic_observation_summary.parquet",
+    "dynamic_evidence_events": "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\research\\130626\\avaxusdc_0022\\dynamic_sequential_observation\\evidence_300s_result_3600s_reaction_30s\\dynamic_evidence_events.parquet",
+    "dynamic_behavior_features": "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\research\\130626\\avaxusdc_0022\\dynamic_sequential_observation\\evidence_300s_result_3600s_reaction_30s\\dynamic_behavior_features.parquet"
+  }
+}

@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import os
 import sys
 import uuid
@@ -15,6 +15,7 @@ sys.path.append(str(project_root))
 
 from indicator.volume_profile import build_volume_profile
 from loader.trade_loader import load_trades_from_inputs
+from utils.export import make_excel_safe
 
 
 TIER_RANK = {"medium": 1, "large": 2, "extreme": 3}
@@ -29,7 +30,6 @@ RISK_MODEL_STOP_BUFFER = {
     "medium": 0.0010,
     "wide": 0.0020,
 }
-ABSORBED_EFFICIENCY_THRESHOLD = 0.40
 FINAL_EVENT_COLUMNS = [
     "trade_event_id", "event_id", "symbol", "session_id", "session_date", "previous_session_id",
     "event_timestamp", "setup_confirmation_timestamp", "location", "directional_bias", "bubble_tier",
@@ -41,18 +41,20 @@ FINAL_EVENT_COLUMNS = [
     "bubble_large_qty_threshold", "bubble_extreme_qty_threshold", "min_bubble_tier", "primary_risk_model",
     "reaction_mfe_30s_pct", "reaction_mae_30s_pct", "reaction_efficiency_30s",
     "confirmation_same_side_bubble_count", "confirmation_same_side_bubble_total_qty",
-    "confirmation_same_side_bubble_total_notional", "confirmation_same_side_bubble_max_qty",
-    "confirmation_same_side_bubble_max_notional", "confirmation_same_side_bubble_tiers",
     "confirmation_opposite_side_bubble_count", "confirmation_opposite_side_bubble_total_qty",
-    "confirmation_opposite_side_bubble_total_notional", "confirmation_opposite_side_bubble_max_qty",
-    "confirmation_opposite_side_bubble_max_notional", "confirmation_opposite_side_bubble_tiers",
-    "confirmation_first_opposite_side_bubble_absorbed_10s",
-    "confirmation_first_opposite_side_bubble_reversed_10s", "trade_event_setup_count",
+    "confirmation_opposite_side_bubble_absorbed_count", "confirmation_opposite_side_bubble_absorbed_total_qty",
+    "confirmation_opposite_side_bubble_contra_move_count", "confirmation_opposite_side_bubble_contra_move_total_qty",
+    "confirmation_opposite_side_bubble_max_contra_mae_from_entry_pct",
+    "confirmation_opposite_side_bubble_max_contra_mae_from_entry_R", "trade_event_setup_count",
     "first_setup_timestamp", "last_setup_timestamp", "first_setup_confirmation_timestamp",
     "last_setup_confirmation_timestamp", "seconds_from_first_to_last_setup", "bubble_retested",
     "time_to_retest_seconds", "max_favorable_before_retest_pct", "max_R_before_SL",
     "max_expansion_pct_before_SL", "sl_touched", "sl_touch_timestamp",
 ]
+JAKARTA_TZ = "Asia/Jakarta"
+EXCEL_MAX_DATA_ROWS = 1_048_000
+MASTER_PREVIEW_SHEET_NAME = "impulse_bubble_master"
+MASTER_PREVIEW_INFO_SHEET_NAME = "export_info"
 
 
 def bubble_passes_min_tier(qty: float, min_bubble_tier: str, thresholds: dict[str, Any]) -> bool:
@@ -86,24 +88,32 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", required=True, help="Single path or comma-separated trade input paths")
     parser.add_argument("--symbol", required=True)
     parser.add_argument("--min-bubble-tier", default="medium", choices=sorted(TIER_RANK.keys()))
-    parser.add_argument("--cluster-window-seconds", type=int, default=10)
     parser.add_argument("--retest-zone-pct", type=float, default=0.0002)
     parser.add_argument("--reaction-windows", default="10,30,60")
     parser.add_argument("--research-windows", default="30,60,300,900,3600")
-    parser.add_argument("--bubble-percentile-combination", default="strict", choices=sorted(BUBBLE_PERCENTILE_COMBINATIONS.keys()), help="Previous-session qty percentile threshold preset for bubble tiering")
+    parser.add_argument(
+        "--bubble-percentile-combination",
+        default="strict",
+        choices=sorted(BUBBLE_PERCENTILE_COMBINATIONS.keys()),
+        help="Previous-session qty percentile threshold preset for bubble tiering",
+    )
     parser.add_argument("--setup-reaction-window-seconds", type=int, default=30)
     parser.add_argument("--setup-mfe-threshold-pct", type=float, default=0.0005)
     parser.add_argument("--setup-efficiency-threshold", type=float, default=0.50)
     parser.add_argument("--primary-risk-model", default="medium", choices=sorted(RISK_MODEL_STOP_BUFFER.keys()))
     parser.add_argument("--stop-buffer-pct", type=float, default=None)
     parser.add_argument("--trade-event-gap-seconds", type=int, default=900)
+    parser.add_argument("--opposite-bubble-reaction-window-seconds", type=int, default=5)
+    parser.add_argument("--opposite-bubble-absorbed-efficiency-threshold", type=float, default=0.40)
+    parser.add_argument("--opposite-bubble-contra-efficiency-threshold", type=float, default=0.60)
+    parser.add_argument("--impulse-group-window-seconds", type=int, default=900)
+    parser.add_argument("--impulse-observation-horizon-seconds", type=int, default=3600)
+    parser.add_argument("--include-incomplete-impulse-groups", action="store_true")
     parser.add_argument("--min-qty", type=float, default=1.0)
     parser.add_argument("--min-notional", type=float, default=10000.0)
-    parser.add_argument("--output-parquet", default="research/event_study.parquet")
-    parser.add_argument("--write-bubble-trades", action="store_true", help="Write candidate bubble trades that pass the configured threshold to a separate parquet file.")
-    parser.add_argument("--bubble-trades-output-parquet", default="research/bubble_trades.parquet", help="Output parquet path for candidate bubble trades when --write-bubble-trades is used.")
-    parser.add_argument("--output-csv", default="research/event_study.csv")
-    parser.add_argument("--write-csv", action="store_true", help="Write CSV output in addition to parquet")
+    parser.add_argument("--output-parquet", default="research/impulse_bubble_master.parquet", help="Canonical impulse bubble master parquet output path.")
+    parser.add_argument("--write-xlsx", action="store_true", help="Write Excel verification export for impulse bubble master.")
+    parser.add_argument("--output-xlsx", default="research/impulse_bubble_master.xlsx", help="Optional Excel verification output path for impulse bubble master.")
     parser.add_argument("--session-start-hour", type=int, default=13)
     parser.add_argument("--session-start-minute", type=int, default=30)
     args = parser.parse_args()
@@ -115,8 +125,20 @@ def parse_args() -> argparse.Namespace:
         raise ValueError("--setup-efficiency-threshold must be between 0 and 1 inclusive")
     if args.trade_event_gap_seconds <= 0:
         raise ValueError("--trade-event-gap-seconds must be > 0")
-    if args.stop_buffer_pct is not None and args.stop_buffer_pct < 0:
-        raise ValueError("--stop-buffer-pct must be >= 0")
+    if args.opposite_bubble_reaction_window_seconds <= 0:
+        raise ValueError("--opposite-bubble-reaction-window-seconds must be > 0")
+    if not 0 <= args.opposite_bubble_absorbed_efficiency_threshold <= 1:
+        raise ValueError("--opposite-bubble-absorbed-efficiency-threshold must be between 0 and 1 inclusive")
+    if not 0 <= args.opposite_bubble_contra_efficiency_threshold <= 1:
+        raise ValueError("--opposite-bubble-contra-efficiency-threshold must be between 0 and 1 inclusive")
+    if args.opposite_bubble_absorbed_efficiency_threshold >= args.opposite_bubble_contra_efficiency_threshold:
+        raise ValueError("--opposite-bubble-absorbed-efficiency-threshold must be < --opposite-bubble-contra-efficiency-threshold")
+    if args.impulse_group_window_seconds <= 0:
+        raise ValueError("--impulse-group-window-seconds must be > 0")
+    if args.impulse_observation_horizon_seconds <= 0:
+        raise ValueError("--impulse-observation-horizon-seconds must be > 0")
+    if args.stop_buffer_pct is not None and args.stop_buffer_pct <= 0:
+        raise ValueError("--stop-buffer-pct must be > 0")
     return args
 
 
@@ -157,7 +179,14 @@ def validate_session_continuity(session_ids: list[str]) -> None:
 
 def session_window_ms(session_id: str, session_start_hour: int, session_start_minute: int) -> tuple[int, int]:
     session_date = date.fromisoformat(session_id)
-    session_start = pd.Timestamp(year=session_date.year, month=session_date.month, day=session_date.day, hour=session_start_hour, minute=session_start_minute, tz="UTC")
+    session_start = pd.Timestamp(
+        year=session_date.year,
+        month=session_date.month,
+        day=session_date.day,
+        hour=session_start_hour,
+        minute=session_start_minute,
+        tz="UTC",
+    )
     session_end = session_start + pd.Timedelta(hours=24)
     return int(session_start.timestamp() * 1000), int(session_end.timestamp() * 1000)
 
@@ -209,24 +238,24 @@ def calculate_reaction_metrics_np(event_timestamp: int, anchor_price: float, bub
 
 def summarize_qualifying_bubbles(rows: list[dict[str, Any]], prefix: str) -> dict[str, Any]:
     if not rows:
-        return {f"{prefix}_count": 0, f"{prefix}_total_qty": 0.0, f"{prefix}_total_notional": 0.0, f"{prefix}_max_qty": None, f"{prefix}_max_notional": None, f"{prefix}_tiers": None}
+        return {f"{prefix}_count": 0, f"{prefix}_total_qty": 0.0}
     return {
         f"{prefix}_count": int(len(rows)),
         f"{prefix}_total_qty": float(sum(row["qty"] for row in rows)),
-        f"{prefix}_total_notional": float(sum(row["notional"] for row in rows)),
-        f"{prefix}_max_qty": float(max(row["qty"] for row in rows)),
-        f"{prefix}_max_notional": float(max(row["notional"] for row in rows)),
-        f"{prefix}_tiers": ",".join(sorted({str(row["tier"]) for row in rows})),
     }
 
 
-def compute_confirmation_horizon_bubble_metrics(event_timestamp: int, setup_confirmation_timestamp: int, directional_bias: str, qty_thresholds: dict[str, Any], min_bubble_tier: str, all_timestamps: np.ndarray, all_prices: np.ndarray, all_qtys: np.ndarray, all_is_buyer_maker: np.ndarray) -> dict[str, Any]:
+def compute_confirmation_horizon_bubble_metrics(event_timestamp: int, setup_confirmation_timestamp: int, directional_bias: str, qty_thresholds: dict[str, Any], min_bubble_tier: str, entry_price: float, stop_buffer_pct: float, opposite_bubble_reaction_window_seconds: int, opposite_bubble_absorbed_efficiency_threshold: float, opposite_bubble_contra_efficiency_threshold: float, all_timestamps: np.ndarray, all_prices: np.ndarray, all_qtys: np.ndarray, all_is_buyer_maker: np.ndarray) -> dict[str, Any]:
     start_idx, end_idx = get_time_window_indices(all_timestamps, event_timestamp, setup_confirmation_timestamp)
     out: dict[str, Any] = {}
     out.update(summarize_qualifying_bubbles([], "confirmation_same_side_bubble"))
     out.update(summarize_qualifying_bubbles([], "confirmation_opposite_side_bubble"))
-    out["confirmation_first_opposite_side_bubble_absorbed_10s"] = None
-    out["confirmation_first_opposite_side_bubble_reversed_10s"] = None
+    out["confirmation_opposite_side_bubble_absorbed_count"] = 0
+    out["confirmation_opposite_side_bubble_absorbed_total_qty"] = 0.0
+    out["confirmation_opposite_side_bubble_contra_move_count"] = 0
+    out["confirmation_opposite_side_bubble_contra_move_total_qty"] = 0.0
+    out["confirmation_opposite_side_bubble_max_contra_mae_from_entry_pct"] = 0.0
+    out["confirmation_opposite_side_bubble_max_contra_mae_from_entry_R"] = 0.0
     if start_idx >= end_idx:
         return out
     window_timestamps = all_timestamps[start_idx:end_idx]
@@ -248,7 +277,7 @@ def compute_confirmation_horizon_bubble_metrics(event_timestamp: int, setup_conf
         tier, _ = classify_bubble_tier_and_score(qty, qty_thresholds)
         if tier is None:
             continue
-        row = {"timestamp": int(window_timestamps[idx]), "price": float(window_prices[idx]), "qty": qty, "notional": float(window_prices[idx] * window_qtys[idx]), "tier": tier}
+        row = {"timestamp": int(window_timestamps[idx]), "price": float(window_prices[idx]), "qty": qty, "tier": tier}
         if same_side_mask[idx]:
             same_side_rows.append(row)
         elif opposite_side_mask[idx]:
@@ -257,14 +286,36 @@ def compute_confirmation_horizon_bubble_metrics(event_timestamp: int, setup_conf
     out.update(summarize_qualifying_bubbles(opposite_side_rows, "confirmation_opposite_side_bubble"))
     if not opposite_side_rows:
         return out
-    first_row = opposite_side_rows[0]
-    first_ts = int(first_row["timestamp"])
-    reaction_timestamps, reaction_prices = get_time_window_arrays(all_timestamps, all_prices, first_ts, first_ts + 10 * 1000)
-    reaction_metrics = calculate_reaction_metrics_np(first_ts, float(first_row["price"]), opposite_side, reaction_timestamps, reaction_prices, [10])
-    reaction_eff = reaction_metrics.get("reaction_efficiency_10s")
-    reversed_10s = bool(len(reaction_prices) > 0 and ((np.min(reaction_prices) <= float(first_row["price"])) if directional_bias == "long" else (np.max(reaction_prices) >= float(first_row["price"]))))
-    out["confirmation_first_opposite_side_bubble_absorbed_10s"] = reaction_eff is not None and reaction_eff < ABSORBED_EFFICIENCY_THRESHOLD
-    out["confirmation_first_opposite_side_bubble_reversed_10s"] = reversed_10s
+    max_contra_mae_from_entry_pct = 0.0
+    for row in opposite_side_rows:
+        opposite_ts = int(row["timestamp"])
+        reaction_timestamps, reaction_prices = get_time_window_arrays(
+            all_timestamps,
+            all_prices,
+            opposite_ts,
+            opposite_ts + opposite_bubble_reaction_window_seconds * 1000,
+        )
+        if len(reaction_prices) == 0:
+            continue
+        min_price = float(np.min(reaction_prices))
+        max_price = float(np.max(reaction_prices))
+        opposite_favorable_move, opposite_adverse_move = calculate_directional_moves(float(row["price"]), opposite_side, min_price, max_price)
+        _, _, opposite_efficiency = clamp_metrics(opposite_favorable_move, opposite_adverse_move)
+        if directional_bias == "long":
+            contra_mae_from_entry_pct = max(0.0, (entry_price - min_price) / entry_price)
+        else:
+            contra_mae_from_entry_pct = max(0.0, (max_price - entry_price) / entry_price)
+        max_contra_mae_from_entry_pct = max(max_contra_mae_from_entry_pct, contra_mae_from_entry_pct)
+        if opposite_efficiency is None:
+            continue
+        if opposite_efficiency <= opposite_bubble_absorbed_efficiency_threshold:
+            out["confirmation_opposite_side_bubble_absorbed_count"] += 1
+            out["confirmation_opposite_side_bubble_absorbed_total_qty"] += float(row["qty"])
+        elif opposite_efficiency >= opposite_bubble_contra_efficiency_threshold:
+            out["confirmation_opposite_side_bubble_contra_move_count"] += 1
+            out["confirmation_opposite_side_bubble_contra_move_total_qty"] += float(row["qty"])
+    out["confirmation_opposite_side_bubble_max_contra_mae_from_entry_pct"] = float(max_contra_mae_from_entry_pct)
+    out["confirmation_opposite_side_bubble_max_contra_mae_from_entry_R"] = float(max_contra_mae_from_entry_pct / stop_buffer_pct)
     return out
 
 
@@ -313,9 +364,17 @@ def calculate_trade_result_before_sl_np(entry_timestamp: int, entry_price: float
     else:
         max_favorable_before_retest_pct = max(0.0, (entry_price - float(np.min(prices_before_retest))) / entry_price)
     return {
-        "entry_price": float(entry_price), "stop_price": float(stop_price), "stop_buffer_pct": float(stop_buffer_pct), "risk_per_unit": float(risk_per_unit),
-        "max_R_before_SL": float(max_r_before_sl), "max_expansion_pct_before_SL": float(max_expansion_pct_before_sl), "sl_touched": bool(sl_touched), "sl_touch_timestamp": sl_touch_timestamp,
-        "bubble_retested": bool(bubble_retested), "time_to_retest_seconds": time_to_retest_seconds, "max_favorable_before_retest_pct": float(max_favorable_before_retest_pct),
+        "entry_price": float(entry_price),
+        "stop_price": float(stop_price),
+        "stop_buffer_pct": float(stop_buffer_pct),
+        "risk_per_unit": float(risk_per_unit),
+        "max_R_before_SL": float(max_r_before_sl),
+        "max_expansion_pct_before_SL": float(max_expansion_pct_before_sl),
+        "sl_touched": bool(sl_touched),
+        "sl_touch_timestamp": sl_touch_timestamp,
+        "bubble_retested": bool(bubble_retested),
+        "time_to_retest_seconds": time_to_retest_seconds,
+        "max_favorable_before_retest_pct": float(max_favorable_before_retest_pct),
     }
 
 
@@ -337,135 +396,65 @@ def build_qty_percentile_thresholds(previous_session_df: pd.DataFrame, percentil
     }
 
 
-def process_session_events_sequential(current_session_df: pd.DataFrame, previous_session_profile: dict[str, Any], qty_thresholds: dict[str, Any], session_id: str, symbol: str, min_bubble_tier: str, all_timestamps: np.ndarray, all_prices: np.ndarray, all_qtys: np.ndarray, all_is_buyer_maker: np.ndarray, last_available_trade_timestamp: int, reaction_windows: list[int], research_windows: list[int], retest_zone_pct: float, setup_reaction_window_seconds: int, setup_mfe_threshold_pct: float, setup_efficiency_threshold: float, stop_buffer_pct: float, primary_risk_model: str, config_metadata: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
-    session_date = date.fromisoformat(session_id)
-    prev_val = float(previous_session_profile["val"])
-    prev_vah = float(previous_session_profile["vah"])
-    prev_poc = float(previous_session_profile["poc_price"])
-    prev_session_id = (session_date - timedelta(days=1)).isoformat()
-    max_reaction_window_ms = max(reaction_windows) * 1000
-    max_research_window_ms = max(research_windows) * 1000
-    session_timestamps = current_session_df["timestamp"].to_numpy(dtype=np.int64)
-    session_prices = current_session_df["price"].to_numpy(dtype=np.float64)
-    session_qtys = current_session_df["qty"].to_numpy(dtype=np.float64)
-    session_is_buyer_maker = current_session_df["is_buyer_maker"].to_numpy(dtype=bool)
-    notionals = session_prices * session_qtys
-    is_buy_aggression = ~session_is_buyer_maker
-    is_sell_aggression = session_is_buyer_maker
-    above_vah = session_prices > prev_vah
-    below_val = session_prices < prev_val
-    inside_value = ~(above_vah | below_val)
-    outside_value = above_vah | below_val
-    correct_side_mask = (above_vah & is_buy_aggression) | (below_val & is_sell_aggression)
-    medium_threshold = float(qty_thresholds["bubble_medium_qty_threshold"])
-    large_threshold = float(qty_thresholds["bubble_large_qty_threshold"])
-    extreme_threshold = float(qty_thresholds["bubble_extreme_qty_threshold"])
-    passes_medium = session_qtys >= medium_threshold
-    passes_large = session_qtys >= large_threshold
-    passes_extreme = session_qtys >= extreme_threshold
-    if min_bubble_tier == "medium":
-        passes_min_tier = passes_medium
-    elif min_bubble_tier == "large":
-        passes_min_tier = passes_large
-    elif min_bubble_tier == "extreme":
-        passes_min_tier = passes_extreme
-    else:
-        raise ValueError(f"Unsupported min_bubble_tier: {min_bubble_tier}")
-    candidate_indices = np.where(correct_side_mask & passes_min_tier)[0]
-    stats = {
-        "total_deep_trades": int(len(session_timestamps)),
-        "skipped_inside_value": int(np.sum(inside_value)),
-        "skipped_wrong_side": int(np.sum(outside_value & ~correct_side_mask)),
-        "skipped_below_medium_percentile": int(np.sum(correct_side_mask & ~passes_medium)),
-        "skipped_below_min_bubble_tier": int(np.sum(correct_side_mask & passes_medium & ~passes_min_tier)),
-        "candidate_bubbles_after_tier_filter": int(len(candidate_indices)),
-        "skipped_incomplete_reaction_future": 0,
-        "skipped_unconfirmed_setup": 0,
-        "skipped_incomplete_future": 0,
-        "total_confirmed_setups": 0,
-    }
-    event_records: list[dict[str, Any]] = []
-    bubble_trade_records: list[dict[str, Any]] = []
-    for i in candidate_indices:
-        timestamp_ms = int(session_timestamps[i])
-        price = float(session_prices[i])
-        qty = float(session_qtys[i])
-        notional = float(notionals[i])
-        if above_vah[i]:
-            location, directional_bias, aggressive_side = "above_vah", "long", "buy"
-        elif below_val[i]:
-            location, directional_bias, aggressive_side = "below_val", "short", "sell"
-        else:
+def aggressive_side_from_is_buyer_maker(is_buyer_maker: bool) -> str:
+    return "sell" if bool(is_buyer_maker) else "buy"
+
+
+def determine_location_directional_bias(is_above_vah: bool, is_below_val: bool) -> tuple[str, str]:
+    if is_above_vah:
+        return "above_vah", "long"
+    if is_below_val:
+        return "below_val", "short"
+    raise ValueError("Bubble is not outside previous value")
+
+
+def relation_to_bias_from_aggression(directional_bias: str, aggressive_side: str) -> str:
+    if directional_bias == "long":
+        return "same_side" if aggressive_side == "buy" else "opposite_side"
+    if directional_bias == "short":
+        return "same_side" if aggressive_side == "sell" else "opposite_side"
+    raise ValueError(f"Unsupported directional_bias: {directional_bias}")
+
+
+def build_stable_bubble_id(symbol: str, session_id: str, row_index: int, timestamp_ms: int, price: float, qty: float, is_buyer_maker: bool) -> str:
+    return "|".join([
+        str(symbol),
+        str(session_id),
+        str(int(row_index)),
+        str(int(timestamp_ms)),
+        f"{float(price):.8f}",
+        f"{float(qty):.8f}",
+        str(int(bool(is_buyer_maker))),
+    ])
+
+
+def reaction_window_complete(event_timestamp: int, window_seconds: int, last_available_trade_timestamp: int) -> bool:
+    return int(event_timestamp) + int(window_seconds) * 1000 <= int(last_available_trade_timestamp)
+
+
+def classify_reaction_type_5s(reaction_efficiency_5s: float | None, reaction_complete_5s: bool, absorbed_threshold: float, directional_threshold: float) -> str:
+    if not reaction_complete_5s or reaction_efficiency_5s is None:
+        return "unknown"
+    if reaction_efficiency_5s <= absorbed_threshold:
+        return "absorbed"
+    if reaction_efficiency_5s >= directional_threshold:
+        return "directional_move"
+    return "neutral"
+
+
+def add_timestamp_columns(df: pd.DataFrame, base_columns: list[str]) -> pd.DataFrame:
+    out = df.copy()
+    for column in base_columns:
+        utc_col = f"{column}_utc"
+        wib_col = f"{column}_wib"
+        if column not in out.columns:
+            out[utc_col] = pd.NaT
+            out[wib_col] = pd.NaT
             continue
-        bubble_tier, bubble_percentile_score = classify_bubble_tier_and_score(qty, qty_thresholds)
-        if bubble_tier is None or bubble_percentile_score is None:
-            continue
-        timestamp_utc = pd.to_datetime(timestamp_ms, unit="ms", utc=True)
-        bubble_trade_records.append({
-            "bubble_trade_id": uuid.uuid4().hex, "symbol": symbol, "session_id": session_id, "session_date": session_date,
-            "previous_session_id": prev_session_id, "timestamp": timestamp_ms, "timestamp_utc": timestamp_utc,
-            "timestamp_wib": timestamp_utc.tz_convert("Asia/Jakarta"), "price": price, "qty": qty, "notional": notional,
-            "is_buyer_maker": bool(session_is_buyer_maker[i]), "aggressive_side": aggressive_side, "directional_bias": directional_bias,
-            "location": location, "previous_val": prev_val, "previous_vah": prev_vah, "previous_poc": prev_poc,
-            "distance_from_val_pct": (price - prev_val) / prev_val if prev_val > 0 else None,
-            "distance_from_vah_pct": (price - prev_vah) / prev_vah if prev_vah > 0 else None,
-            "distance_from_poc_pct": (price - prev_poc) / prev_poc if prev_poc > 0 else None,
-            "bubble_tier": bubble_tier, "bubble_percentile_score": bubble_percentile_score, **qty_thresholds,
-            "min_bubble_tier": str(min_bubble_tier), "primary_risk_model": str(primary_risk_model), "stop_buffer_pct": float(stop_buffer_pct),
-            "session_start_hour": int(config_metadata["session_start_hour"]), "session_start_minute": int(config_metadata["session_start_minute"]),
-        })
-        if timestamp_ms + max_reaction_window_ms > last_available_trade_timestamp:
-            stats["skipped_incomplete_reaction_future"] += 1
-            continue
-        reaction_timestamps, reaction_prices = get_time_window_arrays(all_timestamps, all_prices, timestamp_ms, timestamp_ms + max_reaction_window_ms)
-        if len(reaction_prices) == 0:
-            stats["skipped_incomplete_reaction_future"] += 1
-            continue
-        reaction_metrics = calculate_reaction_metrics_np(timestamp_ms, price, aggressive_side, reaction_timestamps, reaction_prices, reaction_windows)
-        setup_mfe_value = reaction_metrics.get(f"reaction_mfe_{setup_reaction_window_seconds}s_pct")
-        setup_eff_value = reaction_metrics.get(f"reaction_efficiency_{setup_reaction_window_seconds}s")
-        if not (setup_mfe_value is not None and setup_eff_value is not None and setup_mfe_value >= setup_mfe_threshold_pct and setup_eff_value >= setup_efficiency_threshold):
-            stats["skipped_unconfirmed_setup"] += 1
-            continue
-        setup_confirmation_timestamp = timestamp_ms + setup_reaction_window_seconds * 1000
-        confirmation_start_idx, confirmation_end_idx = get_time_window_indices(all_timestamps, timestamp_ms, setup_confirmation_timestamp)
-        confirmation_prices = all_prices[confirmation_start_idx:confirmation_end_idx]
-        confirmation_price = price if len(confirmation_prices) == 0 else float(confirmation_prices[-1])
-        entry_timestamp = setup_confirmation_timestamp
-        if entry_timestamp + max_research_window_ms > last_available_trade_timestamp:
-            stats["skipped_incomplete_future"] += 1
-            continue
-        future_timestamps, future_prices = get_time_window_arrays(all_timestamps, all_prices, entry_timestamp, entry_timestamp + max_research_window_ms)
-        if len(future_prices) == 0:
-            stats["skipped_incomplete_future"] += 1
-            continue
-        result_metrics = calculate_trade_result_before_sl_np(entry_timestamp, confirmation_price, directional_bias, future_timestamps, future_prices, stop_buffer_pct, retest_zone_pct)
-        confirmation_horizon_metrics = compute_confirmation_horizon_bubble_metrics(timestamp_ms, setup_confirmation_timestamp, directional_bias, qty_thresholds, min_bubble_tier, all_timestamps, all_prices, all_qtys, all_is_buyer_maker)
-        event_data = {
-            "event_id": uuid.uuid4().hex, "symbol": symbol, "session_id": session_id, "session_date": session_date,
-            "previous_session_id": prev_session_id, "location": location, "directional_bias": directional_bias,
-            "bubble_tier": bubble_tier, "bubble_percentile_score": bubble_percentile_score, "previous_val": prev_val,
-            "previous_vah": prev_vah, "previous_poc": prev_poc,
-            "distance_from_val_pct": (price - prev_val) / prev_val if prev_val > 0 else None,
-            "distance_from_vah_pct": (price - prev_vah) / prev_vah if prev_vah > 0 else None,
-            "distance_from_poc_pct": (price - prev_poc) / prev_poc if prev_poc > 0 else None,
-            "anchor_price": price, "anchor_bubble_qty": qty, "anchor_bubble_notional": notional,
-            "event_timestamp": timestamp_ms, "setup_confirmation_timestamp": setup_confirmation_timestamp,
-            "confirmation_price": confirmation_price, "setup_reaction_window_seconds": int(setup_reaction_window_seconds),
-            "setup_mfe_threshold_pct": float(setup_mfe_threshold_pct), "setup_efficiency_threshold": float(setup_efficiency_threshold),
-            "bubble_percentile_combination": qty_thresholds["bubble_percentile_combination"],
-            "bubble_medium_qty_threshold": qty_thresholds["bubble_medium_qty_threshold"],
-            "bubble_large_qty_threshold": qty_thresholds["bubble_large_qty_threshold"],
-            "bubble_extreme_qty_threshold": qty_thresholds["bubble_extreme_qty_threshold"],
-            "min_bubble_tier": str(min_bubble_tier), "primary_risk_model": str(primary_risk_model),
-            "reaction_mfe_30s_pct": reaction_metrics.get("reaction_mfe_30s_pct"), "reaction_mae_30s_pct": reaction_metrics.get("reaction_mae_30s_pct"),
-            "reaction_efficiency_30s": reaction_metrics.get("reaction_efficiency_30s"),
-        }
-        event_data.update(confirmation_horizon_metrics)
-        event_data.update(result_metrics)
-        event_records.append(event_data)
-        stats["total_confirmed_setups"] += 1
-    return event_records, bubble_trade_records, stats
+        numeric_values = pd.to_numeric(out[column], errors="coerce")
+        out[utc_col] = pd.to_datetime(numeric_values, unit="ms", utc=True, errors="coerce")
+        out[wib_col] = out[utc_col].dt.tz_convert(JAKARTA_TZ)
+    return out
 
 
 def _build_trade_event_row(group_rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -475,9 +464,12 @@ def _build_trade_event_row(group_rows: list[dict[str, Any]]) -> dict[str, Any]:
     first_setup_confirmation_timestamp = int(min(int(row["setup_confirmation_timestamp"]) for row in group_rows))
     last_setup_confirmation_timestamp = int(max(int(row["setup_confirmation_timestamp"]) for row in group_rows))
     first_row.update({
-        "trade_event_id": uuid.uuid4().hex, "trade_event_setup_count": int(len(group_rows)),
-        "first_setup_timestamp": first_setup_timestamp, "last_setup_timestamp": last_setup_timestamp,
-        "first_setup_confirmation_timestamp": first_setup_confirmation_timestamp, "last_setup_confirmation_timestamp": last_setup_confirmation_timestamp,
+        "trade_event_id": uuid.uuid4().hex,
+        "trade_event_setup_count": int(len(group_rows)),
+        "first_setup_timestamp": first_setup_timestamp,
+        "last_setup_timestamp": last_setup_timestamp,
+        "first_setup_confirmation_timestamp": first_setup_confirmation_timestamp,
+        "last_setup_confirmation_timestamp": last_setup_confirmation_timestamp,
         "seconds_from_first_to_last_setup": (last_setup_timestamp - first_setup_timestamp) / 1000.0,
     })
     return first_row
@@ -540,7 +532,467 @@ def validate_trade_event_rows(events_df: pd.DataFrame, trade_event_gap_seconds: 
                 raise ValueError("Rows within the same session_id and directional_bias must start new trade events only after the grouping gap")
 
 
-def build_events_dataset(trades_df: pd.DataFrame, symbol: str, session_start_hour: int, session_start_minute: int, min_qty: float, min_notional: float, min_bubble_tier: str, cluster_window_seconds: int, bubble_percentile_combination: str, reaction_windows: list[int], research_windows: list[int], retest_zone_pct: float, setup_reaction_window_seconds: int, setup_mfe_threshold_pct: float, setup_efficiency_threshold: float, stop_buffer_pct: float, primary_risk_model: str, trade_event_gap_seconds: int) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+def build_grouped_confirmed_setups_for_impulse_master(confirmed_setups_df: pd.DataFrame, impulse_group_window_seconds: int, impulse_observation_horizon_seconds: int, last_available_trade_timestamp: int, include_incomplete_impulse_groups: bool) -> pd.DataFrame:
+    if confirmed_setups_df.empty:
+        return pd.DataFrame()
+    working_df = confirmed_setups_df.sort_values(["session_id", "directional_bias", "setup_confirmation_timestamp", "event_timestamp", "event_id"]).reset_index(drop=True)
+    group_rows: list[dict[str, Any]] = []
+    group_window_ms = int(impulse_group_window_seconds) * 1000
+    observation_horizon_ms = int(impulse_observation_horizon_seconds) * 1000
+    for (session_id, directional_bias), subgroup in working_df.groupby(["session_id", "directional_bias"], sort=True):
+        records = subgroup.to_dict("records")
+        pointer = 0
+        group_number = 0
+        while pointer < len(records):
+            anchor_row = records[pointer]
+            group_number += 1
+            group_start_confirmation_timestamp = int(anchor_row["setup_confirmation_timestamp"])
+            group_window_end_timestamp = group_start_confirmation_timestamp + group_window_ms
+            observation_start_timestamp = group_start_confirmation_timestamp
+            observation_end_timestamp = group_start_confirmation_timestamp + observation_horizon_ms
+            future_data_complete = observation_end_timestamp <= int(last_available_trade_timestamp)
+            group_id = f"{session_id}_{directional_bias}_{group_number}"
+            member_rows: list[dict[str, Any]] = []
+            member_pointer = pointer
+            confirmed_rank = 0
+            while member_pointer < len(records):
+                row = records[member_pointer]
+                row_confirmation_timestamp = int(row["setup_confirmation_timestamp"])
+                if row_confirmation_timestamp > group_window_end_timestamp:
+                    break
+                confirmed_rank += 1
+                enriched_row = dict(row)
+                enriched_row.update({
+                    "impulse_group_id": group_id,
+                    "impulse_group_number_in_session_bias": int(group_number),
+                    "confirmed_setup_rank": int(confirmed_rank),
+                    "impulse_group_window_seconds": int(impulse_group_window_seconds),
+                    "impulse_observation_horizon_seconds": int(impulse_observation_horizon_seconds),
+                    "impulse_group_start_confirmation_timestamp": int(group_start_confirmation_timestamp),
+                    "impulse_group_window_end_timestamp": int(group_window_end_timestamp),
+                    "impulse_observation_start_timestamp": int(observation_start_timestamp),
+                    "impulse_observation_end_timestamp": int(observation_end_timestamp),
+                    "future_data_complete": bool(future_data_complete),
+                })
+                member_rows.append(enriched_row)
+                member_pointer += 1
+            for member_row in member_rows:
+                member_row["impulse_group_setup_count"] = int(len(member_rows))
+            if include_incomplete_impulse_groups or future_data_complete:
+                group_rows.extend(member_rows)
+            pointer = member_pointer
+    grouped_df = pd.DataFrame(group_rows)
+    if grouped_df.empty:
+        return grouped_df
+    return add_timestamp_columns(
+        grouped_df,
+        [
+            "event_timestamp",
+            "setup_confirmation_timestamp",
+            "impulse_group_start_confirmation_timestamp",
+            "impulse_group_window_end_timestamp",
+            "impulse_observation_start_timestamp",
+            "impulse_observation_end_timestamp",
+        ],
+    )
+
+
+def build_impulse_bubble_master(qualified_bubbles_df: pd.DataFrame, grouped_confirmed_setups_df: pd.DataFrame) -> pd.DataFrame:
+    if qualified_bubbles_df.empty or grouped_confirmed_setups_df.empty:
+        return pd.DataFrame()
+    qualified = qualified_bubbles_df.copy()
+    grouped = grouped_confirmed_setups_df.copy()
+    confirmed_lookup = grouped[["bubble_id", "impulse_group_id", "confirmed_setup_rank", "event_id", "setup_confirmation_timestamp", "confirmation_price"]].rename(columns={"event_id": "confirmed_setup_id"})
+    confirmed_lookup = confirmed_lookup.drop_duplicates(subset=["bubble_id", "impulse_group_id"], keep="first")
+    master_parts: list[pd.DataFrame] = []
+    metadata_columns = [
+        "impulse_group_id",
+        "symbol",
+        "session_id",
+        "previous_session_id",
+        "directional_bias",
+        "impulse_group_number_in_session_bias",
+        "impulse_group_start_confirmation_timestamp",
+        "impulse_group_window_end_timestamp",
+        "impulse_observation_horizon_seconds",
+        "impulse_observation_start_timestamp",
+        "impulse_observation_end_timestamp",
+        "impulse_group_setup_count",
+        "future_data_complete",
+    ]
+    for group_id, group_df in grouped.groupby("impulse_group_id", sort=True):
+        group_info = group_df.iloc[0][metadata_columns].to_dict()
+        session_id = str(group_info["session_id"])
+        directional_bias = str(group_info["directional_bias"])
+        group_start = int(group_info["impulse_group_start_confirmation_timestamp"])
+        group_end = int(group_info["impulse_group_window_end_timestamp"])
+        group_bubbles = qualified.loc[
+            (qualified["session_id"] == session_id)
+            & (qualified["directional_bias"] == directional_bias)
+            & (pd.to_numeric(qualified["bubble_timestamp"], errors="coerce") >= group_start)
+            & (pd.to_numeric(qualified["bubble_timestamp"], errors="coerce") <= group_end)
+        ].copy()
+        if not group_bubbles.empty:
+            group_bubbles = group_bubbles.merge(confirmed_lookup, on=["bubble_id"], how="left")
+            for key, value in group_info.items():
+                group_bubbles[key] = value
+            group_bubbles["is_confirmed_setup"] = group_bubbles["confirmed_setup_id"].notna()
+            group_bubbles["bubble_role"] = np.where(
+                group_bubbles["is_confirmed_setup"],
+                "confirmed_setup",
+                np.where(group_bubbles["relation_to_bias"] == "same_side", "same_side", "opposite_side"),
+            )
+            group_bubbles["confirmed_setup_rank"] = pd.to_numeric(group_bubbles["confirmed_setup_rank"], errors="coerce")
+            group_bubbles.loc[group_bubbles["bubble_role"] != "confirmed_setup", "confirmed_setup_rank"] = np.nan
+            group_bubbles.loc[group_bubbles["bubble_role"] != "confirmed_setup", ["confirmed_setup_id", "setup_confirmation_timestamp", "confirmation_price"]] = None
+            group_bubbles["master_bubble_row_id"] = [f"{group_id}|{role}|{bubble_id}" for role, bubble_id in zip(group_bubbles["bubble_role"], group_bubbles["bubble_id"])]
+            group_bubbles["anchor_bubble_id"] = group_bubbles["bubble_id"]
+        else:
+            group_bubbles = pd.DataFrame()
+        confirmed_rows = group_df.copy()
+        if not confirmed_rows.empty:
+            confirmed_rows["master_bubble_row_id"] = [f"{group_id}|confirmed_setup|{bubble_id}" for bubble_id in confirmed_rows["bubble_id"]]
+            confirmed_rows["bubble_timestamp"] = confirmed_rows["setup_confirmation_timestamp"]
+            confirmed_rows["source_bubble_timestamp"] = confirmed_rows["event_timestamp"]
+            confirmed_rows["bubble_price"] = confirmed_rows["anchor_price"]
+            confirmed_rows["bubble_qty"] = confirmed_rows["anchor_bubble_qty"]
+            confirmed_rows["bubble_notional"] = confirmed_rows["anchor_bubble_notional"]
+            confirmed_rows["aggressive_side"] = confirmed_rows["aggressive_side"] if "aggressive_side" in confirmed_rows.columns else confirmed_rows["directional_bias"].map({"long": "buy", "short": "sell"})
+            confirmed_rows["relation_to_bias"] = "same_side"
+            confirmed_rows["bubble_role"] = "confirmed_setup"
+            confirmed_rows["is_confirmed_setup"] = True
+            confirmed_rows["confirmed_setup_id"] = confirmed_rows["event_id"]
+            confirmed_rows["anchor_bubble_id"] = confirmed_rows["bubble_id"]
+        non_confirmed_rows = pd.DataFrame()
+        if not group_bubbles.empty:
+            non_confirmed_rows = group_bubbles.loc[group_bubbles["bubble_role"] != "confirmed_setup"].copy()
+        combined = pd.concat([confirmed_rows, non_confirmed_rows], ignore_index=True, sort=False)
+        master_parts.append(combined)
+    master_df = pd.concat(master_parts, ignore_index=True, sort=False) if master_parts else pd.DataFrame()
+    if master_df.empty:
+        return master_df
+    master_df = add_timestamp_columns(
+        master_df,
+        [
+            "bubble_timestamp",
+            "source_bubble_timestamp",
+            "impulse_group_start_confirmation_timestamp",
+            "impulse_group_window_end_timestamp",
+            "impulse_observation_start_timestamp",
+            "impulse_observation_end_timestamp",
+            "setup_confirmation_timestamp",
+        ],
+    )
+    return master_df.sort_values(["session_id", "directional_bias", "impulse_group_number_in_session_bias", "bubble_timestamp", "bubble_id"], kind="mergesort").reset_index(drop=True)
+
+
+def validate_impulse_bubble_master(master_df: pd.DataFrame, grouped_confirmed_setups_df: pd.DataFrame) -> None:
+    if master_df.empty:
+        return
+    required_columns = [
+        "master_bubble_row_id",
+        "impulse_group_id",
+        "bubble_id",
+        "bubble_timestamp",
+        "bubble_role",
+        "relation_to_bias",
+        "future_data_complete",
+        "impulse_group_start_confirmation_timestamp",
+        "impulse_group_window_end_timestamp",
+    ]
+    missing = [column for column in required_columns if column not in master_df.columns]
+    if missing:
+        raise ValueError(f"Impulse bubble master is missing required columns: {missing}")
+    if master_df["master_bubble_row_id"].isna().any() or not master_df["master_bubble_row_id"].is_unique:
+        raise ValueError("master_bubble_row_id must be non-null and unique")
+    if master_df["impulse_group_id"].isna().any():
+        raise ValueError("All master rows must belong to an impulse_group_id")
+    bubble_timestamps = pd.to_numeric(master_df["bubble_timestamp"], errors="coerce")
+    group_starts = pd.to_numeric(master_df["impulse_group_start_confirmation_timestamp"], errors="coerce")
+    group_ends = pd.to_numeric(master_df["impulse_group_window_end_timestamp"], errors="coerce")
+    if ((bubble_timestamps < group_starts) | (bubble_timestamps > group_ends)).fillna(True).any():
+        raise ValueError("Master rows must satisfy impulse_group_start_confirmation_timestamp <= bubble_timestamp <= impulse_group_window_end_timestamp")
+    confirmed_master = master_df.loc[master_df["bubble_role"] == "confirmed_setup"].copy()
+    if not grouped_confirmed_setups_df.empty:
+        expected = grouped_confirmed_setups_df[["bubble_id", "impulse_group_id", "confirmed_setup_rank", "event_id"]].rename(columns={"event_id": "confirmed_setup_id"})
+        merged = expected.merge(
+            confirmed_master[["bubble_id", "impulse_group_id", "confirmed_setup_rank", "confirmed_setup_id"]],
+            on=["bubble_id", "impulse_group_id"],
+            how="left",
+            suffixes=("_expected", "_actual"),
+        )
+        if merged[["confirmed_setup_rank_actual", "confirmed_setup_id_actual"]].isna().any().any():
+            raise ValueError("Every grouped confirmed setup must appear exactly once in master by bubble_id")
+        if not (merged["confirmed_setup_rank_expected"].astype(int) == merged["confirmed_setup_rank_actual"].astype(int)).all():
+            raise ValueError("confirmed_setup_rank must be preserved in master")
+        if confirmed_master.duplicated(subset=["bubble_id", "impulse_group_id"], keep=False).any():
+            raise ValueError("Confirmed setup bubble_id must appear exactly once per impulse group in master")
+    if master_df.loc[master_df["bubble_role"] != "confirmed_setup", "confirmed_setup_rank"].notna().any():
+        raise ValueError("Only confirmed_setup rows may have confirmed_setup_rank")
+    if master_df.loc[master_df["bubble_role"] == "confirmed_setup", "confirmed_setup_rank"].isna().any():
+        raise ValueError("confirmed_setup rows must have confirmed_setup_rank")
+    if master_df.loc[master_df["bubble_role"] == "confirmed_setup", "confirmed_setup_id"].isna().any():
+        raise ValueError("confirmed_setup rows must have confirmed_setup_id")
+    if master_df.loc[master_df["bubble_role"] == "same_side", "relation_to_bias"].ne("same_side").any():
+        raise ValueError("same_side rows must have relation_to_bias=same_side")
+    if master_df.loc[master_df["bubble_role"] == "opposite_side", "relation_to_bias"].ne("opposite_side").any():
+        raise ValueError("opposite_side rows must have relation_to_bias=opposite_side")
+
+
+def process_session_events_sequential(current_session_df: pd.DataFrame, previous_session_profile: dict[str, Any], qty_thresholds: dict[str, Any], session_id: str, symbol: str, min_bubble_tier: str, all_timestamps: np.ndarray, all_prices: np.ndarray, all_qtys: np.ndarray, all_is_buyer_maker: np.ndarray, last_available_trade_timestamp: int, reaction_windows: list[int], research_windows: list[int], retest_zone_pct: float, setup_reaction_window_seconds: int, setup_mfe_threshold_pct: float, setup_efficiency_threshold: float, stop_buffer_pct: float, primary_risk_model: str, opposite_bubble_reaction_window_seconds: int, opposite_bubble_absorbed_efficiency_threshold: float, opposite_bubble_contra_efficiency_threshold: float, config_metadata: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
+    session_date = date.fromisoformat(session_id)
+    prev_val = float(previous_session_profile["val"])
+    prev_vah = float(previous_session_profile["vah"])
+    prev_poc = float(previous_session_profile["poc_price"])
+    prev_session_id = (session_date - timedelta(days=1)).isoformat()
+    max_reaction_window_ms = max(reaction_windows) * 1000
+    max_research_window_ms = max(research_windows) * 1000
+    session_timestamps = current_session_df["timestamp"].to_numpy(dtype=np.int64)
+    session_prices = current_session_df["price"].to_numpy(dtype=np.float64)
+    session_qtys = current_session_df["qty"].to_numpy(dtype=np.float64)
+    session_is_buyer_maker = current_session_df["is_buyer_maker"].to_numpy(dtype=bool)
+    notionals = session_prices * session_qtys
+    is_buy_aggression = ~session_is_buyer_maker
+    is_sell_aggression = session_is_buyer_maker
+    above_vah = session_prices > prev_vah
+    below_val = session_prices < prev_val
+    inside_value = ~(above_vah | below_val)
+    outside_value = above_vah | below_val
+    correct_side_mask = (above_vah & is_buy_aggression) | (below_val & is_sell_aggression)
+    medium_threshold = float(qty_thresholds["bubble_medium_qty_threshold"])
+    large_threshold = float(qty_thresholds["bubble_large_qty_threshold"])
+    extreme_threshold = float(qty_thresholds["bubble_extreme_qty_threshold"])
+    passes_medium = session_qtys >= medium_threshold
+    passes_large = session_qtys >= large_threshold
+    passes_extreme = session_qtys >= extreme_threshold
+    if min_bubble_tier == "medium":
+        passes_min_tier = passes_medium
+    elif min_bubble_tier == "large":
+        passes_min_tier = passes_large
+    elif min_bubble_tier == "extreme":
+        passes_min_tier = passes_extreme
+    else:
+        raise ValueError(f"Unsupported min_bubble_tier: {min_bubble_tier}")
+    candidate_indices = np.where(correct_side_mask & passes_min_tier)[0]
+    qualified_outside_value_indices = np.where(outside_value & passes_min_tier)[0]
+    stats = {
+        "total_deep_trades": int(len(session_timestamps)),
+        "skipped_inside_value": int(np.sum(inside_value)),
+        "skipped_wrong_side": int(np.sum(outside_value & ~correct_side_mask)),
+        "skipped_below_medium_percentile": int(np.sum(correct_side_mask & ~passes_medium)),
+        "skipped_below_min_bubble_tier": int(np.sum(correct_side_mask & passes_medium & ~passes_min_tier)),
+        "candidate_bubbles_after_tier_filter": int(len(candidate_indices)),
+        "qualified_outside_value_bubbles_after_tier_filter": int(len(qualified_outside_value_indices)),
+        "skipped_incomplete_reaction_future": 0,
+        "skipped_unconfirmed_setup": 0,
+        "skipped_incomplete_future": 0,
+        "total_confirmed_setups": 0,
+    }
+    event_records: list[dict[str, Any]] = []
+    bubble_trade_records: list[dict[str, Any]] = []
+    qualified_bubble_records: list[dict[str, Any]] = []
+
+    for i in qualified_outside_value_indices:
+        timestamp_ms = int(session_timestamps[i])
+        price = float(session_prices[i])
+        qty = float(session_qtys[i])
+        notional = float(notionals[i])
+        location, directional_bias = determine_location_directional_bias(bool(above_vah[i]), bool(below_val[i]))
+        aggressive_side = aggressive_side_from_is_buyer_maker(bool(session_is_buyer_maker[i]))
+        relation_to_bias = relation_to_bias_from_aggression(directional_bias, aggressive_side)
+        bubble_tier, bubble_percentile_score = classify_bubble_tier_and_score(qty, qty_thresholds)
+        if bubble_tier is None or bubble_percentile_score is None:
+            continue
+        bubble_id = build_stable_bubble_id(symbol, session_id, int(i), timestamp_ms, price, qty, bool(session_is_buyer_maker[i]))
+        timestamp_utc = pd.to_datetime(timestamp_ms, unit="ms", utc=True)
+        reaction_end_timestamp = min(timestamp_ms + max_reaction_window_ms, int(last_available_trade_timestamp))
+        reaction_timestamps, reaction_prices = get_time_window_arrays(all_timestamps, all_prices, timestamp_ms, reaction_end_timestamp)
+        if len(reaction_prices) > 0:
+            reaction_metrics = calculate_reaction_metrics_np(timestamp_ms, price, aggressive_side, reaction_timestamps, reaction_prices, reaction_windows)
+        else:
+            reaction_metrics = {}
+            for window in reaction_windows:
+                reaction_metrics[f"reaction_mfe_{window}s_pct"] = None
+                reaction_metrics[f"reaction_mae_{window}s_pct"] = None
+                reaction_metrics[f"reaction_efficiency_{window}s"] = None
+        reaction_complete_5s = reaction_window_complete(timestamp_ms, 5, last_available_trade_timestamp)
+        reaction_complete_30s = reaction_window_complete(timestamp_ms, 30, last_available_trade_timestamp)
+        reaction_type_5s = classify_reaction_type_5s(
+            reaction_metrics.get("reaction_efficiency_5s"),
+            reaction_complete_5s,
+            opposite_bubble_absorbed_efficiency_threshold,
+            opposite_bubble_contra_efficiency_threshold,
+        )
+        qualified_bubble_records.append({
+            "bubble_id": bubble_id,
+            "symbol": symbol,
+            "session_id": session_id,
+            "session_date": session_date,
+            "previous_session_id": prev_session_id,
+            "bubble_timestamp": timestamp_ms,
+            "source_bubble_timestamp": timestamp_ms,
+            "bubble_price": price,
+            "bubble_qty": qty,
+            "bubble_notional": notional,
+            "is_buyer_maker": bool(session_is_buyer_maker[i]),
+            "aggressive_side": aggressive_side,
+            "location": location,
+            "directional_bias": directional_bias,
+            "relation_to_bias": relation_to_bias,
+            "previous_val": prev_val,
+            "previous_vah": prev_vah,
+            "previous_poc": prev_poc,
+            "distance_from_val_pct": (price - prev_val) / prev_val if prev_val > 0 else None,
+            "distance_from_vah_pct": (price - prev_vah) / prev_vah if prev_vah > 0 else None,
+            "distance_from_poc_pct": (price - prev_poc) / prev_poc if prev_poc > 0 else None,
+            "bubble_tier": bubble_tier,
+            "bubble_percentile_score": bubble_percentile_score,
+            "bubble_percentile_combination": qty_thresholds["bubble_percentile_combination"],
+            "bubble_medium_qty_threshold": qty_thresholds["bubble_medium_qty_threshold"],
+            "bubble_large_qty_threshold": qty_thresholds["bubble_large_qty_threshold"],
+            "bubble_extreme_qty_threshold": qty_thresholds["bubble_extreme_qty_threshold"],
+            "bubble_medium_percentile": qty_thresholds["bubble_medium_percentile"],
+            "bubble_large_percentile": qty_thresholds["bubble_large_percentile"],
+            "bubble_extreme_percentile": qty_thresholds["bubble_extreme_percentile"],
+            "min_bubble_tier": str(min_bubble_tier),
+            "reaction_mfe_5s_pct": reaction_metrics.get("reaction_mfe_5s_pct"),
+            "reaction_mae_5s_pct": reaction_metrics.get("reaction_mae_5s_pct"),
+            "reaction_efficiency_5s": reaction_metrics.get("reaction_efficiency_5s"),
+            "reaction_mfe_30s_pct": reaction_metrics.get("reaction_mfe_30s_pct"),
+            "reaction_mae_30s_pct": reaction_metrics.get("reaction_mae_30s_pct"),
+            "reaction_efficiency_30s": reaction_metrics.get("reaction_efficiency_30s"),
+            "reaction_complete_5s": bool(reaction_complete_5s),
+            "reaction_complete_30s": bool(reaction_complete_30s),
+            "reaction_type_5s": reaction_type_5s,
+            "is_same_side_directional_move_5s": bool(relation_to_bias == "same_side" and reaction_type_5s == "directional_move"),
+            "is_opposite_contra_move_5s": bool(relation_to_bias == "opposite_side" and reaction_type_5s == "directional_move"),
+            "is_opposite_absorbed_5s": bool(relation_to_bias == "opposite_side" and reaction_type_5s == "absorbed"),
+            "primary_risk_model": str(primary_risk_model),
+            "stop_buffer_pct": float(stop_buffer_pct),
+        })
+
+        if relation_to_bias != "same_side":
+            continue
+
+        bubble_trade_records.append({
+            "bubble_trade_id": bubble_id,
+            "bubble_id": bubble_id,
+            "symbol": symbol,
+            "session_id": session_id,
+            "session_date": session_date,
+            "previous_session_id": prev_session_id,
+            "timestamp": timestamp_ms,
+            "timestamp_utc": timestamp_utc,
+            "timestamp_wib": timestamp_utc.tz_convert(JAKARTA_TZ),
+            "price": price,
+            "qty": qty,
+            "notional": notional,
+            "is_buyer_maker": bool(session_is_buyer_maker[i]),
+            "aggressive_side": aggressive_side,
+            "directional_bias": directional_bias,
+            "location": location,
+            "previous_val": prev_val,
+            "previous_vah": prev_vah,
+            "previous_poc": prev_poc,
+            "distance_from_val_pct": (price - prev_val) / prev_val if prev_val > 0 else None,
+            "distance_from_vah_pct": (price - prev_vah) / prev_vah if prev_vah > 0 else None,
+            "distance_from_poc_pct": (price - prev_poc) / prev_poc if prev_poc > 0 else None,
+            "bubble_tier": bubble_tier,
+            "bubble_percentile_score": bubble_percentile_score,
+            **qty_thresholds,
+            "min_bubble_tier": str(min_bubble_tier),
+            "primary_risk_model": str(primary_risk_model),
+            "stop_buffer_pct": float(stop_buffer_pct),
+            "session_start_hour": int(config_metadata["session_start_hour"]),
+            "session_start_minute": int(config_metadata["session_start_minute"]),
+        })
+
+        if not reaction_complete_30s:
+            stats["skipped_incomplete_reaction_future"] += 1
+            continue
+        setup_mfe_value = reaction_metrics.get(f"reaction_mfe_{setup_reaction_window_seconds}s_pct")
+        setup_eff_value = reaction_metrics.get(f"reaction_efficiency_{setup_reaction_window_seconds}s")
+        if not (setup_mfe_value is not None and setup_eff_value is not None and setup_mfe_value >= setup_mfe_threshold_pct and setup_eff_value >= setup_efficiency_threshold):
+            stats["skipped_unconfirmed_setup"] += 1
+            continue
+
+        setup_confirmation_timestamp = timestamp_ms + setup_reaction_window_seconds * 1000
+        confirmation_start_idx, confirmation_end_idx = get_time_window_indices(all_timestamps, timestamp_ms, setup_confirmation_timestamp)
+        confirmation_prices = all_prices[confirmation_start_idx:confirmation_end_idx]
+        confirmation_price = price if len(confirmation_prices) == 0 else float(confirmation_prices[-1])
+        entry_timestamp = setup_confirmation_timestamp
+        if entry_timestamp + max_research_window_ms > last_available_trade_timestamp:
+            stats["skipped_incomplete_future"] += 1
+            continue
+        future_timestamps, future_prices = get_time_window_arrays(all_timestamps, all_prices, entry_timestamp, entry_timestamp + max_research_window_ms)
+        if len(future_prices) == 0:
+            stats["skipped_incomplete_future"] += 1
+            continue
+        result_metrics = calculate_trade_result_before_sl_np(entry_timestamp, confirmation_price, directional_bias, future_timestamps, future_prices, stop_buffer_pct, retest_zone_pct)
+        confirmation_horizon_metrics = compute_confirmation_horizon_bubble_metrics(
+            timestamp_ms,
+            setup_confirmation_timestamp,
+            directional_bias,
+            qty_thresholds,
+            min_bubble_tier,
+            confirmation_price,
+            stop_buffer_pct,
+            opposite_bubble_reaction_window_seconds,
+            opposite_bubble_absorbed_efficiency_threshold,
+            opposite_bubble_contra_efficiency_threshold,
+            all_timestamps,
+            all_prices,
+            all_qtys,
+            all_is_buyer_maker,
+        )
+        event_data = {
+            "event_id": uuid.uuid4().hex,
+            "bubble_id": bubble_id,
+            "anchor_bubble_id": bubble_id,
+            "symbol": symbol,
+            "session_id": session_id,
+            "session_date": session_date,
+            "previous_session_id": prev_session_id,
+            "location": location,
+            "directional_bias": directional_bias,
+            "relation_to_bias": relation_to_bias,
+            "aggressive_side": aggressive_side,
+            "bubble_tier": bubble_tier,
+            "bubble_percentile_score": bubble_percentile_score,
+            "previous_val": prev_val,
+            "previous_vah": prev_vah,
+            "previous_poc": prev_poc,
+            "distance_from_val_pct": (price - prev_val) / prev_val if prev_val > 0 else None,
+            "distance_from_vah_pct": (price - prev_vah) / prev_vah if prev_vah > 0 else None,
+            "distance_from_poc_pct": (price - prev_poc) / prev_poc if prev_poc > 0 else None,
+            "anchor_price": price,
+            "anchor_bubble_qty": qty,
+            "anchor_bubble_notional": notional,
+            "event_timestamp": timestamp_ms,
+            "setup_confirmation_timestamp": setup_confirmation_timestamp,
+            "confirmation_price": confirmation_price,
+            "setup_reaction_window_seconds": int(setup_reaction_window_seconds),
+            "setup_mfe_threshold_pct": float(setup_mfe_threshold_pct),
+            "setup_efficiency_threshold": float(setup_efficiency_threshold),
+            "bubble_percentile_combination": qty_thresholds["bubble_percentile_combination"],
+            "bubble_medium_qty_threshold": qty_thresholds["bubble_medium_qty_threshold"],
+            "bubble_large_qty_threshold": qty_thresholds["bubble_large_qty_threshold"],
+            "bubble_extreme_qty_threshold": qty_thresholds["bubble_extreme_qty_threshold"],
+            "min_bubble_tier": str(min_bubble_tier),
+            "primary_risk_model": str(primary_risk_model),
+            "reaction_mfe_30s_pct": reaction_metrics.get("reaction_mfe_30s_pct"),
+            "reaction_mae_30s_pct": reaction_metrics.get("reaction_mae_30s_pct"),
+            "reaction_efficiency_30s": reaction_metrics.get("reaction_efficiency_30s"),
+        }
+        event_data.update(confirmation_horizon_metrics)
+        event_data.update(result_metrics)
+        event_records.append(event_data)
+        stats["total_confirmed_setups"] += 1
+
+    return event_records, bubble_trade_records, qualified_bubble_records, stats
+
+
+def build_events_dataset(trades_df: pd.DataFrame, symbol: str, session_start_hour: int, session_start_minute: int, min_qty: float, min_notional: float, min_bubble_tier: str, bubble_percentile_combination: str, reaction_windows: list[int], research_windows: list[int], retest_zone_pct: float, setup_reaction_window_seconds: int, setup_mfe_threshold_pct: float, setup_efficiency_threshold: float, stop_buffer_pct: float, primary_risk_model: str, trade_event_gap_seconds: int, opposite_bubble_reaction_window_seconds: int, opposite_bubble_absorbed_efficiency_threshold: float, opposite_bubble_contra_efficiency_threshold: float, impulse_group_window_seconds: int, impulse_observation_horizon_seconds: int, include_incomplete_impulse_groups: bool) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     print("Adding session_id column...", flush=True)
     trades_df = add_session_id_column(trades_df, session_start_hour, session_start_minute)
     print("Discovering sessions...", flush=True)
@@ -558,14 +1010,32 @@ def build_events_dataset(trades_df: pd.DataFrame, symbol: str, session_start_hou
     grouped_sessions = {session_id: session_df.copy() for session_id, session_df in trades_df.groupby("session_id", sort=True)}
     events: list[dict[str, Any]] = []
     bubble_trades: list[dict[str, Any]] = []
+    qualified_bubbles: list[dict[str, Any]] = []
     skipped_incomplete_previous_session = 0
     researched_sessions = 0
-    aggregate_stats = {key: 0 for key in ["total_deep_trades", "skipped_inside_value", "skipped_wrong_side", "skipped_below_medium_percentile", "skipped_below_min_bubble_tier", "candidate_bubbles_after_tier_filter", "skipped_incomplete_reaction_future", "skipped_unconfirmed_setup", "skipped_incomplete_future", "total_confirmed_setups"]}
+    aggregate_stats = {key: 0 for key in [
+        "total_deep_trades",
+        "skipped_inside_value",
+        "skipped_wrong_side",
+        "skipped_below_medium_percentile",
+        "skipped_below_min_bubble_tier",
+        "candidate_bubbles_after_tier_filter",
+        "qualified_outside_value_bubbles_after_tier_filter",
+        "skipped_incomplete_reaction_future",
+        "skipped_unconfirmed_setup",
+        "skipped_incomplete_future",
+        "total_confirmed_setups",
+    ]}
     config_metadata = {
-        "min_qty": float(min_qty) if min_qty is not None else None, "min_notional": float(min_notional) if min_notional is not None else None,
-        "min_bubble_tier": str(min_bubble_tier), "cluster_window_seconds": int(cluster_window_seconds), "retest_zone_pct": float(retest_zone_pct),
-        "reaction_windows": ",".join(str(window) for window in reaction_windows), "research_windows": ",".join(str(window) for window in research_windows),
-        "session_start_hour": int(session_start_hour), "session_start_minute": int(session_start_minute), "max_research_window_seconds": int(max(research_windows)),
+        "min_qty": float(min_qty) if min_qty is not None else None,
+        "min_notional": float(min_notional) if min_notional is not None else None,
+        "min_bubble_tier": str(min_bubble_tier),
+        "retest_zone_pct": float(retest_zone_pct),
+        "reaction_windows": ",".join(str(window) for window in reaction_windows),
+        "research_windows": ",".join(str(window) for window in research_windows),
+        "session_start_hour": int(session_start_hour),
+        "session_start_minute": int(session_start_minute),
+        "max_research_window_seconds": int(max(research_windows)),
     }
     total_sessions_to_process = len(session_ids) - 1
     for idx in range(1, len(session_ids)):
@@ -579,63 +1049,116 @@ def build_events_dataset(trades_df: pd.DataFrame, symbol: str, session_start_hou
         current_session_df = grouped_sessions[session_id]
         previous_session_profile = build_volume_profile(previous_session_df, n_bins=50)
         qty_thresholds = build_qty_percentile_thresholds(previous_session_df, bubble_percentile_combination)
-        session_events, session_bubble_trades, session_stats = process_session_events_sequential(current_session_df, previous_session_profile, qty_thresholds, session_id, symbol, min_bubble_tier, all_timestamps, all_prices, all_qtys, all_is_buyer_maker, last_available_trade_timestamp, reaction_windows, research_windows, retest_zone_pct, setup_reaction_window_seconds, setup_mfe_threshold_pct, setup_efficiency_threshold, stop_buffer_pct, primary_risk_model, config_metadata)
-        print(f"    deep_trades={session_stats['total_deep_trades']:,} candidates_after_tier={session_stats['candidate_bubbles_after_tier_filter']:,} confirmed_setups={session_stats['total_confirmed_setups']:,}")
+        session_events, session_bubble_trades, session_qualified_bubbles, session_stats = process_session_events_sequential(
+            current_session_df,
+            previous_session_profile,
+            qty_thresholds,
+            session_id,
+            symbol,
+            min_bubble_tier,
+            all_timestamps,
+            all_prices,
+            all_qtys,
+            all_is_buyer_maker,
+            last_available_trade_timestamp,
+            reaction_windows,
+            research_windows,
+            retest_zone_pct,
+            setup_reaction_window_seconds,
+            setup_mfe_threshold_pct,
+            setup_efficiency_threshold,
+            stop_buffer_pct,
+            primary_risk_model,
+            opposite_bubble_reaction_window_seconds,
+            opposite_bubble_absorbed_efficiency_threshold,
+            opposite_bubble_contra_efficiency_threshold,
+            config_metadata,
+        )
+        print(f"    deep_trades={session_stats['total_deep_trades']:,} same_side_candidates={session_stats['candidate_bubbles_after_tier_filter']:,} qualified_outside_value={session_stats['qualified_outside_value_bubbles_after_tier_filter']:,} confirmed_setups={session_stats['total_confirmed_setups']:,}")
         researched_sessions += 1
         events.extend(session_events)
         bubble_trades.extend(session_bubble_trades)
+        qualified_bubbles.extend(session_qualified_bubbles)
         for key in aggregate_stats:
             aggregate_stats[key] += int(session_stats.get(key, 0))
-        print(f"    complete | events_so_far={len(events):,}")
+        print(f"    complete | confirmed_setups_so_far={len(events):,} qualified_bubbles_so_far={len(qualified_bubbles):,}")
     confirmed_setups_df = pd.DataFrame(events)
     bubble_trades_df = pd.DataFrame(bubble_trades)
+    qualified_bubbles_df = pd.DataFrame(qualified_bubbles)
     if not confirmed_setups_df.empty and not confirmed_setups_df["event_id"].is_unique:
         raise ValueError("event_id must be unique among confirmed setups")
+    if not confirmed_setups_df.empty and not confirmed_setups_df["bubble_id"].is_unique:
+        raise ValueError("bubble_id must be unique among confirmed setups")
     trade_events_df = group_confirmed_setups_into_trade_events(confirmed_setups_df, trade_event_gap_seconds)
     final_events_df = trade_events_df if trade_events_df.empty else trade_events_df.reindex(columns=FINAL_EVENT_COLUMNS)
     validate_trade_event_rows(final_events_df, trade_event_gap_seconds)
+    grouped_confirmed_setups_df = build_grouped_confirmed_setups_for_impulse_master(
+        confirmed_setups_df,
+        impulse_group_window_seconds,
+        impulse_observation_horizon_seconds,
+        last_available_trade_timestamp,
+        include_incomplete_impulse_groups,
+    )
+    impulse_bubble_master_df = build_impulse_bubble_master(qualified_bubbles_df, grouped_confirmed_setups_df)
+    validate_impulse_bubble_master(impulse_bubble_master_df, grouped_confirmed_setups_df)
     stats = {
-        "total_sessions_available": int(len(session_ids)), "total_sessions_researched": int(researched_sessions), "total_deep_trades": int(aggregate_stats["total_deep_trades"]),
-        "skipped_inside_value": int(aggregate_stats["skipped_inside_value"]), "skipped_wrong_side": int(aggregate_stats["skipped_wrong_side"]),
-        "skipped_below_medium_percentile": int(aggregate_stats["skipped_below_medium_percentile"]), "skipped_below_min_bubble_tier": int(aggregate_stats["skipped_below_min_bubble_tier"]),
-        "candidate_bubbles_after_tier_filter": int(aggregate_stats["candidate_bubbles_after_tier_filter"]), "skipped_incomplete_reaction_future": int(aggregate_stats["skipped_incomplete_reaction_future"]),
-        "skipped_unconfirmed_setup": int(aggregate_stats["skipped_unconfirmed_setup"]), "skipped_incomplete_future": int(aggregate_stats["skipped_incomplete_future"]),
-        "total_confirmed_setups": int(aggregate_stats["total_confirmed_setups"]), "total_bubbles": int(aggregate_stats["candidate_bubbles_after_tier_filter"]),
-        "total_candidate_bubbles_before_setup_confirmation": int(aggregate_stats["candidate_bubbles_after_tier_filter"]), "skipped_incomplete_previous_session": int(skipped_incomplete_previous_session),
+        "total_sessions_available": int(len(session_ids)),
+        "total_sessions_researched": int(researched_sessions),
+        "total_deep_trades": int(aggregate_stats["total_deep_trades"]),
+        "skipped_inside_value": int(aggregate_stats["skipped_inside_value"]),
+        "skipped_wrong_side": int(aggregate_stats["skipped_wrong_side"]),
+        "skipped_below_medium_percentile": int(aggregate_stats["skipped_below_medium_percentile"]),
+        "skipped_below_min_bubble_tier": int(aggregate_stats["skipped_below_min_bubble_tier"]),
+        "candidate_bubbles_after_tier_filter": int(aggregate_stats["candidate_bubbles_after_tier_filter"]),
+        "qualified_outside_value_bubbles_after_tier_filter": int(aggregate_stats["qualified_outside_value_bubbles_after_tier_filter"]),
+        "skipped_incomplete_reaction_future": int(aggregate_stats["skipped_incomplete_reaction_future"]),
+        "skipped_unconfirmed_setup": int(aggregate_stats["skipped_unconfirmed_setup"]),
+        "skipped_incomplete_future": int(aggregate_stats["skipped_incomplete_future"]),
+        "total_confirmed_setups": int(aggregate_stats["total_confirmed_setups"]),
+        "total_bubbles": int(aggregate_stats["candidate_bubbles_after_tier_filter"]),
+        "total_candidate_bubbles_before_setup_confirmation": int(aggregate_stats["candidate_bubbles_after_tier_filter"]),
+        "total_qualified_outside_value_bubbles": int(aggregate_stats["qualified_outside_value_bubbles_after_tier_filter"]),
+        "skipped_incomplete_previous_session": int(skipped_incomplete_previous_session),
+        "total_impulse_groups_included": int(grouped_confirmed_setups_df["impulse_group_id"].nunique()) if not grouped_confirmed_setups_df.empty else 0,
+        "total_impulse_bubble_master_rows": int(len(impulse_bubble_master_df)),
     }
-    return final_events_df, bubble_trades_df, stats
+    return final_events_df, bubble_trades_df, grouped_confirmed_setups_df, impulse_bubble_master_df, stats
 
 
 def normalize_output_precision(events_df: pd.DataFrame) -> pd.DataFrame:
     out = events_df.copy()
     pct_columns = [column for column in out.columns if "_pct" in column]
+    r_columns = [column for column in out.columns if column.endswith("_R")]
     efficiency_columns = [column for column in out.columns if "efficiency" in column]
     price_columns = ["previous_val", "previous_vah", "previous_poc", "anchor_price", "confirmation_price", "entry_price", "stop_price"]
-    notional_columns = ["anchor_bubble_notional", "confirmation_same_side_bubble_total_notional", "confirmation_same_side_bubble_max_notional", "confirmation_opposite_side_bubble_total_notional", "confirmation_opposite_side_bubble_max_notional"]
-    quantity_columns = ["anchor_bubble_qty", "bubble_medium_qty_threshold", "bubble_large_qty_threshold", "bubble_extreme_qty_threshold", "confirmation_same_side_bubble_total_qty", "confirmation_same_side_bubble_max_qty", "confirmation_opposite_side_bubble_total_qty", "confirmation_opposite_side_bubble_max_qty"]
+    notional_columns = ["anchor_bubble_notional"]
+    quantity_columns = ["anchor_bubble_qty", "bubble_medium_qty_threshold", "bubble_large_qty_threshold", "bubble_extreme_qty_threshold", "confirmation_same_side_bubble_total_qty", "confirmation_opposite_side_bubble_total_qty", "confirmation_opposite_side_bubble_absorbed_total_qty", "confirmation_opposite_side_bubble_contra_move_total_qty"]
     score_columns = ["bubble_percentile_score", "stop_buffer_pct", "risk_per_unit"]
     time_columns = ["time_to_retest_seconds", "seconds_from_first_to_last_setup"]
     for column in pct_columns:
         if column in out.columns:
-            out[column] = out[column].round(4)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
     for column in efficiency_columns:
         if column in out.columns:
-            out[column] = out[column].round(4)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
+    for column in r_columns:
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
     for column in price_columns:
         if column in out.columns:
-            out[column] = out[column].round(2)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(2)
     for column in notional_columns:
         if column in out.columns:
-            out[column] = out[column].round(2)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(2)
     for column in quantity_columns:
         if column in out.columns:
-            out[column] = out[column].round(3)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(3)
     for column in score_columns:
         if column in out.columns:
-            out[column] = out[column].round(4)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
     for column in time_columns:
         if column in out.columns:
-            out[column] = out[column].round(2)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(2)
     return out
 
 
@@ -649,69 +1172,139 @@ def normalize_bubble_trade_output_precision(bubble_trades_df: pd.DataFrame) -> p
     percentile_columns = ["bubble_medium_percentile", "bubble_large_percentile", "bubble_extreme_percentile"]
     for column in pct_columns:
         if column in out.columns:
-            out[column] = out[column].round(4)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
     for column in price_columns:
         if column in out.columns:
-            out[column] = out[column].round(2)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(2)
     for column in notional_columns:
         if column in out.columns:
-            out[column] = out[column].round(2)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(2)
     for column in quantity_columns:
         if column in out.columns:
-            out[column] = out[column].round(4)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
     for column in score_columns:
         if column in out.columns:
-            out[column] = out[column].round(3)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(3)
     for column in percentile_columns:
         if column in out.columns:
-            out[column] = out[column].round(4)
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
     return out
+
+
+def normalize_impulse_bubble_master_precision(master_df: pd.DataFrame) -> pd.DataFrame:
+    out = master_df.copy()
+    pct_columns = [column for column in out.columns if "_pct" in column]
+    efficiency_columns = [column for column in out.columns if "efficiency" in column]
+    price_columns = ["bubble_price", "confirmation_price", "previous_val", "previous_vah", "previous_poc"]
+    notional_columns = ["bubble_notional"]
+    quantity_columns = ["bubble_qty", "bubble_medium_qty_threshold", "bubble_large_qty_threshold", "bubble_extreme_qty_threshold"]
+    percentile_columns = ["bubble_percentile_score", "bubble_medium_percentile", "bubble_large_percentile", "bubble_extreme_percentile", "stop_buffer_pct"]
+    for column in pct_columns:
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
+    for column in efficiency_columns:
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
+    for column in price_columns:
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(2)
+    for column in notional_columns:
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(2)
+    for column in quantity_columns:
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
+    for column in percentile_columns:
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce").round(4)
+    return out
+
+
+def write_impulse_bubble_master_xlsx(master_df: pd.DataFrame, output_path: str) -> None:
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    export_info = pd.DataFrame([
+        {"metric": "total_master_rows", "value": int(len(master_df))},
+        {"metric": "excel_preview_row_limit", "value": int(EXCEL_MAX_DATA_ROWS)},
+        {"metric": "preview_truncated", "value": bool(len(master_df) > EXCEL_MAX_DATA_ROWS)},
+    ])
+    preview_df = make_excel_safe(master_df.head(EXCEL_MAX_DATA_ROWS).copy())
+    export_info = make_excel_safe(export_info)
+    with pd.ExcelWriter(out, engine="openpyxl") as writer:
+        preview_df.to_excel(writer, sheet_name=MASTER_PREVIEW_SHEET_NAME, index=False)
+        export_info.to_excel(writer, sheet_name=MASTER_PREVIEW_INFO_SHEET_NAME, index=False)
+
+
+def ensure_output_dirs(paths: list[str | None]) -> None:
+    for path in paths:
+        if not path:
+            continue
+        out_dir = os.path.dirname(path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
 
 
 def main() -> None:
     args = parse_args()
     stop_buffer_pct = resolve_stop_buffer_pct(args)
-    reaction_windows = sorted(set(parse_windows(args.reaction_windows, "--reaction-windows") + [args.setup_reaction_window_seconds, 30]))
+    reaction_windows = sorted(set(parse_windows(args.reaction_windows, "--reaction-windows") + [5, args.setup_reaction_window_seconds, 30]))
     research_windows = parse_windows(args.research_windows, "--research-windows")
-    for path in [args.output_parquet, args.bubble_trades_output_parquet if args.write_bubble_trades else None, args.output_csv if args.write_csv else None]:
-        if path:
-            out_dir = os.path.dirname(path)
-            if out_dir:
-                os.makedirs(out_dir, exist_ok=True)
+    ensure_output_dirs([
+        args.output_parquet,
+        args.output_xlsx if args.write_xlsx else None,
+    ])
     print(f"Loading trade data from {args.input}")
     trades_df = load_trades_from_inputs(args.input)
     if trades_df.empty:
         raise ValueError("No trades were loaded from the provided input dataset")
     print("Processing dataset-driven session event study...")
-    events_df, bubble_trades_df, stats = build_events_dataset(trades_df, args.symbol, args.session_start_hour, args.session_start_minute, args.min_qty, args.min_notional, args.min_bubble_tier, args.cluster_window_seconds, args.bubble_percentile_combination, reaction_windows, research_windows, args.retest_zone_pct, args.setup_reaction_window_seconds, args.setup_mfe_threshold_pct, args.setup_efficiency_threshold, stop_buffer_pct, args.primary_risk_model, args.trade_event_gap_seconds)
-    if args.write_bubble_trades:
-        print(f"Bubble trade rows: {len(bubble_trades_df)}")
-        print(f"Bubble trade output: {args.bubble_trades_output_parquet}")
-        if bubble_trades_df.empty:
-            print("No bubble trades detected; skipping bubble trade parquet write")
-        else:
-            normalize_bubble_trade_output_precision(bubble_trades_df).to_parquet(args.bubble_trades_output_parquet)
-    if events_df.empty:
-        print("No complete event-study rows detected")
+    _, _, _, impulse_bubble_master_df, stats = build_events_dataset(
+        trades_df,
+        args.symbol,
+        args.session_start_hour,
+        args.session_start_minute,
+        args.min_qty,
+        args.min_notional,
+        args.min_bubble_tier,
+        args.bubble_percentile_combination,
+        reaction_windows,
+        research_windows,
+        args.retest_zone_pct,
+        args.setup_reaction_window_seconds,
+        args.setup_mfe_threshold_pct,
+        args.setup_efficiency_threshold,
+        stop_buffer_pct,
+        args.primary_risk_model,
+        args.trade_event_gap_seconds,
+        args.opposite_bubble_reaction_window_seconds,
+        args.opposite_bubble_absorbed_efficiency_threshold,
+        args.opposite_bubble_contra_efficiency_threshold,
+        args.impulse_group_window_seconds,
+        args.impulse_observation_horizon_seconds,
+        args.include_incomplete_impulse_groups,
+    )
+    if impulse_bubble_master_df.empty:
+        print("No complete impulse bubble master rows detected")
         print("\nValidation Statistics:")
         for key, value in stats.items():
             print(f"{key}: {value}")
         return
-    print(f"Saving results to {args.output_parquet}" + (f" and {args.output_csv}" if args.write_csv else ""))
-    events_df = normalize_output_precision(events_df)
-    events_df.to_parquet(args.output_parquet)
-    if args.write_csv:
-        events_df.to_csv(args.output_csv, index=False)
+    normalized_master_df = normalize_impulse_bubble_master_precision(impulse_bubble_master_df)
+    print(f"Saving impulse bubble master to {args.output_parquet}")
+    normalized_master_df.to_parquet(args.output_parquet)
+    if args.write_xlsx:
+        print(f"Saving impulse bubble master Excel preview to {args.output_xlsx}")
+        write_impulse_bubble_master_xlsx(normalized_master_df, args.output_xlsx)
     print("\nValidation Statistics:")
     for key, value in stats.items():
         print(f"{key}: {value}")
-    print("\nTrade events by directional_bias:")
-    print(events_df["directional_bias"].value_counts(dropna=False))
-    print("\nTrade events by location:")
-    print(events_df["location"].value_counts(dropna=False))
-    print("\nBubble tier distribution:")
-    print(events_df["bubble_tier"].value_counts(dropna=False))
-    print(f"Dataset row count: {len(events_df)}")
+    print("\nMaster rows by bubble_role:")
+    print(normalized_master_df["bubble_role"].value_counts(dropna=False))
+    print("\nMaster rows by directional_bias:")
+    print(normalized_master_df["directional_bias"].value_counts(dropna=False))
+    print("\nMaster rows by reaction_type_5s:")
+    print(normalized_master_df["reaction_type_5s"].value_counts(dropna=False))
+    print(f"Master dataset row count: {len(normalized_master_df)}")
 
 
 if __name__ == "__main__":

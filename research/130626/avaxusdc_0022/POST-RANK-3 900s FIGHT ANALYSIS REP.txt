@@ -1,0 +1,758 @@
+POST-RANK-3 900s FIGHT ANALYSIS REPORT
+
+1. Research Objective
+
+The purpose of this test is to examine whether the order-flow behavior after the 3rd confirmed setup provides additional predictive information for future trade outcome.
+
+The previous Nth-entry research showed that the 3rd confirmed setup is one of the most stable delayed-entry candidates. However, entering directly at the 3rd setup may still be too early or too noisy. Therefore, this next research layer observes what happens after the 3rd confirmed setup before calculating the result.
+
+The tested hypothesis is:
+
+After the 3rd confirmed setup, the next 900 seconds of same-side and opposite-side bubble activity may explain or separate future max_R_before_SL performance.
+
+In simple terms:
+
+If rank 3 appears, should we enter immediately, or should we wait and observe whether the market becomes clean, noisy, dominated by same-side activity, or pressured by opposite-side activity?
+
+2. Dataset and Method
+
+Instrument:
+AVAXUSDC
+
+Base data:
+Binance aggTrades data.
+
+Master data:
+impulse_bubble_master.parquet
+
+Master data usage:
+The master file was used only to identify the 3rd confirmed setup in each impulse group and to retrieve the required context, such as directional bias, previous session value levels, bubble thresholds, and stop buffer.
+
+Raw aggTrades usage:
+Raw aggTrades were used to reconstruct all qualified bubbles inside the post-rank-3 evidence window and to calculate the delayed-entry result.
+
+Observation unit:
+One row = one 3rd confirmed setup observation.
+
+Overlapping observations:
+Every 3rd confirmed setup was treated as an independent research observation, even if the evidence or result windows overlapped. This is acceptable for pattern discovery, but the observations should not be interpreted as fully independent trades.
+
+3. Setup Definition
+
+A confirmed setup is a same-side qualified bubble that passed the original 30-second reaction rule.
+
+The original confirmation rule was:
+
+* Bubble must be outside previous session value area.
+* Bubble must align with directional bias:
+
+  * Above previous VAH = long bias.
+  * Below previous VAL = short bias.
+* Bubble must pass the configured quantity percentile / minimum bubble tier.
+* Bubble must pass 30-second MFE threshold.
+* Bubble must pass 30-second efficiency threshold.
+
+The current post-rank-3 research only uses impulse groups that already have at least three confirmed setups.
+
+4. Post-Rank-3 Evidence Window
+
+For every 3rd confirmed setup:
+
+Evidence start:
+3rd setup confirmation timestamp.
+
+Evidence end:
+3rd setup confirmation timestamp + 900 seconds.
+
+Entry timestamp:
+Evidence end timestamp.
+
+Therefore:
+
+entry_timestamp = rank3_confirmation_timestamp + 900 seconds
+
+The evidence window is not taken only from the master file because the master is bounded by the original impulse group window. Instead, the raw aggTrades data is used to reconstruct all qualified bubbles inside the full post-rank-3 900-second evidence window.
+
+5. Evidence Bubble Reconstruction
+
+Inside the 900-second evidence window, a raw aggTrade is treated as a qualified evidence bubble if:
+
+For long bias:
+price > previous VAH
+
+For short bias:
+price < previous VAL
+
+and:
+
+qty passes the configured minimum bubble tier threshold.
+
+Aggressive side classification:
+
+is_buyer_maker = False → buy aggression
+is_buyer_maker = True → sell aggression
+
+Relation to bias:
+
+For long bias:
+buy aggression = same-side
+sell aggression = opposite-side
+
+For short bias:
+sell aggression = same-side
+buy aggression = opposite-side
+
+6. Fight-State Classification
+
+The 900-second evidence window is classified into one of four simple fight states:
+
+1. same_side_only
+   This means at least one same-side qualified bubble appeared, and no opposite-side qualified bubble appeared.
+
+2. neither_same_nor_opposite
+   This means no qualified same-side or opposite-side bubble appeared during the 900-second evidence window.
+
+3. both_same_and_opposite
+   This means both same-side and opposite-side qualified bubbles appeared during the 900-second evidence window.
+
+4. opposite_side_only
+   This means at least one opposite-side qualified bubble appeared, and no same-side qualified bubble appeared.
+
+The test intentionally uses these four simple states instead of more complex dominance labels.
+
+7. Quantity Imbalance Formula
+
+In addition to the four fight-state labels, continuous fight diagnostics were calculated.
+
+Formula:
+
+qty_imbalance_900s = (same_side_qty - opposite_side_qty) / (same_side_qty + opposite_side_qty)
+
+opposite_qty_share_900s = opposite_side_qty / (same_side_qty + opposite_side_qty)
+
+Interpretation:
+
+qty_imbalance near +1 means same-side quantity dominated.
+
+qty_imbalance near -1 means opposite-side quantity dominated.
+
+qty_imbalance near 0 means same-side and opposite-side quantities were balanced.
+
+If same_side_qty + opposite_side_qty = 0, then both qty_imbalance_900s and opposite_qty_share_900s are null.
+
+8. Result Calculation
+
+The result was calculated from the delayed entry point.
+
+Entry timestamp:
+rank3_confirmation_timestamp + 900 seconds
+
+Entry price:
+last raw aggTrade price at or before the entry timestamp.
+
+Result horizon:
+3600 seconds after entry timestamp.
+
+Stop buffer:
+0.10% from entry price.
+
+For long setups:
+
+stop_price = entry_price × (1 - stop_buffer_pct)
+
+SL is touched when price <= stop_price.
+
+max_R_before_SL is calculated using the highest price reached before the first SL touch.
+
+Formula:
+
+max_R_before_SL = (highest_price_before_SL - entry_price) / risk_per_unit
+
+For short setups:
+
+stop_price = entry_price × (1 + stop_buffer_pct)
+
+SL is touched when price >= stop_price.
+
+max_R_before_SL is calculated using the lowest price reached before the first SL touch.
+
+Formula:
+
+max_R_before_SL = (entry_price - lowest_price_before_SL) / risk_per_unit
+
+Important rule:
+
+Any favorable R must happen before the first SL touch. If the stop loss is touched before favorable expansion, max_R_before_SL is 0.
+
+9. Overall Result
+
+The test produced:
+
+Rank-3 observations / result rows:
+3,920
+
+Evidence bubble rows inside rank3 + 900s windows:
+39,945
+
+Overall delayed-entry result:
+
+Median max_R_before_SL:
+0.9764R
+
+Mean max_R_before_SL:
+3.7850R
+
+Hit rate >= 1R:
+49.46%
+
+Hit rate >= 2R:
+35.10%
+
+Hit rate >= 3R:
+27.53%
+
+Hit rate >= 5R:
+18.67%
+
+SL touch rate:
+90.43%
+
+Interpretation:
+
+Blindly waiting 900 seconds after the 3rd confirmed setup does not improve the overall median result. The overall delayed-entry median is below 1R and weaker than the earlier direct rank-3 entry result.
+
+This means the 900-second wait should not be used blindly. It only becomes interesting when filtered by the type of order-flow fight that happens during the 900-second evidence window.
+
+10. Fight-State Distribution and Result
+
+Fight-state result table:
+
+Fight State: neither_same_nor_opposite
+Sample: 318
+Median max_R_before_SL: 1.1975R
+Mean max_R_before_SL: 3.2729R
+Hit >= 1R: 52.20%
+Hit >= 2R: 38.05%
+Hit >= 3R: 29.25%
+Hit >= 5R: 20.44%
+SL touch rate: 87.42%
+
+Fight State: same_side_only
+Sample: 412
+Median max_R_before_SL: 1.0115R
+Mean max_R_before_SL: 3.4100R
+Hit >= 1R: 50.00%
+Hit >= 2R: 36.89%
+Hit >= 3R: 29.37%
+Hit >= 5R: 20.63%
+SL touch rate: 90.53%
+
+Fight State: opposite_side_only
+Sample: 514
+Median max_R_before_SL: 0.9963R
+Mean max_R_before_SL: 3.1849R
+Hit >= 1R: 50.00%
+Hit >= 2R: 32.10%
+Hit >= 3R: 24.90%
+Hit >= 5R: 16.73%
+SL touch rate: 90.27%
+
+Fight State: both_same_and_opposite
+Sample: 2,676
+Median max_R_before_SL: 0.9444R
+Mean max_R_before_SL: 4.0188R
+Hit >= 1R: 48.95%
+Hit >= 2R: 35.05%
+Hit >= 3R: 27.54%
+Hit >= 5R: 18.54%
+SL touch rate: 90.81%
+
+11. Main Fight-State Finding
+
+The strongest median result came from:
+
+neither_same_nor_opposite
+
+This condition produced:
+
+Median max_R_before_SL = 1.1975R
+Hit >= 2R = 38.05%
+SL touch rate = 87.42%
+
+This means that after the 3rd confirmed setup, no additional qualified bubble activity during the next 900 seconds was actually the cleanest delayed-entry condition.
+
+This finding is different from the earlier simple same-side/opposite-side test, where same-side-only was the strongest condition.
+
+In this post-rank-3 layer, the best condition is not “more same-side bubble activity.” Instead, the best condition is “no qualified fight after rank 3.”
+
+Possible interpretation:
+
+After the 3rd confirmed setup, the impulse may already be established. If no more large qualified bubbles appear, the market may be continuing cleanly without noisy two-sided auction activity.
+
+12. Weakest Fight-State Finding
+
+The weakest major state was:
+
+both_same_and_opposite
+
+This condition had:
+
+Sample = 2,676
+Median max_R_before_SL = 0.9444R
+
+This was also the most common state.
+
+Interpretation:
+
+Most rank-3 setups are followed by both same-side and opposite-side bubble activity. However, this two-sided fight weakens the delayed entry. The market becomes noisy, and the remaining directional edge after waiting 900 seconds becomes weaker.
+
+13. Directional Breakdown
+
+Long-side results:
+
+Fight State: both_same_and_opposite
+Sample: 1,129
+Median max_R_before_SL: 0.9948R
+Hit >= 2R: 36.76%
+
+Fight State: neither_same_nor_opposite
+Sample: 145
+Median max_R_before_SL: 0.9545R
+Hit >= 2R: 34.48%
+
+Fight State: same_side_only
+Sample: 160
+Median max_R_before_SL: 0.9231R
+Hit >= 2R: 37.50%
+
+Fight State: opposite_side_only
+Sample: 265
+Median max_R_before_SL: 0.8504R
+Hit >= 2R: 29.81%
+
+Interpretation for long setups:
+
+Rank3 + 900s delayed entry does not look strong for long continuation. No long-side fight state had a median result above 1R.
+
+Short-side results:
+
+Fight State: neither_same_nor_opposite
+Sample: 173
+Median max_R_before_SL: 1.4308R
+Hit >= 2R: 41.04%
+
+Fight State: same_side_only
+Sample: 252
+Median max_R_before_SL: 1.0992R
+Hit >= 2R: 36.51%
+
+Fight State: opposite_side_only
+Sample: 249
+Median max_R_before_SL: 1.0576R
+Hit >= 2R: 34.54%
+
+Fight State: both_same_and_opposite
+Sample: 1,547
+Median max_R_before_SL: 0.9184R
+Hit >= 2R: 33.81%
+
+Interpretation for short setups:
+
+The strongest finding in this test is:
+
+short + neither_same_nor_opposite
+
+This condition produced:
+
+Median max_R_before_SL = 1.4308R
+Hit >= 2R = 41.04%
+
+This suggests that after a 3rd confirmed short setup, no additional qualified bubble activity in the next 900 seconds is a strong clean-continuation condition.
+
+14. Opposite-Side Reaction Finding
+
+The test also examined whether opposite-side bubbles were absorbed or produced contra-move.
+
+Evidence bubbles were almost balanced overall:
+
+Same-side evidence bubbles:
+20,117
+
+Opposite-side evidence bubbles:
+19,828
+
+Opposite-side contra-move test:
+
+No opposite contra-move:
+Sample = 1,208
+Median max_R_before_SL = 1.0514R
+Hit >= 2R = 36.92%
+Hit >= 5R = 19.45%
+
+Has opposite contra-move:
+Sample = 2,712
+Median max_R_before_SL = 0.9422R
+Hit >= 2R = 34.29%
+Hit >= 5R = 18.33%
+
+Interpretation:
+
+Opposite-side presence by itself is not the full problem. The more dangerous condition is when opposite-side bubbles produce directional follow-through against the intended trade bias.
+
+In other words:
+
+Contra-move opposite bubbles are more dangerous than raw opposite bubble count.
+
+15. Opposite Absorption Finding
+
+Opposite-side condition table:
+
+Condition: has absorbed opposite, no contra opposite
+Sample: 379
+Median max_R_before_SL: 1.1067R
+Hit >= 2R: 37.20%
+
+Condition: no absorbed opposite, no contra opposite
+Sample: 829
+Median max_R_before_SL: 1.0303R
+Hit >= 2R: 36.79%
+
+Condition: absorbed + contra opposite
+Sample: 1,724
+Median max_R_before_SL: 0.9469R
+Hit >= 2R: 34.40%
+
+Condition: contra opposite, no absorbed opposite
+Sample: 988
+Median max_R_before_SL: 0.9387R
+Hit >= 2R: 34.11%
+
+Interpretation:
+
+Absorbed opposite bubbles are not necessarily bad. They may even be slightly constructive if they appear without contra-move.
+
+The real warning condition is opposite-side directional movement / contra-move.
+
+This supports the earlier finding:
+
+Raw opposite-side activity is less important than whether the opposite-side activity actually moves price against the intended bias.
+
+16. Quantity Imbalance Test
+
+The test also measured whether the continuous quantity imbalance between same-side and opposite-side bubbles had a relationship with max_R_before_SL.
+
+Pearson correlation:
+0.0072
+
+Spearman correlation:
+-0.0058
+
+Interpretation:
+
+The relationship is effectively zero.
+
+This means:
+
+More same-side quantity does not automatically imply better max_R_before_SL.
+
+More opposite-side quantity does not automatically imply worse max_R_before_SL.
+
+The simple quantity imbalance metric does not provide meaningful linear or monotonic predictive information in this test.
+
+The qualitative state and reaction type appear more useful than raw same/opposite quantity imbalance.
+
+17. Final Conclusion
+
+The hypothesis was partially supported.
+
+The 900-second post-rank-3 evidence layer does separate future trade outcomes, but not in the originally expected way.
+
+The original expectation was that same-side-only activity after rank 3 would be strongest. However, the actual strongest condition was:
+
+neither_same_nor_opposite
+
+This suggests that after the 3rd confirmed setup, the cleanest continuation may happen when no additional qualified bubble fight appears during the next 900 seconds.
+
+The main conclusions are:
+
+1. Blind rank3 + 900s delayed entry is not strong enough.
+   Overall median max_R_before_SL after waiting 900 seconds was only 0.9764R.
+
+2. The best 900-second evidence condition is no qualified bubble activity.
+   The neither_same_nor_opposite condition produced median max_R_before_SL of 1.1975R.
+
+3. The strongest specific setup is short + no post-rank3 fight.
+   This condition produced median max_R_before_SL of 1.4308R and hit >= 2R of 41.04%.
+
+4. Mixed two-sided fight is weak.
+   The both_same_and_opposite condition was the most common state but had weak median performance at 0.9444R.
+
+5. Opposite-side contra-move is dangerous.
+   Rows with opposite contra-move had lower median result than rows without opposite contra-move.
+
+6. Absorbed opposite-side bubbles are not necessarily bad.
+   Absorbed opposite without contra-move had relatively strong median performance.
+
+7. Raw quantity imbalance is not predictive.
+   Pearson and Spearman correlation were both approximately zero.
+
+8. Practical Research Interpretation
+
+The post-rank-3 900-second wait should not be used as a blind delay rule.
+
+The better question is not:
+
+Should I always wait 900 seconds after rank 3?
+
+The better question is:
+
+After rank 3, what type of 900-second evidence justifies a delayed entry?
+
+The current answer is:
+
+The cleanest delayed-entry condition is when no further qualified bubble fight appears after rank 3, especially for short setups.
+
+The most dangerous condition is a noisy two-sided fight, especially when opposite-side bubbles produce contra-move.
+
+19. Next Research Step
+
+The next research step should test:
+
+1. Different evidence horizons:
+
+* 300 seconds
+* 600 seconds
+* 900 seconds
+* 1200 seconds
+
+2. Direction-specific rules:
+
+* long rank3 + 900s may not be useful
+* short rank3 + 900s no-fight may be useful
+
+3. Contra-move filters:
+   Avoid trades where opposite-side bubbles produce 5s directional contra-move.
+
+4. Non-overlap robustness:
+   Since overlapping rank-3 observations were allowed in this test, the next robustness check should test whether the finding survives after removing overlapping observations.
+
+5. Combined rule candidate:
+   Potential rule:
+
+* Take only rank-3 confirmed setups.
+* Wait 900 seconds.
+* Enter only if fight_state_900s = neither_same_nor_opposite.
+* Prefer short setups.
+* Exclude rows with opposite-side contra-move.
+
+
+20. Additional Test: Post-Rank-3 300-Second Evidence Horizon
+
+A second test was performed using a shorter evidence horizon of 300 seconds after the 3rd confirmed setup.
+
+The method was the same as the 900-second test:
+
+* Use every 3rd confirmed setup as an independent observation.
+* Observe qualified same-side and opposite-side bubbles after the 3rd confirmation.
+* Use raw aggTrades to reconstruct the evidence window.
+* Enter after the evidence window.
+* Calculate max_R_before_SL over the next 3600 seconds.
+* Only count favorable R if it happens before the first SL touch.
+
+The only difference was:
+
+evidence_seconds = 300
+
+Overall result:
+
+Observations:
+3,920
+
+Evidence bubbles:
+16,348
+
+Median max_R_before_SL:
+0.9602R
+
+Mean max_R_before_SL:
+3.6603R
+
+Hit rate >= 1R:
+49.23%
+
+Hit rate >= 2R:
+34.46%
+
+Hit rate >= 3R:
+26.73%
+
+Hit rate >= 5R:
+18.95%
+
+SL touch rate:
+91.22%
+
+Interpretation:
+
+The 300-second delayed-entry test was not strong as a blind rule. The overall median result was below 1R, meaning that simply waiting 300 seconds after the 3rd confirmed setup does not meaningfully improve the setup.
+
+Fight-state result:
+
+Fight State: neither_same_nor_opposite
+Sample: 988
+Median max_R_before_SL: 1.0168R
+Hit >= 1R: 50.40%
+Hit >= 2R: 36.03%
+Hit >= 3R: 27.94%
+Hit >= 5R: 19.64%
+SL touch rate: 90.38%
+
+Fight State: same_side_only
+Sample: 615
+Median max_R_before_SL: 1.0069R
+Hit >= 1R: 50.08%
+Hit >= 2R: 35.45%
+Hit >= 3R: 29.43%
+Hit >= 5R: 21.46%
+SL touch rate: 89.76%
+
+Fight State: both_same_and_opposite
+Sample: 1,581
+Median max_R_before_SL: 0.9533R
+Hit >= 1R: 48.83%
+Hit >= 2R: 33.90%
+Hit >= 3R: 26.31%
+Hit >= 5R: 18.53%
+SL touch rate: 91.90%
+
+Fight State: opposite_side_only
+Sample: 736
+Median max_R_before_SL: 0.9090R
+Hit >= 1R: 47.83%
+Hit >= 2R: 32.74%
+Hit >= 3R: 23.78%
+Hit >= 5R: 16.85%
+SL touch rate: 92.12%
+
+Main interpretation:
+
+The best 300-second fight state was still neither_same_nor_opposite, but the advantage was weak.
+
+At 300 seconds:
+
+neither_same_nor_opposite median = 1.0168R
+same_side_only median = 1.0069R
+
+The difference between the two strongest states was very small. Therefore, the 300-second evidence horizon does not produce a clean or strong separation.
+
+Compared with the 900-second test:
+
+300s neither_same_nor_opposite median:
+1.0168R
+
+900s neither_same_nor_opposite median:
+1.1975R
+
+This means the no-fight signal was much stronger at 900 seconds than at 300 seconds.
+
+Directional interpretation:
+
+Long-side results showed that 300 seconds may be more useful than 900 seconds for long setups.
+
+Long + neither_same_nor_opposite:
+Median max_R_before_SL = 1.0827R
+
+Long + same_side_only:
+Median max_R_before_SL = 1.0811R
+
+Long + opposite_side_only:
+Median max_R_before_SL = 1.0429R
+
+Long + both_same_and_opposite:
+Median max_R_before_SL = 0.8268R
+
+Interpretation for longs:
+
+The 300-second horizon preserved more opportunity for long setups than the 900-second horizon. However, the result was still not clean enough because multiple fight states had similar medians. The only clear long-side warning was both_same_and_opposite, which had a weak median of 0.8268R.
+
+Short-side results:
+
+Short + both_same_and_opposite:
+Median max_R_before_SL = 1.0035R
+
+Short + neither_same_nor_opposite:
+Median max_R_before_SL = 0.9779R
+
+Short + same_side_only:
+Median max_R_before_SL = 0.9400R
+
+Short + opposite_side_only:
+Median max_R_before_SL = 0.7912R
+
+Interpretation for shorts:
+
+The 300-second horizon was not useful for the short-side no-fight condition. In the 900-second test, short + neither_same_nor_opposite was the strongest condition, with median max_R_before_SL of 1.4308R. But at 300 seconds, the same condition only produced 0.9779R.
+
+This suggests that if the short no-fight signal exists, it needs more time to mature.
+
+Opposite contra-move finding:
+
+No opposite contra-move:
+Sample = 2,156
+Median max_R_before_SL = 1.0067R
+Hit >= 2R = 35.44%
+SL touch rate = 90.54%
+
+Has opposite contra-move:
+Sample = 1,764
+Median max_R_before_SL = 0.9307R
+Hit >= 2R = 33.28%
+SL touch rate = 92.06%
+
+Interpretation:
+
+Opposite-side contra-move remained a weak but consistent danger filter. Observations without opposite contra-move performed better than observations with opposite contra-move.
+
+Quantity imbalance result:
+
+qty_imbalance Pearson correlation:
+0.0149
+
+qty_imbalance Spearman correlation:
+0.0264
+
+opposite_qty_share Pearson correlation:
+-0.0149
+
+opposite_qty_share Spearman correlation:
+-0.0264
+
+Interpretation:
+
+Quantity imbalance still had no meaningful relationship with max_R_before_SL. More same-side quantity did not reliably imply a better result, and more opposite-side quantity did not reliably imply a worse result.
+
+Final interpretation of 300-second test:
+
+The 300-second evidence horizon produced weak separation but no important tradable pattern.
+
+The main findings were:
+
+1. Blind rank3 + 300s delayed entry is not strong.
+   Overall median max_R_before_SL was only 0.9602R.
+
+2. neither_same_nor_opposite was still the best fight state, but only slightly.
+   The difference between neither_same_nor_opposite and same_side_only was too small to be considered strong.
+
+3. 300s may be more suitable for long setups than 900s, but the long-side pattern is still not clean enough.
+
+4. 300s is not enough for the short no-fight condition.
+   The strong short + no-fight result appeared only in the 900-second test.
+
+5. Opposite contra-move remained a consistent warning sign.
+
+6. Quantity imbalance remained non-predictive.
+
+Overall conclusion:
+
+The 300-second test does not provide a strong enough pattern to continue this research branch. It confirms that post-rank-3 order-flow evidence contains some information, but the effect is weak, inconsistent by direction, and not clean enough to be used as a standalone trading rule.
+
