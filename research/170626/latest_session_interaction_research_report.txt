@@ -1,0 +1,583 @@
+LATEST SESSION-INTERACTION RESEARCH REPORT
+AVAXUSDC — Japan/Asia, Europe, and US/NY Sessions
+Research version: V4.1
+Complete session days: 729
+Dataset period: June 2024 to May 2026
+
+============================================================
+1. RESEARCH OBJECTIVE
+============================================================
+
+The objective of this research is to determine whether the completed Japan/Asia and Europe sessions provide a useful directional bias for the following US/NY session.
+
+The research is not yet an entry/exit backtest. It measures whether specific pre-US session conditions are associated with the structural outcome of the US session.
+
+The latest research design is used exclusively because it separates concepts that were previously mixed together:
+
+1. Session structure
+2. Session direction
+3. Combined session context
+4. Secondary quality ranks
+5. Buffer acceptance and sweep information
+
+The current US V3 inner/outer classification remains unchanged.
+
+============================================================
+2. LATEST VARIABLE DEFINITIONS
+============================================================
+
+A. STRUCTURE
+
+Structure is measured only from session high and low relative to the completed reference session and its 0.5% buffer.
+
+Japan/Asia reference:
+- Immediately preceding completed US session.
+- Exact consecutive-session continuity is required.
+
+Europe reference:
+- Current completed Japan/Asia session.
+
+Structure categories:
+- EXPANSION_UP
+- EXPANSION_DOWN
+- TWO_SIDED_EXPANSION
+- CONTAINED_RANGE
+
+An expansion requires price to exceed the relevant reference high or low by more than the 0.5% buffer.
+
+CONTAINED_RANGE does not mean the session was small. It means neither side exceeded the reference session’s buffered boundary.
+
+B. DIRECTION
+
+Direction is measured from open to close, normalized by the session range:
+
+session_efficiency = (close - open) / (high - low)
+
+Direction categories:
+- UP: efficiency > 0.10
+- DOWN: efficiency < -0.10
+- NO_DIRECTION: -0.10 <= efficiency <= 0.10
+
+C. COMBINED SESSION CONTEXT
+
+Each Japan/Asia and Europe session combines structure and direction.
+
+Examples:
+- EXPANSION_UP_UP
+- EXPANSION_UP_DOWN
+- EXPANSION_DOWN_DOWN
+- CONTAINED_RANGE_UP
+- CONTAINED_RANGE_DOWN
+- CONTAINED_RANGE_NO_DIRECTION
+
+This allows the research to distinguish structural reach from open-to-close directional control.
+
+D. QUALITY RANKS
+
+The quality ranks are calculated using prior eligible observations only.
+
+Default reference:
+- Previous 90 eligible observations
+- Minimum prior history: 30 observations
+- Fixed terciles:
+  - Bottom third = LOW
+  - Middle third = MEDIUM
+  - Top third = HIGH
+
+Quality variables:
+- Range rank: how volatile the session was
+- Direction-strength rank: how strongly price moved from open to close
+- Expansion-strength rank: how far price exceeded the 0.5% buffer
+- Reference-overlap rank: how much the current session retained the reference range
+
+E. US OUTCOME
+
+The US session retains the existing V3 inner/outer framework.
+
+Primary outcomes:
+- US_DIRECTIONAL_UP
+- US_DIRECTIONAL_DOWN
+- US_BOTH_SIDE_EXPANSION
+- US_INTERNAL_LIQUIDITY_TAKE
+- US_TRUE_CONTRACTION
+
+============================================================
+3. DATA QUALITY
+============================================================
+
+Raw trades:
+- 35,498,092
+
+Complete daily session observations:
+- 729
+
+Rows without an immediately preceding US reference for Japan:
+- 1
+
+Unclassified observations:
+- Japan/Asia: 0 eligible rows
+- Europe: 0
+- US: 0
+
+The quality ranks use prior observations only. The current observation is excluded from its own ranking thresholds, and future data is not used.
+
+============================================================
+4. US OUTCOME DISTRIBUTION
+============================================================
+
+US_DIRECTIONAL_DOWN:
+- 283 days
+- 38.8%
+
+US_DIRECTIONAL_UP:
+- 250 days
+- 34.3%
+
+US_INTERNAL_LIQUIDITY_TAKE:
+- 157 days
+- 21.5%
+
+US_BOTH_SIDE_EXPANSION:
+- 29 days
+- 4.0%
+
+US_TRUE_CONTRACTION:
+- 10 days
+- 1.4%
+
+Conclusion:
+The US session rarely produces true contraction. Most sessions either reach one outer side or take internal liquidity.
+
+Because true contraction occurred only 10 times, predicting it is not currently a practical primary research objective.
+
+============================================================
+5. RESEARCH HYPOTHESES
+============================================================
+
+H1:
+Europe open-to-close direction has a statistically significant relationship with the following US directional outcome.
+
+H2:
+Europe structure and direction provide a stronger signal when they agree than when they conflict.
+
+H3:
+Japan direction is weaker than Europe direction as an independent predictor, but Japan agreement strengthens the Europe signal.
+
+H4:
+Higher Europe direction strength increases the probability that the US session follows Europe’s direction.
+
+H5:
+Europe acceptance beyond the Japan 0.5% buffer strengthens directional continuation into the US session.
+
+H6:
+Range rank, expansion-strength rank, and overlap rank provide strong standalone directional signals.
+
+H7:
+When Europe structure and direction conflict, open-to-close direction should generally receive more weight than structural wick expansion.
+
+============================================================
+6. PRIMARY DESCRIPTIVE FINDINGS
+============================================================
+
+A. EUROPE DIRECTION IS THE MAIN US BIAS
+
+Europe UP:
+- Sample: 291
+- US directional up: 57.0%
+- US directional down: 18.2%
+
+Europe DOWN:
+- Sample: 356
+- US directional down: 59.3%
+- US directional up: 15.4%
+
+Across all directional Europe sessions:
+- US followed Europe: 58.3%
+- US directly reversed Europe: 16.7%
+- Remaining outcomes were non-directional US outcomes: 25.0%
+
+Japan direction was materially weaker:
+- US followed Japan direction: 44.2%
+- US directly reversed Japan direction: 29.1%
+
+Conclusion:
+Europe is the primary pre-US directional input. Japan is better treated as confirmation or context.
+
+B. MATCHING EUROPE STRUCTURE AND DIRECTION IMPROVES THE SIGNAL
+
+Europe EXPANSION_UP_UP:
+- Sample: 185
+- US directional up: 64.3%
+- US directional down: 13.0%
+
+Europe EXPANSION_DOWN_DOWN:
+- Sample: 208
+- US directional down: 65.9%
+- US directional up: 10.1%
+
+Conclusion:
+Direction provides the bias, while matching structural expansion confirms the bias.
+
+C. CONTAINED SESSIONS CAN STILL HAVE DIRECTION
+
+Europe CONTAINED_RANGE_UP:
+- Sample: 67
+- US directional up: 47.8%
+- US directional down: 28.4%
+
+Europe CONTAINED_RANGE_DOWN:
+- Sample: 84
+- US directional down: 47.6%
+- US directional up: 25.0%
+
+Conclusion:
+Contained sessions are weaker than aligned directional expansions, but they are not automatically directionless. Keeping structure and direction separate was the correct design choice.
+
+D. STRUCTURE-DIRECTION CONFLICT
+
+Europe EXPANSION_UP_DOWN:
+- Sample: 41
+- US directional down: 48.8%
+- US directional up: 26.8%
+
+Europe EXPANSION_DOWN_UP:
+- Sample: 30
+- US directional up: 36.7%
+- US directional down: 33.3%
+
+Conclusion:
+The bearish conflict case supports giving more weight to open-to-close direction than upside structural reach. However, the opposite conflict case is nearly balanced. The evidence is asymmetric, so the general rule is only partially confirmed.
+
+E. JAPAN AGREEMENT STRENGTHENS EUROPE
+
+Japan UP + Europe UP:
+- Sample: 134
+- US directional up: 65.7%
+
+Japan DOWN + Europe DOWN:
+- Sample: 156
+- US directional down: 69.9%
+
+When Japan and Europe conflicted:
+
+Japan DOWN + Europe UP:
+- Sample: 124
+- US followed Europe up: 48.4%
+
+Japan UP + Europe DOWN:
+- Sample: 165
+- US followed Europe down: 49.1%
+
+Conclusion:
+Japan agreement materially increases conviction. When Japan conflicts with Europe, the Europe bias remains present but becomes much weaker.
+
+============================================================
+7. CORRELATION / ASSOCIATION TEST
+============================================================
+
+Because the main predictors are categorical, Pearson correlation is not appropriate.
+
+Primary categorical test:
+- Chi-square test of independence
+- Bias-corrected Cramér’s V as association strength
+
+For the directional association test, the US outcome was grouped into:
+- UP
+- DOWN
+- NON_DIRECTIONAL
+
+NON_DIRECTIONAL combines:
+- US_INTERNAL_LIQUIDITY_TAKE
+- US_BOTH_SIDE_EXPANSION
+- US_TRUE_CONTRACTION
+
+The original five US outcomes remain unchanged in the descriptive analysis.
+
+A. ASSOCIATION RANKING
+
+1. Europe direction + direction-strength rank
+- Cramér’s V: 0.367
+- p-value: 1.65 × 10^-32
+- N: 617
+
+2. Europe direction + aligned accepted/not-accepted buffer break
+- Cramér’s V: 0.365
+- p-value: 9.28 × 10^-36
+- N: 647
+
+3. Europe session context: structure + direction
+- Cramér’s V: 0.350
+- p-value: 9.17 × 10^-31
+- N: 729
+
+4. Japan + Europe direction combination
+- Cramér’s V: 0.347
+- p-value: 6.43 × 10^-32
+- N: 728
+
+5. Europe direction alone
+- Cramér’s V: 0.331
+- p-value: 2.61 × 10^-34
+- N: 729
+
+6. Europe structure alone
+- Cramér’s V: 0.287
+- p-value: 9.24 × 10^-25
+- N: 729
+
+7. Japan session context
+- Cramér’s V: 0.114
+- p-value: 0.0069
+- N: 728
+
+8. Japan direction alone
+- Cramér’s V: 0.110
+- p-value: 0.00024
+- N: 728
+
+Interpretation:
+- The strongest tested relationship is Europe direction combined with Europe direction strength.
+- Europe direction combined with accepted buffer behavior is almost equally strong.
+- Europe direction alone is the strongest simple standalone predictor.
+- Europe structure is useful, but weaker than Europe direction.
+- Japan variables are statistically associated with the US outcome, but their relationship is much weaker.
+
+These relationships are moderate rather than deterministic. Statistical significance does not mean the condition is sufficient for a profitable trade.
+
+B. DIRECTION-STRENGTH TEST
+
+For directional Europe sessions, the ordered strength rank was tested against whether the US followed Europe.
+
+Spearman correlation:
+- Spearman rho: 0.200
+- p-value: 5.15 × 10^-7
+- N: 617
+
+Continuation by Europe direction-strength rank:
+
+LOW_DIRECTION_STRENGTH:
+- Sample: 210
+- US followed Europe: 44.3%
+
+MEDIUM_DIRECTION_STRENGTH:
+- Sample: 199
+- US followed Europe: 62.8%
+
+HIGH_DIRECTION_STRENGTH:
+- Sample: 208
+- US followed Europe: 68.3%
+
+Medium/high versus low direction strength:
+- Medium/high continuation: 65.6%
+- Low continuation: 44.3%
+- Odds ratio: 2.40
+- Approximate 95% confidence interval: 1.71 to 3.37
+
+Conclusion:
+Europe direction strength is the clearest useful quality rank. A low-strength Europe direction is not a reliable continuation condition. Medium and high strength materially improve the probability of US continuation.
+
+C. OTHER QUALITY RANKS
+
+Europe range rank versus US following Europe:
+- Spearman rho: 0.020
+- p-value: 0.619
+- No significant monotonic relationship
+
+Europe reference-overlap rank versus US following Europe:
+- Spearman rho: -0.056
+- p-value: 0.163
+- No significant monotonic relationship
+
+Europe expansion-strength rank in aligned one-sided expansion sessions:
+- Spearman rho: -0.041
+- p-value: 0.440
+- No significant monotonic relationship
+
+Conclusion:
+Range, overlap, and expansion magnitude may still describe the market state, but they do not currently provide a consistent standalone improvement in directional continuation.
+
+============================================================
+8. BUFFER ACCEPTANCE FINDING
+============================================================
+
+Europe UP with an accepted break beyond the Japan upper 0.5% buffer:
+- Sample: 117
+- US directional up: 67.5%
+- US directional down: 6.0%
+
+Europe DOWN with an accepted break beyond the Japan lower 0.5% buffer:
+- Sample: 144
+- US directional down: 72.2%
+- US directional up: 6.9%
+
+Combined accepted directional breaks:
+- Sample: 261
+- US followed Europe: 70.1%
+- US directly reversed Europe: 6.5%
+
+Directional Europe sessions without an accepted aligned break:
+- Sample: 386
+- US followed Europe: 50.3%
+- US directly reversed Europe: 23.6%
+
+Accepted break + medium/high Europe direction strength:
+
+Upside:
+- Sample: 105
+- US directional up: 69.5%
+- US directional down: 4.8%
+
+Downside:
+- Sample: 126
+- US directional down: 73.0%
+- US directional up: 7.1%
+
+Adding Japan agreement:
+
+Japan UP + Europe accepted upside + Europe UP with medium/high strength:
+- Sample: 67
+- US directional up: 71.6%
+
+Japan DOWN + Europe accepted downside + Europe DOWN with medium/high strength:
+- Sample: 78
+- US directional down: 79.5%
+
+Conclusion:
+Buffer acceptance is one of the strongest practical confirmation variables in the design. However, the most specific combinations were discovered after examining the dataset and require out-of-sample confirmation.
+
+============================================================
+9. HYPOTHESIS DECISIONS
+============================================================
+
+H1 — Europe direction is related to US outcome:
+SUPPORTED.
+
+Evidence:
+- Europe direction alone Cramér’s V = 0.331.
+- p-value = 2.61 × 10^-34.
+- US followed directional Europe 58.3% and directly reversed it 16.7%.
+
+H2 — Matching Europe structure and direction strengthens the signal:
+SUPPORTED.
+
+Evidence:
+- EXPANSION_UP_UP led to US up 64.3%.
+- EXPANSION_DOWN_DOWN led to US down 65.9%.
+- Europe combined context had Cramér’s V = 0.350, stronger than Europe direction or structure alone.
+
+H3 — Japan agreement strengthens Europe:
+SUPPORTED.
+
+Evidence:
+- Japan UP + Europe UP led to US up 65.7%.
+- Japan DOWN + Europe DOWN led to US down 69.9%.
+- Conflicting Japan/Europe direction reduced Europe continuation to approximately 48%–49%.
+
+H4 — Higher Europe direction strength improves continuation:
+SUPPORTED.
+
+Evidence:
+- Spearman rho = 0.200, p = 5.15 × 10^-7.
+- Continuation increased from 44.3% at LOW strength to 62.8% at MEDIUM and 68.3% at HIGH.
+- Medium/high strength had 2.40 times the continuation odds of low strength.
+
+H5 — Accepted Europe breaks improve continuation:
+SUPPORTED.
+
+Evidence:
+- Accepted directional breaks followed Europe 70.1%.
+- Direct reversal occurred only 6.5%.
+- Europe direction + accepted-break status had Cramér’s V = 0.365.
+
+H6 — Range, expansion magnitude, and overlap are strong standalone predictors:
+NOT SUPPORTED.
+
+Evidence:
+- Europe range rank: rho = 0.020, p = 0.619.
+- Europe overlap rank: rho = -0.056, p = 0.163.
+- Europe aligned expansion-strength rank: rho = -0.041, p = 0.440.
+
+H7 — Open-to-close direction should outweigh conflicting structure:
+PARTIALLY SUPPORTED.
+
+Evidence:
+- EXPANSION_UP_DOWN led to US down 48.8% versus US up 26.8%.
+- EXPANSION_DOWN_UP was nearly balanced: US up 36.7% versus US down 33.3%.
+
+The conflict relationship is not symmetric and should not yet be treated as a universal rule.
+
+============================================================
+10. FINAL RESEARCH CONCLUSION
+============================================================
+
+The latest research design supports a clear hierarchy:
+
+1. Europe open-to-close direction is the primary US/NY directional bias.
+2. Europe direction strength is the strongest quality rank.
+3. Matching Europe structural expansion strengthens the direction.
+4. Acceptance beyond the Japan 0.5% buffer is a strong confirmation.
+5. Japan agreement increases conviction.
+6. Japan disagreement weakens the Europe bias but does not automatically reverse it.
+7. Contained Europe sessions can still provide direction, but the signal is weaker.
+8. Range rank, overlap rank, and expansion-strength rank should remain descriptive context rather than core filters.
+9. US true contraction is too rare to be a primary prediction target.
+
+The strongest practical research condition is:
+
+- Europe direction is UP or DOWN;
+- Europe direction strength is MEDIUM or HIGH;
+- Europe structure agrees with that direction;
+- Europe accepts beyond the relevant Japan 0.5% buffer;
+- Japan direction agrees with Europe.
+
+This condition provides the clearest historical directional tendency in the dataset.
+
+============================================================
+11. IMPORTANT LIMITATIONS
+============================================================
+
+This research identifies conditional relationships, not a complete trading edge.
+
+A US_DIRECTIONAL_UP or US_DIRECTIONAL_DOWN outcome only means that the session eventually reached the relevant structural side under the US V3 definition.
+
+It does not establish:
+- A valid entry price
+- Whether adverse movement occurred first
+- Whether a stop would survive
+- Whether the target was reached before invalidation
+- Expected R-multiple
+- Transaction fees
+- Slippage
+- Execution latency
+- Out-of-sample stability
+- Cross-symbol robustness
+
+The strongest composite conditions were selected after examining the dataset. They therefore carry data-mining risk.
+
+============================================================
+12. NEXT RESEARCH STEP
+============================================================
+
+Freeze the strongest rules before further testing:
+
+Primary directional bias:
+- Europe direction
+
+Quality filters:
+- Europe direction strength must be MEDIUM or HIGH
+- Europe structure should agree with direction
+- Relevant Europe break should be accepted beyond Japan’s 0.5% buffer
+- Japan agreement should be recorded as higher conviction
+
+Then test the actual US price path:
+
+1. Entry opportunity after US open
+2. Retest or pullback availability
+3. Maximum adverse excursion before favorable expansion
+4. Target-before-stop probability
+5. Time to target
+6. Realistic fees and slippage
+7. Walk-forward and out-of-sample performance
+8. Performance on additional symbols
+
+Until those execution tests are completed, the result should be treated as a validated directional-context hypothesis, not yet as a finished trading system.

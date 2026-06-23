@@ -22,8 +22,16 @@ class ParsedTrade:
 def _row_to_parsed_trade(row: pd.Series) -> ParsedTrade:
     is_buyer_maker = bool(row["is_buyer_maker"])
     aggressive_side = "sell" if is_buyer_maker else "buy"
+    timestamp_value = row["timestamp"]
+    if isinstance(timestamp_value, pd.Timestamp):
+        if timestamp_value.tzinfo is not None:
+            timestamp_ms = int(timestamp_value.tz_convert("UTC").value // 1_000_000)
+        else:
+            timestamp_ms = int(timestamp_value.value // 1_000_000)
+    else:
+        timestamp_ms = int(timestamp_value)
     return ParsedTrade(
-        timestamp_ms=int(row["timestamp"]),
+        timestamp_ms=timestamp_ms,
         price=float(row["price"]),
         qty=float(row["qty"]),
         aggressive_side=aggressive_side,
@@ -98,7 +106,10 @@ def aggregate_trades_to_ohlcv(
     if trades_df.empty:
         return []
 
-    sorted_df = trades_df.sort_values(["timestamp", "price", "qty"], kind="mergesort")
+    if "raw_index" in trades_df.columns:
+        sorted_df = trades_df.sort_values(["timestamp", "raw_index"], kind="mergesort")
+    else:
+        sorted_df = trades_df.sort_values(["timestamp"], kind="mergesort")
     parsed_trades = [_row_to_parsed_trade(row) for _, row in sorted_df.iterrows()]
 
     candles_state: dict[datetime, dict[str, Any]] = {}

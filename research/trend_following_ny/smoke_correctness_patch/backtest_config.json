@@ -1,0 +1,19 @@
+{
+  "symbol": "AVAXUSDC",
+  "volume_profile_bins": 50,
+  "value_area_pct": 0.7,
+  "entry_model": "VALUE_AREA_ZONE",
+  "stop_model": "INSIDE_VALUE_PERCENTAGE",
+  "regime_mode": "ALL_SESSIONS_DIAGNOSTIC",
+  "eligible_asia_europe_context_combos": [],
+  "entry_zone_pct": 0.005,
+  "inside_value_stop_pct": 0.005,
+  "fee_pct_per_side": 0.0,
+  "slippage_pct_per_side": 0.0,
+  "entry_latency_ms": 0,
+  "tp1_R": 2.0,
+  "tp1_fraction": 0.5,
+  "trailing_distance_R": 1.0,
+  "max_one_trade_per_ny_session": true,
+  "confirmation_mode": "location_only_diagnostic"
+}
