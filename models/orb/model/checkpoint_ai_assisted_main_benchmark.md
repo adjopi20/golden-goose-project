@@ -55,6 +55,7 @@ reads frozen logic
 walks session candle-by-candle
 labels setup: take / reject / wait
 writes reason, levels, delta, bubbles, invalidation
+labels entry_model = trend or mean_reversion
 ```
 
 Deterministic engine:

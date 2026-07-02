@@ -78,7 +78,7 @@ async def run() -> None:
         storage.write("ai_decisions", decision)
         gate_result = gate.validate(decision, has_open_position=broker.has_open_position())
         storage.write("risk_gate", {"decision": decision, "gate": gate_result})
-        open_event = broker.on_decision(decision, gate_result)
+        open_event = broker.on_decision(decision, gate_result, closed.snapshot)
         if open_event is not None:
             storage.write("paper_orders", open_event)
 

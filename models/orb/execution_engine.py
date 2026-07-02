@@ -14,6 +14,7 @@ class ExecutionConfig:
 
 @dataclass
 class ExecutionPosition:
+    entry_model: str
     direction: str
     entry: float
     stop_loss: float
@@ -21,6 +22,7 @@ class ExecutionPosition:
     qty_total: float
     qty_open: float
     tp1_price: float
+    tp2_price: float | None
     tp1_fraction: float
     runner_trail_distance: float
     fee_paid: float
@@ -44,12 +46,15 @@ def fee(price: float, qty: float, fee_bps: float) -> float:
 def open_position(
     *,
     direction: str,
+    entry_model: str = "trend",
     requested_entry: float,
     stop_loss: float,
     equity: float,
     risk_fraction: float,
     config: ExecutionConfig,
     max_hold_exit_ms: int | None = None,
+    tp1_price: float | None = None,
+    tp2_price: float | None = None,
 ) -> tuple[ExecutionPosition | None, dict]:
     entry = execution_price(requested_entry, direction, "entry", config.slippage_bps)
     risk = entry - stop_loss if direction == "long" else stop_loss - entry
@@ -57,15 +62,21 @@ def open_position(
         return None, {"event": "paper_reject", "reason": "zero_or_invalid_risk"}
     qty = equity * risk_fraction / risk
     entry_fee = fee(entry, qty, config.fee_bps)
-    tp1 = entry + config.tp1_r * risk if direction == "long" else entry - config.tp1_r * risk
+    tp1 = tp1_price if tp1_price is not None else entry + config.tp1_r * risk if direction == "long" else entry - config.tp1_r * risk
+    if direction == "long" and (tp1 <= entry or (tp2_price is not None and tp2_price <= tp1)):
+        return None, {"event": "paper_reject", "reason": "invalid_long_targets"}
+    if direction == "short" and (tp1 >= entry or (tp2_price is not None and tp2_price >= tp1)):
+        return None, {"event": "paper_reject", "reason": "invalid_short_targets"}
     position = ExecutionPosition(
+        entry_model=entry_model,
         direction=direction,
         entry=entry,
         stop_loss=stop_loss,
         initial_risk=risk,
         qty_total=qty,
         qty_open=qty,
-        tp1_price=tp1,
+        tp1_price=float(tp1),
+        tp2_price=tp2_price,
         tp1_fraction=config.tp1_fraction,
         runner_trail_distance=abs(tp1 - entry) * config.runner_trail_tp1_fraction,
         fee_paid=entry_fee,
@@ -114,9 +125,18 @@ def on_price(position: ExecutionPosition, price: float, config: ExecutionConfig)
             position.qty_open -= qty
             position.tp1_hit = True
             position.best_price = price
-            position.runner_stop = _runner_stop(position)
+            position.runner_stop = position.entry if position.tp2_price is not None else _runner_stop(position)
             event["position"] = asdict(position)
             return event
+        return None
+
+    if position.tp2_price is not None:
+        hit_tp2 = price >= position.tp2_price if position.direction == "long" else price <= position.tp2_price
+        stopped = price <= float(position.runner_stop) if position.direction == "long" else price >= float(position.runner_stop)
+        if hit_tp2:
+            return _exit_event(position, "tp2", position.tp2_price, position.qty_open, config)
+        if stopped:
+            return _exit_event(position, "protected_stop", float(position.runner_stop), position.qty_open, config)
         return None
 
     old_stop = position.runner_stop

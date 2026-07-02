@@ -242,6 +242,34 @@ def test_paper_broker_force_exits_at_next_overnight_end(tmp_path: Path) -> None:
     assert broker.has_open_position() is False
 
 
+def test_paper_broker_uses_profile_targets_for_mean_reversion(tmp_path: Path) -> None:
+    broker = PaperBroker(_config(tmp_path))
+    decision = {
+        "decision": "TAKE",
+        "entry_model": "mean_reversion",
+        "direction": "long",
+        "entry": 100.0,
+        "stop_loss": 99.0,
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 14, 23),
+    }
+    snapshot = {"previous_24h_profile_for_session": {"poc_price": 102.0, "vah": 103.0, "val": 97.0}}
+    opened = broker.on_decision(decision, {"accepted": True}, snapshot)
+
+    assert opened["position"]["entry_model"] == "mean_reversion"
+    assert opened["position"]["tp1_price"] == 102.0
+    assert opened["position"]["tp2_price"] == 103.0
+
+    tp1 = broker.on_candle({"high": 102.1, "low": 100.0})
+    assert tp1[0]["event"] == "paper_tp1"
+    assert broker.position is not None
+    assert broker.position.runner_stop == broker.position.entry
+
+    closed = broker.on_candle({"high": 103.1, "low": 101.0})
+    assert closed[0]["event"] == "paper_close"
+    assert closed[0]["reason"] == "tp2"
+    assert broker.has_open_position() is False
+
+
 def test_paper_broker_rejects_take_without_snapshot_timestamp(tmp_path: Path) -> None:
     broker = PaperBroker(_config(tmp_path))
     rejected = broker.on_decision(
@@ -263,5 +291,6 @@ if __name__ == "__main__":
         test_storage_bootstrap_reads_recent_raw_trades(tmp_path)
         test_paper_broker_uses_benchmark_tp1_and_runner_trailing(tmp_path)
         test_paper_broker_force_exits_at_next_overnight_end(tmp_path)
+        test_paper_broker_uses_profile_targets_for_mean_reversion(tmp_path)
         test_paper_broker_rejects_take_without_snapshot_timestamp(tmp_path)
     print("orb_live_agent smoke check passed")

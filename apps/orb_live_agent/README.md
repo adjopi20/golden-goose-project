@@ -83,9 +83,11 @@ PAPER_RUNNER_TRAIL_TP1_FRACTION=0.5
 ```
 
 Fees are charged on entry and exit notional. Slippage worsens entry and exit
-fills. The AI proposes entry direction, entry price, stop, and rationale; the
-paper execution engine ignores AI take-profit output. It closes 50% at 4R, then
-starts trailing the remaining 50% by half the entry-to-TP1 distance.
+fills. The AI proposes entry model, direction, entry price, stop, and rationale;
+the paper execution engine ignores AI take-profit output. Trend trades close 50%
+at 4R, then trail the remaining 50% by half the entry-to-TP1 distance. Mean
+reversion trades close 50% at prior-24h POC, then close the rest at prior-24h
+VAH for longs or VAL for shorts.
 If neither stop nor TP/trailing resolves the trade, the broker force-exits at
 the first raw aggTrade at or after `PRE_NY_START_TIME` on the next NY day.
 
