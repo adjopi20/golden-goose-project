@@ -70,6 +70,21 @@ ny_first_15m_profile:
   09:30 <= time < 09:45 current NY day
 ```
 
+## Paper Execution
+
+Paper execution is parameter-driven, not AI-decided:
+
+```text
+PAPER_FEE_BPS=10
+PAPER_SLIPPAGE_BPS=2
+PAPER_TRAILING_ENABLED=true
+PAPER_TRAILING_R_MULTIPLE=1.0
+```
+
+Fees are charged on entry and exit notional. Slippage worsens entry and exit
+fills. Trailing moves the stop by a fixed R distance from the best price since
+entry and never widens the original stop.
+
 ## Current Limits
 
 - AI live calls are disabled unless `AI_LIVE_CALLS_ENABLED=true`.

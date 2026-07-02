@@ -64,6 +64,10 @@ class AgentConfig:
     bubble_min_notional: float | None
     paper_initial_equity: float
     paper_risk_fraction: float
+    paper_fee_bps: float
+    paper_slippage_bps: float
+    paper_trailing_enabled: bool
+    paper_trailing_r_multiple: float
     audit_kline_1m: bool
 
 
@@ -91,5 +95,9 @@ def load_config() -> AgentConfig:
         bubble_min_notional=_get_float("BUBBLE_MIN_NOTIONAL"),
         paper_initial_equity=_get_float("PAPER_INITIAL_EQUITY", 1000.0) or 1000.0,
         paper_risk_fraction=_get_float("PAPER_RISK_FRACTION", 0.05) or 0.05,
+        paper_fee_bps=_get_float("PAPER_FEE_BPS", 10.0) or 0.0,
+        paper_slippage_bps=_get_float("PAPER_SLIPPAGE_BPS", 2.0) or 0.0,
+        paper_trailing_enabled=_get_bool("PAPER_TRAILING_ENABLED", True),
+        paper_trailing_r_multiple=_get_float("PAPER_TRAILING_R_MULTIPLE", 1.0) or 1.0,
         audit_kline_1m=_get_bool("AUDIT_KLINE_1M"),
     )

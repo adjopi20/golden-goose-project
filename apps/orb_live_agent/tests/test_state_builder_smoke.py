@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "apps" / "orb_live_agent" / "src"))
 from orb_live_agent.config import AgentConfig
 from orb_live_agent.ai_decision import AiDecisionService
 from orb_live_agent.main import _pre_ai_wait_decision
+from orb_live_agent.paper_broker import PaperBroker
 from orb_live_agent.state_builder import LiveStateBuilder
 from orb_live_agent.storage import JsonlStorage
 from orb_live_agent.trigger_observer import observe_triggers
@@ -39,6 +40,10 @@ def _config(tmp_path: Path) -> AgentConfig:
         bubble_min_notional=None,
         paper_initial_equity=1000.0,
         paper_risk_fraction=0.05,
+        paper_fee_bps=10.0,
+        paper_slippage_bps=2.0,
+        paper_trailing_enabled=True,
+        paper_trailing_r_multiple=1.0,
         audit_kline_1m=False,
     )
 
@@ -180,6 +185,25 @@ def test_storage_bootstrap_reads_recent_raw_trades(tmp_path: Path) -> None:
     assert [row["agg_trade_id"] for row in rows] == [2, 3]
 
 
+def test_paper_broker_applies_costs_and_trailing(tmp_path: Path) -> None:
+    broker = PaperBroker(_config(tmp_path))
+    decision = {"decision": "TAKE", "direction": "long", "entry": 100.0, "stop_loss": 99.0}
+    opened = broker.on_decision(decision, {"accepted": True})
+    assert opened["entry_fill"] > 100.0
+    assert opened["entry_fee"] > 0.0
+
+    trailed = broker.on_candle({"high": 102.0, "low": 100.5})
+    assert trailed["event"] == "paper_trail_update"
+    assert trailed["position"]["stop_loss"] > 99.0
+
+    closed = broker.on_candle({"high": 101.0, "low": 100.8})
+    assert closed["event"] == "paper_close"
+    assert closed["reason"] == "stop_loss"
+    assert closed["exit_fill"] < closed["exit_requested"]
+    assert closed["exit_fee"] > 0.0
+    assert closed["fees_total"] > closed["exit_fee"]
+
+
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -190,4 +214,5 @@ if __name__ == "__main__":
         test_ai_provider_key_can_be_present_without_live_calls(tmp_path)
         test_pre_ai_wait_blocks_incomplete_required_profiles()
         test_storage_bootstrap_reads_recent_raw_trades(tmp_path)
+        test_paper_broker_applies_costs_and_trailing(tmp_path)
     print("orb_live_agent smoke check passed")
