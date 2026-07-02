@@ -188,7 +188,13 @@ def test_storage_bootstrap_reads_recent_raw_trades(tmp_path: Path) -> None:
 
 def test_paper_broker_uses_benchmark_tp1_and_runner_trailing(tmp_path: Path) -> None:
     broker = PaperBroker(_config(tmp_path))
-    decision = {"decision": "TAKE", "direction": "long", "entry": 100.0, "stop_loss": 99.0}
+    decision = {
+        "decision": "TAKE",
+        "direction": "long",
+        "entry": 100.0,
+        "stop_loss": 99.0,
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 9, 46),
+    }
     opened = broker.on_decision(decision, {"accepted": True})
     assert opened["entry_fill"] > 100.0
     assert opened["entry_fee"] > 0.0
@@ -217,6 +223,34 @@ def test_paper_broker_uses_benchmark_tp1_and_runner_trailing(tmp_path: Path) -> 
     assert broker.has_open_position() is False
 
 
+def test_paper_broker_force_exits_at_next_overnight_end(tmp_path: Path) -> None:
+    broker = PaperBroker(_config(tmp_path))
+    decision = {
+        "decision": "TAKE",
+        "direction": "short",
+        "entry": 100.0,
+        "stop_loss": 110.0,
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 10, 0),
+    }
+    broker.on_decision(decision, {"accepted": True})
+
+    assert broker.on_trade({"timestamp": _ms_ny(2024, 7, 2, 1, 29), "price": 95.0}) == []
+    closed = broker.on_trade({"timestamp": _ms_ny(2024, 7, 2, 1, 30), "price": 95.0})
+
+    assert closed[0]["event"] == "paper_close"
+    assert closed[0]["reason"] == "overnight_time_invalidation"
+    assert broker.has_open_position() is False
+
+
+def test_paper_broker_rejects_take_without_snapshot_timestamp(tmp_path: Path) -> None:
+    broker = PaperBroker(_config(tmp_path))
+    rejected = broker.on_decision(
+        {"decision": "TAKE", "direction": "long", "entry": 100.0, "stop_loss": 99.0},
+        {"accepted": True},
+    )
+    assert rejected["reason"] == "missing_snapshot_timestamp_ms"
+
+
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -228,4 +262,6 @@ if __name__ == "__main__":
         test_pre_ai_wait_blocks_incomplete_required_profiles()
         test_storage_bootstrap_reads_recent_raw_trades(tmp_path)
         test_paper_broker_uses_benchmark_tp1_and_runner_trailing(tmp_path)
+        test_paper_broker_force_exits_at_next_overnight_end(tmp_path)
+        test_paper_broker_rejects_take_without_snapshot_timestamp(tmp_path)
     print("orb_live_agent smoke check passed")

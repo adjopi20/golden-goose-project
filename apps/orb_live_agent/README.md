@@ -86,6 +86,8 @@ Fees are charged on entry and exit notional. Slippage worsens entry and exit
 fills. The AI proposes entry direction, entry price, stop, and rationale; the
 paper execution engine ignores AI take-profit output. It closes 50% at 4R, then
 starts trailing the remaining 50% by half the entry-to-TP1 distance.
+If neither stop nor TP/trailing resolves the trade, the broker force-exits at
+the first raw aggTrade at or after `PRE_NY_START_TIME` on the next NY day.
 
 ## Current Limits
 

@@ -24,6 +24,7 @@ class ExecutionPosition:
     tp1_fraction: float
     runner_trail_distance: float
     fee_paid: float
+    max_hold_exit_ms: int | None = None
     tp1_hit: bool = False
     best_price: float | None = None
     runner_stop: float | None = None
@@ -48,6 +49,7 @@ def open_position(
     equity: float,
     risk_fraction: float,
     config: ExecutionConfig,
+    max_hold_exit_ms: int | None = None,
 ) -> tuple[ExecutionPosition | None, dict]:
     entry = execution_price(requested_entry, direction, "entry", config.slippage_bps)
     risk = entry - stop_loss if direction == "long" else stop_loss - entry
@@ -67,6 +69,7 @@ def open_position(
         tp1_fraction=config.tp1_fraction,
         runner_trail_distance=abs(tp1 - entry) * config.runner_trail_tp1_fraction,
         fee_paid=entry_fee,
+        max_hold_exit_ms=max_hold_exit_ms,
     )
     return position, {
         "event": "paper_open",
@@ -131,6 +134,10 @@ def on_price(position: ExecutionPosition, price: float, config: ExecutionConfig)
     if position.runner_stop != old_stop:
         return {"event": "paper_trail_update", "position": asdict(position)}
     return None
+
+
+def force_exit(position: ExecutionPosition, price: float, config: ExecutionConfig, reason: str) -> dict:
+    return _exit_event(position, reason, price, position.qty_open, config)
 
 
 def _runner_stop(position: ExecutionPosition) -> float:

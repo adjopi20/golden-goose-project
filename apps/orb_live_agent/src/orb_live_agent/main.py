@@ -56,6 +56,8 @@ async def run() -> None:
 
         trade = parse_aggtrade(data)
         storage.write("raw_aggtrade", trade)
+        for close_event in broker.on_trade(trade):
+            storage.write("paper_orders", close_event)
         closed = state.push_trade(trade)
         if closed is None:
             continue

@@ -22,6 +22,7 @@ no pre-TP protection
 runner trail activates only after TP1
 runner trail distance = 50% of entry-to-TP1 distance
 no forced 04:00 close
+max hold = force exit at first raw aggTrade at/after next overnight end
 ```
 
 Mean-reversion:
@@ -31,6 +32,7 @@ both-bias structural MR allowed
 TP1 = prior-24h POC
 TP2 = prior-24h VA target
 no forced 04:00 close
+max hold = force exit at first raw aggTrade at/after next overnight end
 ```
 
 Portfolio assumption:
@@ -41,6 +43,7 @@ risk_per_trade = 5% of current equity
 compounding = enabled
 fee = 0.0400% per fill
 slippage = 0.0500% per fill
+next overnight end = PRE_NY_START_TIME / 01:30 New York time
 ```
 
 ## Workflow

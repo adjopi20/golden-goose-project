@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
-from models.orb.execution_engine import ExecutionConfig, ExecutionPosition, on_price, open_position
+from models.orb.execution_engine import ExecutionConfig, ExecutionPosition, force_exit, on_price, open_position
 
 from .config import AgentConfig
 
@@ -12,6 +14,8 @@ class PaperBroker:
     def __init__(self, config: AgentConfig) -> None:
         self.equity = float(config.paper_initial_equity)
         self.risk_fraction = float(config.paper_risk_fraction)
+        self.session_tz = ZoneInfo(config.session_timezone)
+        self.max_hold_exit_time = _parse_time(config.pre_ny_start_time)
         self.execution_config = ExecutionConfig(
             fee_bps=float(config.paper_fee_bps),
             slippage_bps=float(config.paper_slippage_bps),
@@ -27,6 +31,8 @@ class PaperBroker:
     def on_decision(self, decision: dict[str, Any], gate: dict[str, Any]) -> dict[str, Any] | None:
         if decision.get("decision") != "TAKE" or not gate.get("accepted"):
             return None
+        if decision.get("snapshot_timestamp_ms") is None:
+            return {"event": "paper_reject", "reason": "missing_snapshot_timestamp_ms"}
         position, event = open_position(
             direction=str(decision["direction"]),
             requested_entry=float(decision["entry"]),
@@ -34,6 +40,7 @@ class PaperBroker:
             equity=self.equity,
             risk_fraction=self.risk_fraction,
             config=self.execution_config,
+            max_hold_exit_ms=self._max_hold_exit_ms(int(decision["snapshot_timestamp_ms"])),
         )
         if position is None:
             return event
@@ -42,6 +49,20 @@ class PaperBroker:
         self.equity -= position.fee_paid
         event["equity"] = self.equity
         return event
+
+    def on_trade(self, trade: dict[str, Any]) -> list[dict[str, Any]]:
+        if self.position is None or self.position.max_hold_exit_ms is None:
+            return []
+        if int(trade["timestamp"]) < self.position.max_hold_exit_ms:
+            return []
+        event = force_exit(
+            self.position,
+            float(trade["price"]),
+            self.execution_config,
+            "overnight_time_invalidation",
+        )
+        event["timestamp"] = int(trade["timestamp"])
+        return self._apply_event(event)
 
     def on_candle(self, candle: dict[str, Any]) -> list[dict[str, Any]]:
         if self.position is None:
@@ -84,6 +105,12 @@ class PaperBroker:
             return pos.tp1_price
         return None
 
+    def _max_hold_exit_ms(self, opened_at_ms: int) -> int:
+        opened_at = datetime.fromtimestamp(opened_at_ms / 1000.0, tz=ZoneInfo("UTC")).astimezone(self.session_tz)
+        cutoff_date = opened_at.date() + timedelta(days=1)
+        cutoff = datetime.combine(cutoff_date, self.max_hold_exit_time, tzinfo=self.session_tz)
+        return int(cutoff.timestamp() * 1000)
+
     def _apply_event(self, event: dict[str, Any] | None) -> list[dict[str, Any]]:
         if event is None:
             return []
@@ -97,3 +124,8 @@ class PaperBroker:
                 event["position"] = asdict(self.position)
             self.position = None
         return [event]
+
+
+def _parse_time(value: str) -> time:
+    hour, minute = value.split(":", maxsplit=1)
+    return time(hour=int(hour), minute=int(minute))
