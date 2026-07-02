@@ -1,0 +1,5 @@
+{
+  "python.analysis.extraPaths": [
+    "./apps/orb_live_agent/src"
+  ]
+}

@@ -1,0 +1,10 @@
+services:
+  orb-live-agent:
+    build:
+      context: ../..
+      dockerfile: apps/orb_live_agent/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/apps/orb_live_agent/data
+    restart: unless-stopped

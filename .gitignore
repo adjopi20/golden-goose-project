@@ -10,6 +10,10 @@ reports/
 _tmp_binance_historical/
 .venv/
 .pytest_cache/
+.pytest_tmp*/
+.tmp-pytest*/
+.tmp-mpl-cache/
+models/orb/runs/
 
 # ignore extension
 *.log
@@ -20,3 +24,10 @@ _tmp_binance_historical/
 *.jpg
 *.html
 *ipynb
+*.png
+.env
+**/.env
+.env.*
+**/.env.*
+!.env.example
+!**/.env.example

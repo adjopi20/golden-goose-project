@@ -1,0 +1,17 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+.tmp*
+tmp/
+research/
+notebook/
+storage/
+models/orb/runs/
+*.parquet
+*.jsonl
+*.log
+*.csv
+*.xlsx
+apps/orb_live_agent/data/
+apps/orb_live_agent/.env
