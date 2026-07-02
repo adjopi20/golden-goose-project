@@ -67,8 +67,7 @@ async def run() -> None:
         trigger_observation = observe_triggers(closed.snapshot, closed.bubbles, closed.trigger_reference_levels)
         storage.write("trigger_observations", trigger_observation)
 
-        close_event = broker.on_candle(closed.candle)
-        if close_event is not None:
+        for close_event in broker.on_candle(closed.candle):
             storage.write("paper_orders", close_event)
 
         decision = _pre_ai_wait_decision(closed.snapshot)

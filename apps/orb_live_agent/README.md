@@ -75,22 +75,24 @@ ny_first_15m_profile:
 Paper execution is parameter-driven, not AI-decided:
 
 ```text
-PAPER_FEE_BPS=10
-PAPER_SLIPPAGE_BPS=2
-PAPER_TRAILING_ENABLED=true
-PAPER_TRAILING_R_MULTIPLE=1.0
+PAPER_FEE_BPS=4
+PAPER_SLIPPAGE_BPS=5
+PAPER_TP1_R=4
+PAPER_TP1_FRACTION=0.5
+PAPER_RUNNER_TRAIL_TP1_FRACTION=0.5
 ```
 
 Fees are charged on entry and exit notional. Slippage worsens entry and exit
-fills. Trailing moves the stop by a fixed R distance from the best price since
-entry and never widens the original stop.
+fills. The AI proposes entry direction, entry price, stop, and rationale; the
+paper execution engine ignores AI take-profit output. It closes 50% at 4R, then
+starts trailing the remaining 50% by half the entry-to-TP1 distance.
 
 ## Current Limits
 
 - AI live calls are disabled unless `AI_LIVE_CALLS_ENABLED=true`.
 - Trigger rules are observe-only; they are logged but do not gate AI yet.
 - Binance order execution is intentionally absent.
-- Session windows are configurable in `.env`; defaults use WIB labels for live paper testing.
+- Session windows are configurable in `.env`; defaults use New York local time.
 
 ## AI Provider
 

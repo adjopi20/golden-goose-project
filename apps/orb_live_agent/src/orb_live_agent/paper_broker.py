@@ -1,32 +1,25 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from typing import Any
 
+from models.orb.execution_engine import ExecutionConfig, ExecutionPosition, on_price, open_position
+
 from .config import AgentConfig
-
-
-@dataclass
-class PaperPosition:
-    direction: str
-    entry: float
-    stop_loss: float
-    initial_risk: float
-    take_profit: float | None
-    qty: float
-    fee_paid: float
-    best_price: float
 
 
 class PaperBroker:
     def __init__(self, config: AgentConfig) -> None:
         self.equity = float(config.paper_initial_equity)
         self.risk_fraction = float(config.paper_risk_fraction)
-        self.fee_bps = float(config.paper_fee_bps)
-        self.slippage_bps = float(config.paper_slippage_bps)
-        self.trailing_enabled = bool(config.paper_trailing_enabled)
-        self.trailing_r_multiple = float(config.paper_trailing_r_multiple)
-        self.position: PaperPosition | None = None
+        self.execution_config = ExecutionConfig(
+            fee_bps=float(config.paper_fee_bps),
+            slippage_bps=float(config.paper_slippage_bps),
+            tp1_r=float(config.paper_tp1_r),
+            tp1_fraction=float(config.paper_tp1_fraction),
+            runner_trail_tp1_fraction=float(config.paper_runner_trail_tp1_fraction),
+        )
+        self.position: ExecutionPosition | None = None
 
     def has_open_position(self) -> bool:
         return self.position is not None
@@ -34,101 +27,73 @@ class PaperBroker:
     def on_decision(self, decision: dict[str, Any], gate: dict[str, Any]) -> dict[str, Any] | None:
         if decision.get("decision") != "TAKE" or not gate.get("accepted"):
             return None
-        direction = str(decision["direction"])
-        entry = self._execution_price(float(decision["entry"]), direction, "entry")
-        stop = float(decision["stop_loss"])
-        risk_per_unit = abs(entry - stop)
-        if risk_per_unit <= 0:
-            return {"event": "paper_reject", "reason": "zero_risk"}
-        risk_usd = self.equity * self.risk_fraction
-        qty = risk_usd / risk_per_unit
-        entry_fee = self._fee(entry, qty)
-        self.equity -= entry_fee
-        self.position = PaperPosition(
-            direction=direction,
-            entry=entry,
-            stop_loss=stop,
-            initial_risk=risk_per_unit,
-            take_profit=float(decision["take_profit"]) if decision.get("take_profit") is not None else None,
-            qty=qty,
-            fee_paid=entry_fee,
-            best_price=entry,
+        position, event = open_position(
+            direction=str(decision["direction"]),
+            requested_entry=float(decision["entry"]),
+            stop_loss=float(decision["stop_loss"]),
+            equity=self.equity,
+            risk_fraction=self.risk_fraction,
+            config=self.execution_config,
         )
-        return {
-            "event": "paper_open",
-            "entry_requested": float(decision["entry"]),
-            "entry_fill": entry,
-            "entry_fee": entry_fee,
-            "equity": self.equity,
-            "position": asdict(self.position),
-        }
+        if position is None:
+            return event
 
-    def on_candle(self, candle: dict[str, Any]) -> dict[str, Any] | None:
+        self.position = position
+        self.equity -= position.fee_paid
+        event["equity"] = self.equity
+        return event
+
+    def on_candle(self, candle: dict[str, Any]) -> list[dict[str, Any]]:
         if self.position is None:
-            return None
+            return []
         pos = self.position
         high = float(candle["high"])
         low = float(candle["low"])
-        exit_price = None
-        reason = None
+
+        if not pos.tp1_hit:
+            trigger_price = self._initial_stop_or_tp1_price(pos, high, low)
+            if trigger_price is None:
+                return []
+            event = on_price(pos, trigger_price, self.execution_config)
+            return self._apply_event(event)
+
+        events: list[dict[str, Any]] = []
+        favorable_price = high if pos.direction == "long" else low
+        event = on_price(pos, favorable_price, self.execution_config)
+        events.extend(self._apply_event(event))
+        if self.position is None:
+            return events
+
+        runner_stop = float(self.position.runner_stop)
+        hit_runner_stop = low <= runner_stop if self.position.direction == "long" else high >= runner_stop
+        if hit_runner_stop:
+            event = on_price(self.position, runner_stop, self.execution_config)
+            events.extend(self._apply_event(event))
+        return events
+
+    def _initial_stop_or_tp1_price(self, pos: ExecutionPosition, high: float, low: float) -> float | None:
         if pos.direction == "long":
             if low <= pos.stop_loss:
-                exit_price, reason = pos.stop_loss, "stop_loss"
-            elif pos.take_profit is not None and high >= pos.take_profit:
-                exit_price, reason = pos.take_profit, "take_profit"
-            if exit_price is None:
-                if self._update_trailing_stop(high):
-                    return {"event": "paper_trail_update", "position": asdict(pos)}
-            pnl = (self._execution_price(exit_price, pos.direction, "exit") - pos.entry) * pos.qty if exit_price is not None else 0.0
-        else:
-            if high >= pos.stop_loss:
-                exit_price, reason = pos.stop_loss, "stop_loss"
-            elif pos.take_profit is not None and low <= pos.take_profit:
-                exit_price, reason = pos.take_profit, "take_profit"
-            if exit_price is None:
-                if self._update_trailing_stop(low):
-                    return {"event": "paper_trail_update", "position": asdict(pos)}
-            pnl = (pos.entry - self._execution_price(exit_price, pos.direction, "exit")) * pos.qty if exit_price is not None else 0.0
-        if exit_price is None:
+                return pos.stop_loss
+            if high >= pos.tp1_price:
+                return pos.tp1_price
             return None
-        exit_fill = self._execution_price(exit_price, pos.direction, "exit")
-        exit_fee = self._fee(exit_fill, pos.qty)
-        self.equity += pnl - exit_fee
-        net_pnl = pnl - pos.fee_paid - exit_fee
-        closed = asdict(pos)
-        self.position = None
-        return {
-            "event": "paper_close",
-            "reason": reason,
-            "exit_requested": exit_price,
-            "exit_fill": exit_fill,
-            "exit_fee": exit_fee,
-            "fees_total": pos.fee_paid + exit_fee,
-            "pnl": net_pnl,
-            "gross_pnl": pnl,
-            "equity": self.equity,
-            "position": closed,
-        }
+        if high >= pos.stop_loss:
+            return pos.stop_loss
+        if low <= pos.tp1_price:
+            return pos.tp1_price
+        return None
 
-    def _execution_price(self, price: float, direction: str, phase: str) -> float:
-        slip = self.slippage_bps / 10_000.0
-        if direction == "long":
-            return price * (1.0 + slip) if phase == "entry" else price * (1.0 - slip)
-        return price * (1.0 - slip) if phase == "entry" else price * (1.0 + slip)
-
-    def _fee(self, price: float, qty: float) -> float:
-        return abs(price * qty) * self.fee_bps / 10_000.0
-
-    def _update_trailing_stop(self, favorable_price: float) -> bool:
-        pos = self.position
-        if pos is None or not self.trailing_enabled or self.trailing_r_multiple <= 0:
-            return False
-        old_stop = pos.stop_loss
-        distance = pos.initial_risk * self.trailing_r_multiple
-        if pos.direction == "long":
-            pos.best_price = max(pos.best_price, favorable_price)
-            pos.stop_loss = max(pos.stop_loss, pos.best_price - distance)
-        else:
-            pos.best_price = min(pos.best_price, favorable_price)
-            pos.stop_loss = min(pos.stop_loss, pos.best_price + distance)
-        return pos.stop_loss != old_stop
+    def _apply_event(self, event: dict[str, Any] | None) -> list[dict[str, Any]]:
+        if event is None:
+            return []
+        if event["event"] in {"paper_tp1", "paper_close"}:
+            self.equity += float(event["pnl"])
+            event["equity"] = self.equity
+        if event["event"] == "paper_tp1" and self.position is not None:
+            event["position"] = asdict(self.position)
+        if event["event"] == "paper_close":
+            if self.position is not None:
+                event["position"] = asdict(self.position)
+            self.position = None
+        return [event]

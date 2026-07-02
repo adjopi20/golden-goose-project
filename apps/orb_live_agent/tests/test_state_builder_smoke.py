@@ -40,10 +40,11 @@ def _config(tmp_path: Path) -> AgentConfig:
         bubble_min_notional=None,
         paper_initial_equity=1000.0,
         paper_risk_fraction=0.05,
-        paper_fee_bps=10.0,
-        paper_slippage_bps=2.0,
-        paper_trailing_enabled=True,
-        paper_trailing_r_multiple=1.0,
+        paper_fee_bps=4.0,
+        paper_slippage_bps=5.0,
+        paper_tp1_r=4.0,
+        paper_tp1_fraction=0.5,
+        paper_runner_trail_tp1_fraction=0.5,
         audit_kline_1m=False,
     )
 
@@ -185,23 +186,35 @@ def test_storage_bootstrap_reads_recent_raw_trades(tmp_path: Path) -> None:
     assert [row["agg_trade_id"] for row in rows] == [2, 3]
 
 
-def test_paper_broker_applies_costs_and_trailing(tmp_path: Path) -> None:
+def test_paper_broker_uses_benchmark_tp1_and_runner_trailing(tmp_path: Path) -> None:
     broker = PaperBroker(_config(tmp_path))
     decision = {"decision": "TAKE", "direction": "long", "entry": 100.0, "stop_loss": 99.0}
     opened = broker.on_decision(decision, {"accepted": True})
     assert opened["entry_fill"] > 100.0
     assert opened["entry_fee"] > 0.0
+    assert broker.position is not None
+    assert broker.position.tp1_hit is False
 
-    trailed = broker.on_candle({"high": 102.0, "low": 100.5})
-    assert trailed["event"] == "paper_trail_update"
-    assert trailed["position"]["stop_loss"] > 99.0
+    quiet_events = broker.on_candle({"high": 102.0, "low": 100.5})
+    assert quiet_events == []
+    assert broker.position is not None
+    assert broker.position.tp1_hit is False
 
-    closed = broker.on_candle({"high": 101.0, "low": 100.8})
-    assert closed["event"] == "paper_close"
-    assert closed["reason"] == "stop_loss"
-    assert closed["exit_fill"] < closed["exit_requested"]
-    assert closed["exit_fee"] > 0.0
-    assert closed["fees_total"] > closed["exit_fee"]
+    tp1_events = broker.on_candle({"high": 105.0, "low": 100.5})
+    assert tp1_events[0]["event"] == "paper_tp1"
+    assert tp1_events[0]["reason"] == "tp1"
+    assert broker.position is not None
+    assert broker.position.tp1_hit is True
+    assert broker.position.qty_open == broker.position.qty_total * 0.5
+    assert broker.position.runner_stop is not None
+
+    runner_stop = float(broker.position.runner_stop)
+    close_events = broker.on_candle({"high": 105.5, "low": runner_stop - 0.01})
+    assert close_events[-1]["event"] == "paper_close"
+    assert close_events[-1]["reason"] == "runner_trailing_stop"
+    assert close_events[-1]["exit_fill"] < close_events[-1]["exit_requested"]
+    assert close_events[-1]["exit_fee"] > 0.0
+    assert broker.has_open_position() is False
 
 
 if __name__ == "__main__":
@@ -214,5 +227,5 @@ if __name__ == "__main__":
         test_ai_provider_key_can_be_present_without_live_calls(tmp_path)
         test_pre_ai_wait_blocks_incomplete_required_profiles()
         test_storage_bootstrap_reads_recent_raw_trades(tmp_path)
-        test_paper_broker_applies_costs_and_trailing(tmp_path)
+        test_paper_broker_uses_benchmark_tp1_and_runner_trailing(tmp_path)
     print("orb_live_agent smoke check passed")
