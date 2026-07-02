@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "apps" / "orb_live_agent" / "src"))
 
 from orb_live_agent.config import AgentConfig
 from orb_live_agent.ai_decision import AiDecisionService
+from orb_live_agent.main import _pre_ai_wait_decision
 from orb_live_agent.state_builder import LiveStateBuilder
 from orb_live_agent.storage import JsonlStorage
 from orb_live_agent.trigger_observer import observe_triggers
@@ -96,6 +97,29 @@ def test_previous_24h_profile_is_frozen_at_ny_open(tmp_path: Path) -> None:
     assert profile["total_volume"] == 2.0
 
 
+def test_ny_first_15m_profile_is_frozen_after_window_end(tmp_path: Path) -> None:
+    state = LiveStateBuilder(_config(tmp_path))
+    trades = [
+        {"timestamp": _ms_ny(2024, 7, 1, 9, 30), "price": 10.0, "qty": 1.0, "is_buyer_maker": False},
+        {"timestamp": _ms_ny(2024, 7, 1, 9, 31), "price": 11.0, "qty": 1.0, "is_buyer_maker": False},
+        {"timestamp": _ms_ny(2024, 7, 1, 9, 44), "price": 12.0, "qty": 1.0, "is_buyer_maker": False},
+        {"timestamp": _ms_ny(2024, 7, 1, 9, 45), "price": 100.0, "qty": 50.0, "is_buyer_maker": False},
+        {"timestamp": _ms_ny(2024, 7, 1, 9, 46), "price": 101.0, "qty": 50.0, "is_buyer_maker": False},
+        {"timestamp": _ms_ny(2024, 7, 1, 9, 47), "price": 200.0, "qty": 50.0, "is_buyer_maker": False},
+    ]
+
+    assert state.push_trade(trades[0]) is None
+    assert state.push_trade(trades[1]).snapshot["ny_first_15m_profile"] is None
+    assert state.push_trade(trades[2]).snapshot["ny_first_15m_profile"] is None
+    assert state.push_trade(trades[3]).snapshot["ny_first_15m_profile"] is None
+    profile = state.push_trade(trades[4]).snapshot["ny_first_15m_profile"]
+    assert profile["profile_type"] == "ny_first_15m_profile"
+    assert profile["frozen_at_window_end"] is True
+    assert profile["session_low"] == 10.0
+    assert profile["session_high"] == 12.0
+    assert state.push_trade(trades[5]).snapshot["ny_first_15m_profile"]["session_high"] == 12.0
+
+
 def test_trigger_observer_reports_without_gating_ai(tmp_path: Path) -> None:
     state = LiveStateBuilder(_config(tmp_path))
     trades = [
@@ -127,6 +151,21 @@ def test_ai_provider_key_can_be_present_without_live_calls(tmp_path: Path) -> No
     assert decision["reason"] == "stub_ai_provider"
 
 
+def test_pre_ai_wait_blocks_incomplete_required_profiles() -> None:
+    base = {
+        "setup_observation_active": True,
+        "snapshot_timestamp_ms": 123,
+        "previous_24h_profile_for_session": None,
+        "ny_first_15m_profile": {"session_low": 1.0, "session_high": 2.0},
+    }
+    assert _pre_ai_wait_decision(base)["reason"] == "missing_previous_24h_profile"
+    base["previous_24h_profile_for_session"] = {"poc_price": 1.5}
+    base["ny_first_15m_profile"] = None
+    assert _pre_ai_wait_decision(base)["reason"] == "missing_ny_first_15m_profile"
+    base["ny_first_15m_profile"] = {"session_low": 1.0, "session_high": 2.0}
+    assert _pre_ai_wait_decision(base) is None
+
+
 def test_storage_bootstrap_reads_recent_raw_trades(tmp_path: Path) -> None:
     storage = JsonlStorage(tmp_path)
     old_trade = {"timestamp": _ms_ny(2024, 6, 30, 7, 59), "agg_trade_id": 1, "price": 1.0, "qty": 1.0, "is_buyer_maker": False}
@@ -146,7 +185,9 @@ if __name__ == "__main__":
         tmp_path = Path(tmp)
         test_closed_candle_delta_profile_extremes_and_bubble(tmp_path)
         test_previous_24h_profile_is_frozen_at_ny_open(tmp_path)
+        test_ny_first_15m_profile_is_frozen_after_window_end(tmp_path)
         test_trigger_observer_reports_without_gating_ai(tmp_path)
         test_ai_provider_key_can_be_present_without_live_calls(tmp_path)
+        test_pre_ai_wait_blocks_incomplete_required_profiles()
         test_storage_bootstrap_reads_recent_raw_trades(tmp_path)
     print("orb_live_agent smoke check passed")

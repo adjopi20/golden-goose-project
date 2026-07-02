@@ -65,6 +65,7 @@ class LiveStateBuilder:
         self.closed_candles: deque[dict[str, Any]] = deque(maxlen=500)
         self.extremes: dict[tuple[str, date], dict[str, Any]] = {}
         self.ny_first_15_trades: dict[date, list[dict[str, Any]]] = {}
+        self.ny_first_15_profiles: dict[date, dict[str, Any]] = {}
         self.session_open_24h_profiles: dict[date, dict[str, Any]] = {}
 
     def push_trade(self, trade: dict[str, Any]) -> ClosedMinute | None:
@@ -105,7 +106,7 @@ class LiveStateBuilder:
         now_ms = int(last_candle["timestamp_ms"]) if last_candle else (int(self.recent_trades[-1]["timestamp"]) if self.recent_trades else 0)
         target_day = self._target_session_day(now_ms)
         session_profile = self._session_open_24h_profile_for(target_day, now_ms)
-        ny_15m_profile = self._profile_for(self.ny_first_15_trades.get(target_day, []))
+        ny_15m_profile = self._ny_first_15m_profile_for(target_day, now_ms)
         return {
             "symbol": self.config.symbol,
             "snapshot_timestamp_ms": now_ms,
@@ -126,7 +127,14 @@ class LiveStateBuilder:
     def _profile_for(self, trades: list[dict[str, Any]]) -> dict[str, Any] | None:
         if len(trades) < 2:
             return None
-        return build_volume_profile(pd.DataFrame(trades), n_bins=self.config.volume_profile_bins, include_export_views=False)
+        profile = build_volume_profile(pd.DataFrame(trades), n_bins=self.config.volume_profile_bins)
+        total_volume = sum(float(row["total_volume"]) for row in profile.get("volume_profile", []))
+        if total_volume > 0:
+            profile["total_volume"] = total_volume
+            profile["poc_volume_pct"] = float(profile["poc_volume"]) / total_volume
+        if profile.get("val") is not None and profile.get("vah") is not None:
+            profile["value_area_width"] = float(profile["vah"]) - float(profile["val"])
+        return profile
 
     def build_trigger_reference_levels(self, timestamp_ms: int) -> dict[str, Any]:
         target_day = self._target_session_day(timestamp_ms)
@@ -137,7 +145,7 @@ class LiveStateBuilder:
                 "previous_ny": self.extremes.get(("ny", target_day - timedelta(days=1))),
             },
             "previous_24h_profile_for_session": self._session_open_24h_profile_for(target_day, timestamp_ms),
-            "ny_first_15m_profile": self._profile_for(self.ny_first_15_trades.get(target_day, [])),
+            "ny_first_15m_profile": self._ny_first_15m_profile_for(target_day, timestamp_ms),
         })
 
     def _build_bubbles_for_trade(self, trade: dict[str, Any]) -> list[dict[str, Any]]:
@@ -188,6 +196,31 @@ class LiveStateBuilder:
             "timezone": self.config.session_timezone,
         }
         self.session_open_24h_profiles[target_day] = profile
+        return profile
+
+    def _ny_first_15m_profile_for(self, target_day: date, now_ms: int) -> dict[str, Any] | None:
+        if target_day in self.ny_first_15_profiles:
+            return self.ny_first_15_profiles[target_day]
+
+        window_start = datetime.combine(target_day, self.ny_open, tzinfo=self.session_tz)
+        window_end = window_start + timedelta(minutes=15)
+        window_end_ms = int(window_end.astimezone(timezone.utc).timestamp() * 1000)
+        if now_ms < window_end_ms:
+            return None
+
+        profile = self._profile_for(self.ny_first_15_trades.get(target_day, []))
+        if profile is None:
+            return None
+
+        profile = {
+            **profile,
+            "profile_type": "ny_first_15m_profile",
+            "frozen_at_window_end": True,
+            "window_start": window_start.isoformat(),
+            "window_end": window_end.isoformat(),
+            "timezone": self.config.session_timezone,
+        }
+        self.ny_first_15_profiles[target_day] = profile
         return profile
 
     def _update_extremes(self, trade: dict[str, Any]) -> None:

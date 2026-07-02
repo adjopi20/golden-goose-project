@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from .ai_decision import AiDecisionService
 from .config import load_config
@@ -10,6 +11,22 @@ from .risk_gate import RiskGate
 from .state_builder import LiveStateBuilder, parse_aggtrade
 from .storage import JsonlStorage
 from .trigger_observer import observe_triggers
+
+
+def _pre_ai_wait_decision(snapshot: dict[str, Any]) -> dict[str, Any] | None:
+    if not snapshot["setup_observation_active"]:
+        reason = "outside_setup_observation_window"
+    elif snapshot.get("previous_24h_profile_for_session") is None:
+        reason = "missing_previous_24h_profile"
+    elif snapshot.get("ny_first_15m_profile") is None:
+        reason = "missing_ny_first_15m_profile"
+    else:
+        return None
+    return {
+        "decision": "WAIT",
+        "reason": reason,
+        "snapshot_timestamp_ms": snapshot.get("snapshot_timestamp_ms"),
+    }
 
 
 async def run() -> None:
@@ -54,13 +71,8 @@ async def run() -> None:
         if close_event is not None:
             storage.write("paper_orders", close_event)
 
-        if not closed.snapshot["setup_observation_active"]:
-            decision = {
-                "decision": "WAIT",
-                "reason": "outside_setup_observation_window",
-                "snapshot_timestamp_ms": closed.snapshot.get("snapshot_timestamp_ms"),
-            }
-        else:
+        decision = _pre_ai_wait_decision(closed.snapshot)
+        if decision is None:
             decision = ai.decide(closed.snapshot, trigger_observation)
         storage.write("ai_decisions", decision)
         gate_result = gate.validate(decision, has_open_position=broker.has_open_position())
