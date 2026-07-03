@@ -32,7 +32,9 @@ Valid supporting evidence:
 
 Stop:
 
-- below the nearest known invalidation level below entry;
+- primary stop is below the reclaimed or broken level that must hold;
+- fallback stop is below the signal candle low;
+- stop must be below the invalidation level, not inside or above it;
 - valid anchors: reclaimed level, ORB low, pre-NY low, overnight low, previous NY low, or signal candle low;
 - reject if the stop requires a future candle extreme.
 
@@ -49,9 +51,18 @@ Valid supporting evidence:
 
 Stop:
 
-- above the nearest known invalidation level above entry;
+- primary stop is above the broken or rejected level that must hold;
+- fallback stop is above the signal candle high;
+- stop must be above the invalidation level, not inside or below it;
 - valid anchors: broken level, ORB high, pre-NY high, overnight high, previous NY high, or signal candle high;
 - reject if the stop requires a future candle extreme.
+
+## Stop Sanity
+
+- Reject if risk is less than 0.15% of entry price.
+- Reject if risk is greater than 2.50% of entry price.
+- Reject if the stop does not make the setup thesis wrong when hit.
+- Reject if a smaller stop is only valid because of hindsight.
 
 ## Reject
 
