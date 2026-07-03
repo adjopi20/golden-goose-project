@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 
 @dataclass(frozen=True)
 class ExecutionConfig:
+    # ponytail: parameter-optimize TP1/trailing after setup filtering is stable.
     fee_bps: float = 4.0
     slippage_bps: float = 5.0
     tp1_r: float = 4.0

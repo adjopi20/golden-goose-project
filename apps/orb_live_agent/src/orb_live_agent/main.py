@@ -34,7 +34,7 @@ async def run() -> None:
     storage = JsonlStorage(config.log_dir)
     state = LiveStateBuilder(config)
     ai = AiDecisionService(config)
-    gate = RiskGate()
+    gate = RiskGate(config.paper_min_stop_risk_pct, config.paper_max_stop_risk_pct)
     broker = PaperBroker(config)
     storage.write("system", {"event": "started", "symbol": config.symbol, "mode": "paper"})
     bootstrap_trades = storage.read_recent_raw_aggtrades()

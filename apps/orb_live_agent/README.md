@@ -15,7 +15,7 @@ Binance aggTrade websocket
   -> NY first-15m volume profile
   -> order bubbles
   -> trigger observation log
-  -> trend-following AI decision service
+  -> trend-following decision service
   -> risk gate
   -> paper broker
 ```
@@ -77,6 +77,8 @@ Paper execution is parameter-driven, not AI-decided:
 ```text
 PAPER_FEE_BPS=4
 PAPER_SLIPPAGE_BPS=5
+PAPER_MIN_STOP_RISK_PCT=0.0015
+PAPER_MAX_STOP_RISK_PCT=0.025
 PAPER_TP1_R=4
 PAPER_TP1_FRACTION=0.5
 PAPER_RUNNER_TRAIL_TP1_FRACTION=0.5
@@ -89,15 +91,41 @@ The paper execution engine ignores AI take-profit output. Trend trades close
 50% at 4R, then trail the remaining 50% by half the entry-to-TP1 distance.
 If neither stop nor TP/trailing resolves the trade, the broker force-exits at
 the first raw aggTrade at or after `PRE_NY_START_TIME` on the next NY day.
+The risk gate rejects trend trades with stop risk below `PAPER_MIN_STOP_RISK_PCT`
+or above `PAPER_MAX_STOP_RISK_PCT`.
+
+## Historical Replay Backtest
+
+Historical replay uses the same live state, trigger, decision, risk, and
+paper-broker modules. It does not manually pick candidates.
+
+```powershell
+cd C:\Users\adjop\OneDrive\Documents\golden-goose-project
+$env:PYTHONPATH=".;apps/orb_live_agent/src"
+python -m orb_live_agent.backtest_replay `
+  --input storage/avaxusdc/parquet/AVAXUSDC-aggTrades-2026-06/AVAXUSDC-aggTrades-2026-06.parquet `
+  --start-date 2026-06-02 `
+  --end-date 2026-06-08
+```
+
+Replay logs are JSONL files under `apps/orb_live_agent/data/backtests/`.
+DeepSeek decisions are cached by exact request-body hash in `decision_cache.jsonl`.
 
 ## Current Limits
 
 - AI live calls are disabled unless `AI_LIVE_CALLS_ENABLED=true`.
-- Trigger rules are observe-only; they are logged but do not gate AI yet.
+- AI calls are gated by trigger observations and required context availability.
 - Binance order execution is intentionally absent.
 - Session windows are configurable in `.env`; defaults use New York local time.
 
 ## AI Provider
+
+For algorithm-only backtests with no API calls:
+
+```text
+AI_PROVIDER=algorithm
+AI_LIVE_CALLS_ENABLED=false
+```
 
 Keep this while observing market-data logs:
 

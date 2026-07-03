@@ -59,7 +59,6 @@ class LiveStateBuilder:
         self.pre_ny_start = _parse_hhmm(config.pre_ny_start_time)
         self.current_bucket: datetime | None = None
         self.current_minute_trades: list[dict[str, Any]] = []
-        self.current_minute_bubbles: list[dict[str, Any]] = []
         self.current_minute_reference_levels: dict[str, Any] | None = None
         self.recent_trades: deque[dict[str, Any]] = deque()
         self.closed_candles: deque[dict[str, Any]] = deque(maxlen=500)
@@ -74,31 +73,28 @@ class LiveStateBuilder:
         closed = None
         if self.current_bucket is not None and bucket > self.current_bucket:
             closed = self._close_current_minute(
-                self.current_minute_bubbles,
                 self.current_minute_reference_levels or {},
             )
         if self.current_bucket is None or bucket > self.current_bucket:
             self.current_bucket = bucket
             self.current_minute_trades = []
-            self.current_minute_bubbles = []
             self.current_minute_reference_levels = self.build_trigger_reference_levels(ts_ms)
 
         self._drop_old_trades(ts_ms)
-        bubbles = self._build_bubbles_for_trade(trade)
         self.recent_trades.append(trade)
         self._update_extremes(trade)
         self._update_ny_first_15(trade)
         self.current_minute_trades.append(trade)
-        self.current_minute_bubbles.extend(bubbles)
         return closed
 
-    def _close_current_minute(self, bubbles: list[dict[str, Any]], trigger_reference_levels: dict[str, Any]) -> ClosedMinute | None:
+    def _close_current_minute(self, trigger_reference_levels: dict[str, Any]) -> ClosedMinute | None:
         if not self.current_minute_trades:
             return None
         candles = aggregate_trades_to_ohlcv(pd.DataFrame(self.current_minute_trades), self.config.symbol, "1m")
         if not candles:
             return None
         candle = candles[-1]
+        bubbles = self._build_bubbles_for_closed_minute()
         self.closed_candles.append(candle)
         return ClosedMinute(candle=candle, bubbles=bubbles, snapshot=self.build_snapshot(candle), trigger_reference_levels=trigger_reference_levels)
 
@@ -148,19 +144,25 @@ class LiveStateBuilder:
             "ny_first_15m_profile": self._ny_first_15m_profile_for(target_day, timestamp_ms),
         })
 
-    def _build_bubbles_for_trade(self, trade: dict[str, Any]) -> list[dict[str, Any]]:
+    def _build_bubbles_for_closed_minute(self) -> list[dict[str, Any]]:
         min_qty = self.config.bubble_min_qty
         min_notional = self.config.bubble_min_notional
         if min_qty is None and min_notional is None:
-            cutoff_ms = int(trade["timestamp"]) - 24 * 60 * 60 * 1000
-            bubble_window = [t for t in self.recent_trades if int(t["timestamp"]) >= cutoff_ms]
+            assert self.current_bucket is not None
+            minute_start_ms = int(self.current_bucket.timestamp() * 1000)
+            cutoff_ms = minute_start_ms - 24 * 60 * 60 * 1000
+            bubble_window = [
+                t
+                for t in self.recent_trades
+                if cutoff_ms <= int(t["timestamp"]) < minute_start_ms
+            ]
             if len(bubble_window) < self.config.bubble_lookback_min_trades:
                 return []
             qtys = [float(t["qty"]) for t in bubble_window]
             notionals = [float(t["price"]) * float(t["qty"]) for t in bubble_window]
             min_qty = float(np.quantile(qtys, self.config.bubble_percentile))
             min_notional = float(np.quantile(notionals, self.config.bubble_percentile))
-        return build_order_bubbles(pd.DataFrame([trade]), self.config.symbol, min_qty=min_qty, min_notional=min_notional)
+        return build_order_bubbles(pd.DataFrame(self.current_minute_trades), self.config.symbol, min_qty=min_qty, min_notional=min_notional)
 
     def _drop_old_trades(self, now_ms: int) -> None:
         cutoff_ms = now_ms - 25 * 60 * 60 * 1000

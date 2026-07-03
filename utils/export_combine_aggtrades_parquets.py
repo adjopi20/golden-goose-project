@@ -127,17 +127,20 @@ def parse_args() -> argparse.Namespace:
 
 def split_input_tokens(input_tokens: list[str]) -> list[str]:
     """
-    Accept both:
-      --input file1,file2
-    and:
-      --input file1, file2
+    Mendukung kedua format:
 
-    argparse receives the second form as multiple tokens because nargs='+'.
-    We join then split by comma.
+      --input file1 file2 file3
+      --input file1,file2,file3
     """
-    raw = " ".join(input_tokens).strip()
-    parts = [part.strip().strip('"').strip("'") for part in raw.split(",")]
-    return [part for part in parts if part]
+    parts: list[str] = []
+
+    for token in input_tokens:
+        for part in token.split(","):
+            cleaned = part.strip().strip('"').strip("'")
+            if cleaned:
+                parts.append(cleaned)
+
+    return parts
 
 
 def extract_last_month_token(filename: str) -> MonthToken:

@@ -7,6 +7,10 @@ VALID_DECISIONS = {"WAIT", "REJECT", "TAKE"}
 
 
 class RiskGate:
+    def __init__(self, min_stop_risk_pct: float = 0.0015, max_stop_risk_pct: float = 0.025) -> None:
+        self.min_stop_risk_pct = float(min_stop_risk_pct)
+        self.max_stop_risk_pct = float(max_stop_risk_pct)
+
     def validate(self, decision: dict[str, Any], has_open_position: bool) -> dict[str, Any]:
         action = decision.get("decision")
         if action not in VALID_DECISIONS:
@@ -31,4 +35,9 @@ class RiskGate:
             return {"accepted": False, "reason": "invalid_short_stop"}
         if direction not in {"long", "short"}:
             return {"accepted": False, "reason": "invalid_direction"}
+        risk_pct = abs(entry - stop) / abs(entry) if entry else 0.0
+        if risk_pct < self.min_stop_risk_pct:
+            return {"accepted": False, "reason": "stop_risk_below_min", "risk_pct": risk_pct, "min_stop_risk_pct": self.min_stop_risk_pct}
+        if risk_pct > self.max_stop_risk_pct:
+            return {"accepted": False, "reason": "stop_risk_above_max", "risk_pct": risk_pct, "max_stop_risk_pct": self.max_stop_risk_pct}
         return {"accepted": True, "reason": "accepted"}

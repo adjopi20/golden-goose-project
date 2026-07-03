@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import tempfile
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -27,6 +28,8 @@ def _config(tmp_path: Path) -> AgentConfig:
         ai_live_calls_enabled=False,
         ai_base_url="https://api.deepseek.com",
         ai_model="deepseek-v4-pro",
+        ai_max_tokens=384000,
+        ai_timeout_seconds=300,
         rules_file=ROOT / "apps" / "orb_live_agent" / "rules" / "trend_following_orb.md",
         max_ai_calls_per_day=150,
         session_timezone="America/New_York",
@@ -43,6 +46,8 @@ def _config(tmp_path: Path) -> AgentConfig:
         paper_risk_fraction=0.05,
         paper_fee_bps=4.0,
         paper_slippage_bps=5.0,
+        paper_min_stop_risk_pct=0.0015,
+        paper_max_stop_risk_pct=0.025,
         paper_tp1_r=4.0,
         paper_tp1_fraction=0.5,
         paper_runner_trail_tp1_fraction=0.5,
@@ -80,6 +85,33 @@ def test_closed_candle_delta_profile_extremes_and_bubble(tmp_path: Path) -> None
     assert state.is_setup_observation_active(_ms_ny(2024, 7, 1, 9, 31)) is True
     assert state.is_setup_observation_active(_ms_ny(2024, 7, 1, 17, 29)) is True
     assert state.is_setup_observation_active(_ms_ny(2024, 7, 1, 17, 30)) is False
+
+
+def test_dynamic_bubble_threshold_is_computed_once_for_closed_minute(tmp_path: Path) -> None:
+    config = replace(
+        _config(tmp_path),
+        bubble_min_qty=None,
+        bubble_min_notional=None,
+        bubble_lookback_min_trades=2,
+        bubble_percentile=0.5,
+    )
+    state = LiveStateBuilder(config)
+    trades = [
+        {"timestamp": _ms_ny(2024, 7, 1, 1, 0) + 10_000, "price": 10.0, "qty": 1.0, "is_buyer_maker": False},
+        {"timestamp": _ms_ny(2024, 7, 1, 1, 0) + 20_000, "price": 10.0, "qty": 10.0, "is_buyer_maker": False},
+        {"timestamp": _ms_ny(2024, 7, 1, 1, 1) + 5_000, "price": 10.0, "qty": 6.0, "is_buyer_maker": False},
+        {"timestamp": _ms_ny(2024, 7, 1, 1, 2), "price": 10.0, "qty": 1.0, "is_buyer_maker": False},
+    ]
+
+    state.push_trade(trades[0])
+    state.push_trade(trades[1])
+    assert state.push_trade(trades[2]).bubbles == []
+    closed = state.push_trade(trades[3])
+
+    assert closed is not None
+    assert len(closed.bubbles) == 1
+    assert closed.bubbles[0]["qty"] == 6.0
+    assert closed.bubbles[0]["min_qty"] == 5.5
 
 
 def test_previous_24h_profile_is_frozen_at_ny_open(tmp_path: Path) -> None:
@@ -156,6 +188,86 @@ def test_ai_provider_key_can_be_present_without_live_calls(tmp_path: Path) -> No
     decision = service.decide({"snapshot_timestamp_ms": 123}, {"triggered": True})
     assert decision["decision"] == "WAIT"
     assert decision["reason"] == "stub_ai_provider"
+
+
+def test_algorithm_provider_takes_short_breakdown_without_api(tmp_path: Path) -> None:
+    service = AiDecisionService(replace(_config(tmp_path), ai_provider="algorithm"))
+    snapshot = {
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 10, 0),
+        "session_timezone": "America/New_York",
+        "last_candle": {"close": 99.0, "high": 101.0, "low": 98.5, "body": 1.5, "range": 2.5, "delta": -100.0},
+        "recent_candles": [
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 45), "high": 99.0, "low": 98.0, "delta": -100.0, "volume": 200.0},
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 50), "high": 99.0, "low": 98.0, "delta": -100.0, "volume": 200.0},
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 10, 0), "high": 101.0, "low": 98.5, "delta": -100.0, "volume": 100.0},
+        ],
+        "session_extremes": {},
+        "previous_24h_profile_for_session": None,
+        "ny_first_15m_profile": {"session_low": 100.0, "session_high": 105.0},
+    }
+
+    decision = service.decide(snapshot, {"triggered": True, "reasons": ["ny_first_15m_profile_low_closed_below"]})
+
+    assert decision["decision"] == "TAKE"
+    assert decision["provider"] == "algorithm"
+    assert decision["entry_model"] == "trend"
+    assert decision["direction"] == "short"
+    assert decision["stop_loss"] == 105.0
+    assert decision["invalidation"] == "opposite ORB high 105.000000"
+    assert service.last_request_body is None
+
+
+def test_algorithm_provider_blocks_orb_after_bias_window(tmp_path: Path) -> None:
+    service = AiDecisionService(replace(_config(tmp_path), ai_provider="algorithm"))
+    snapshot = {
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 10, 15),
+        "session_timezone": "America/New_York",
+        "last_candle": {"close": 99.0, "high": 101.0, "low": 98.5, "body": 1.5, "range": 2.5, "delta": -100.0},
+        "ny_first_15m_profile": {"session_low": 100.0, "session_high": 105.0},
+    }
+
+    decision = service.decide(snapshot, {"triggered": True, "reasons": ["ny_first_15m_profile_low_closed_below"]})
+
+    assert decision["decision"] == "WAIT"
+    assert decision["reason"] == "outside_orb_bias_window"
+
+
+def test_algorithm_provider_rejects_weak_pre_entry_delta(tmp_path: Path) -> None:
+    service = AiDecisionService(replace(_config(tmp_path), ai_provider="algorithm"))
+    snapshot = {
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 10, 0),
+        "session_timezone": "America/New_York",
+        "last_candle": {"close": 99.0, "high": 101.0, "low": 98.5, "body": 1.5, "range": 2.5, "delta": -100.0},
+        "recent_candles": [
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 45), "high": 99.0, "low": 98.0, "delta": -1.0, "volume": 200.0},
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 10, 0), "high": 101.0, "low": 98.5, "delta": -100.0, "volume": 100.0},
+        ],
+        "ny_first_15m_profile": {"session_low": 100.0, "session_high": 105.0},
+    }
+
+    decision = service.decide(snapshot, {"triggered": True, "reasons": ["ny_first_15m_profile_low_closed_below"]})
+
+    assert decision["decision"] == "WAIT"
+    assert decision["reason"] == "reject_weak_pre_entry_short_delta"
+
+
+def test_algorithm_provider_rejects_prior_opposite_orb_touch(tmp_path: Path) -> None:
+    service = AiDecisionService(replace(_config(tmp_path), ai_provider="algorithm"))
+    snapshot = {
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 10, 0),
+        "session_timezone": "America/New_York",
+        "last_candle": {"close": 106.0, "high": 106.5, "low": 104.0, "body": 2.0, "range": 2.5, "delta": 100.0},
+        "recent_candles": [
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 50), "high": 104.0, "low": 99.0, "delta": 100.0, "volume": 200.0},
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 10, 0), "high": 106.5, "low": 104.0, "delta": 100.0, "volume": 100.0},
+        ],
+        "ny_first_15m_profile": {"session_low": 100.0, "session_high": 105.0},
+    }
+
+    decision = service.decide(snapshot, {"triggered": True, "reasons": ["ny_first_15m_profile_high_closed_above"]})
+
+    assert decision["decision"] == "WAIT"
+    assert decision["reason"] == "reject_opposite_orb_touched_before_long"
 
 
 def test_pre_ai_wait_blocks_incomplete_required_profiles() -> None:
@@ -295,14 +407,31 @@ def test_risk_gate_rejects_non_trend_entry_model() -> None:
     assert rejected["reason"] == "unsupported_entry_model"
 
 
+def test_risk_gate_enforces_stop_risk_bounds() -> None:
+    gate = RiskGate(min_stop_risk_pct=0.0015, max_stop_risk_pct=0.025)
+
+    tight = gate.validate({"decision": "TAKE", "direction": "long", "entry": 100.0, "stop_loss": 99.9}, False)
+    wide = gate.validate({"decision": "TAKE", "direction": "short", "entry": 100.0, "stop_loss": 103.0}, False)
+    accepted = gate.validate({"decision": "TAKE", "direction": "long", "entry": 100.0, "stop_loss": 98.0}, False)
+
+    assert tight["reason"] == "stop_risk_below_min"
+    assert wide["reason"] == "stop_risk_above_max"
+    assert accepted["reason"] == "accepted"
+
+
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         test_closed_candle_delta_profile_extremes_and_bubble(tmp_path)
+        test_dynamic_bubble_threshold_is_computed_once_for_closed_minute(tmp_path)
         test_previous_24h_profile_is_frozen_at_ny_open(tmp_path)
         test_ny_first_15m_profile_is_frozen_after_window_end(tmp_path)
         test_trigger_observer_reports_without_gating_ai(tmp_path)
         test_ai_provider_key_can_be_present_without_live_calls(tmp_path)
+        test_algorithm_provider_takes_short_breakdown_without_api(tmp_path)
+        test_algorithm_provider_blocks_orb_after_bias_window(tmp_path)
+        test_algorithm_provider_rejects_weak_pre_entry_delta(tmp_path)
+        test_algorithm_provider_rejects_prior_opposite_orb_touch(tmp_path)
         test_pre_ai_wait_blocks_incomplete_required_profiles()
         test_storage_bootstrap_reads_recent_raw_trades(tmp_path)
         test_paper_broker_uses_benchmark_tp1_and_runner_trailing(tmp_path)
@@ -310,4 +439,5 @@ if __name__ == "__main__":
         test_paper_broker_uses_profile_targets_for_mean_reversion(tmp_path)
         test_paper_broker_rejects_take_without_snapshot_timestamp(tmp_path)
         test_risk_gate_rejects_non_trend_entry_model()
+        test_risk_gate_enforces_stop_risk_bounds()
     print("orb_live_agent smoke check passed")

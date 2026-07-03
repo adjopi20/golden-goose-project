@@ -8,6 +8,7 @@ from typing import Any
 from urllib import request
 
 from .config import AgentConfig
+from .strategies.orb_trend_following import decide_algorithm as decide_orb_trend_following_algorithm
 
 VALID_DECISIONS = {"WAIT", "REJECT", "TAKE"}
 
@@ -17,10 +18,16 @@ class AiDecisionService:
         self.config = config
         self.calls_by_day: dict[str, int] = {}
         self.rules_text = self._load_rules(config.rules_file)
+        self.last_request_body: dict[str, Any] | None = None
+        self.last_response_body: dict[str, Any] | None = None
 
     def decide(self, snapshot: dict[str, Any], trigger_observation: dict[str, Any] | None = None) -> dict[str, Any]:
+        self.last_request_body = None
+        self.last_response_body = None
         if self.config.ai_provider == "stub":
             return self._wait(snapshot, "stub_ai_provider")
+        if self.config.ai_provider in {"algorithm", "rule", "rules"}:
+            return self._algorithm_decide(snapshot, trigger_observation or {})
         if not self.config.ai_live_calls_enabled:
             return self._wait(snapshot, "ai_live_calls_disabled")
         if trigger_observation and not trigger_observation.get("triggered"):
@@ -39,19 +46,8 @@ class AiDecisionService:
 
     def _call_chat_api(self, snapshot: dict[str, Any], trigger_observation: dict[str, Any]) -> dict[str, Any]:
         api_key = self._api_key()
-        body = {
-            "model": self.config.ai_model,
-            "messages": [
-                {"role": "system", "content": self._system_prompt()},
-                {"role": "user", "content": json.dumps(self._decision_payload(snapshot, trigger_observation), separators=(",", ":"), default=str)},
-            ],
-            "stream": False,
-            "response_format": {"type": "json_object"},
-            "max_tokens": 2048,
-        }
-        if self.config.ai_provider == "deepseek":
-            body["reasoning_effort"] = "high"
-            body["thinking"] = {"type": "enabled"}
+        body = self.build_chat_body(snapshot, trigger_observation)
+        self.last_request_body = body
 
         req = request.Request(
             self.config.ai_base_url.rstrip("/") + "/chat/completions",
@@ -59,8 +55,9 @@ class AiDecisionService:
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
             method="POST",
         )
-        with request.urlopen(req, timeout=60) as response:
+        with request.urlopen(req, timeout=self.config.ai_timeout_seconds) as response:
             response_body = json.loads(response.read().decode("utf-8"))
+        self.last_response_body = response_body
         content = response_body["choices"][0]["message"]["content"]
         decision = json.loads(content)
         if decision.get("decision") not in VALID_DECISIONS:
@@ -71,6 +68,22 @@ class AiDecisionService:
             "model": self.config.ai_model,
             "snapshot_timestamp_ms": snapshot.get("snapshot_timestamp_ms"),
         }
+
+    def build_chat_body(self, snapshot: dict[str, Any], trigger_observation: dict[str, Any]) -> dict[str, Any]:
+        body = {
+            "model": self.config.ai_model,
+            "messages": [
+                {"role": "system", "content": self._system_prompt()},
+                {"role": "user", "content": json.dumps(self._decision_payload(snapshot, trigger_observation), separators=(",", ":"), default=str)},
+            ],
+            "stream": False,
+            "response_format": {"type": "json_object"},
+            "max_tokens": self.config.ai_max_tokens,
+        }
+        if self.config.ai_provider == "deepseek":
+            body["reasoning_effort"] = "high"
+            body["thinking"] = {"type": "enabled"}
+        return body
 
     def _api_key(self) -> str:
         if self.config.ai_provider == "deepseek":
@@ -153,3 +166,6 @@ class AiDecisionService:
             "provider": self.config.ai_provider,
             "snapshot_timestamp_ms": snapshot.get("snapshot_timestamp_ms"),
         }
+
+    def _algorithm_decide(self, snapshot: dict[str, Any], trigger_observation: dict[str, Any]) -> dict[str, Any]:
+        return decide_orb_trend_following_algorithm(snapshot, trigger_observation)

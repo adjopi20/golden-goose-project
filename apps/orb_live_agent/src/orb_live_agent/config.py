@@ -50,6 +50,8 @@ class AgentConfig:
     ai_live_calls_enabled: bool
     ai_base_url: str
     ai_model: str
+    ai_max_tokens: int
+    ai_timeout_seconds: int
     rules_file: Path
     max_ai_calls_per_day: int
     session_timezone: str
@@ -66,6 +68,8 @@ class AgentConfig:
     paper_risk_fraction: float
     paper_fee_bps: float
     paper_slippage_bps: float
+    paper_min_stop_risk_pct: float
+    paper_max_stop_risk_pct: float
     paper_tp1_r: float
     paper_tp1_fraction: float
     paper_runner_trail_tp1_fraction: float
@@ -82,6 +86,8 @@ def load_config() -> AgentConfig:
         ai_live_calls_enabled=_get_bool("AI_LIVE_CALLS_ENABLED"),
         ai_base_url=_get_str("AI_BASE_URL", "https://api.deepseek.com"),
         ai_model=_get_str("AI_MODEL", "deepseek-v4-pro"),
+        ai_max_tokens=_get_int("AI_MAX_TOKENS", 384000),
+        ai_timeout_seconds=_get_int("AI_TIMEOUT_SECONDS", 300),
         rules_file=Path(_get_str("RULES_FILE", "apps/orb_live_agent/rules/trend_following_orb.md")),
         max_ai_calls_per_day=_get_int("MAX_AI_CALLS_PER_DAY", 150),
         session_timezone=_get_str("SESSION_TIMEZONE", "America/New_York"),
@@ -98,6 +104,8 @@ def load_config() -> AgentConfig:
         paper_risk_fraction=_get_float("PAPER_RISK_FRACTION", 0.05) or 0.05,
         paper_fee_bps=_get_float("PAPER_FEE_BPS", 4.0) or 0.0,
         paper_slippage_bps=_get_float("PAPER_SLIPPAGE_BPS", 5.0) or 0.0,
+        paper_min_stop_risk_pct=_get_float("PAPER_MIN_STOP_RISK_PCT", 0.0015) or 0.0015,
+        paper_max_stop_risk_pct=_get_float("PAPER_MAX_STOP_RISK_PCT", 0.025) or 0.025,
         paper_tp1_r=_get_float("PAPER_TP1_R", 4.0) or 4.0,
         paper_tp1_fraction=_get_float("PAPER_TP1_FRACTION", 0.5) or 0.5,
         paper_runner_trail_tp1_fraction=_get_float("PAPER_RUNNER_TRAIL_TP1_FRACTION", 0.5) or 0.5,
