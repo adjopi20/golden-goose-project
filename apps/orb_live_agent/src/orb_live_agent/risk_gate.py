@@ -19,6 +19,9 @@ class RiskGate:
         missing = [key for key in required if key not in decision]
         if missing:
             return {"accepted": False, "reason": "missing_trade_fields", "missing": missing}
+        entry_model = str(decision.get("entry_model", "trend")).lower()
+        if entry_model != "trend":
+            return {"accepted": False, "reason": "unsupported_entry_model", "entry_model": entry_model}
         direction = decision["direction"]
         entry = float(decision["entry"])
         stop = float(decision["stop_loss"])

@@ -15,7 +15,7 @@ Binance aggTrade websocket
   -> NY first-15m volume profile
   -> order bubbles
   -> trigger observation log
-  -> AI decision stub
+  -> trend-following AI decision service
   -> risk gate
   -> paper broker
 ```
@@ -83,11 +83,10 @@ PAPER_RUNNER_TRAIL_TP1_FRACTION=0.5
 ```
 
 Fees are charged on entry and exit notional. Slippage worsens entry and exit
-fills. The AI proposes entry model, direction, entry price, stop, and rationale;
-the paper execution engine ignores AI take-profit output. Trend trades close 50%
-at 4R, then trail the remaining 50% by half the entry-to-TP1 distance. Mean
-reversion trades close 50% at prior-24h POC, then close the rest at prior-24h
-VAH for longs or VAL for shorts.
+fills. The AI proposes entry model, direction, entry price, stop, and rationale.
+This live agent is trend-following only, so `entry_model` must be `trend`.
+The paper execution engine ignores AI take-profit output. Trend trades close
+50% at 4R, then trail the remaining 50% by half the entry-to-TP1 distance.
 If neither stop nor TP/trailing resolves the trade, the broker force-exits at
 the first raw aggTrade at or after `PRE_NY_START_TIME` on the next NY day.
 

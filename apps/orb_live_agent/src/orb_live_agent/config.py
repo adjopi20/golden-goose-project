@@ -82,7 +82,7 @@ def load_config() -> AgentConfig:
         ai_live_calls_enabled=_get_bool("AI_LIVE_CALLS_ENABLED"),
         ai_base_url=_get_str("AI_BASE_URL", "https://api.deepseek.com"),
         ai_model=_get_str("AI_MODEL", "deepseek-v4-pro"),
-        rules_file=Path(_get_str("RULES_FILE", "models/orb/model/checkpoint_ai_assisted_main_benchmark.md")),
+        rules_file=Path(_get_str("RULES_FILE", "apps/orb_live_agent/rules/trend_following_orb.md")),
         max_ai_calls_per_day=_get_int("MAX_AI_CALLS_PER_DAY", 150),
         session_timezone=_get_str("SESSION_TIMEZONE", "America/New_York"),
         ny_open_time=_get_str("NY_OPEN_TIME", "09:30"),

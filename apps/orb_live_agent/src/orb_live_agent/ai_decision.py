@@ -90,7 +90,7 @@ class AiDecisionService:
                 "Return only valid JSON. No markdown. No prose.",
                 'Allowed decision values: "WAIT", "REJECT", "TAKE".',
                 "For TAKE, include entry_model, direction, entry, stop_loss, reason, invalidation.",
-                'entry_model must be "trend" or "mean_reversion".',
+                'entry_model must be "trend". This agent must reject mean-reversion setups.',
                 "Do not choose take-profit, sizing, fees, slippage, or trailing; deterministic execution handles those.",
                 "Use only the provided closed candles and raw-orderflow-derived fields. Do not infer future candles.",
                 "Rules:",

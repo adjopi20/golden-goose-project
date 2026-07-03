@@ -13,6 +13,7 @@ from orb_live_agent.config import AgentConfig
 from orb_live_agent.ai_decision import AiDecisionService
 from orb_live_agent.main import _pre_ai_wait_decision
 from orb_live_agent.paper_broker import PaperBroker
+from orb_live_agent.risk_gate import RiskGate
 from orb_live_agent.state_builder import LiveStateBuilder
 from orb_live_agent.storage import JsonlStorage
 from orb_live_agent.trigger_observer import observe_triggers
@@ -26,7 +27,7 @@ def _config(tmp_path: Path) -> AgentConfig:
         ai_live_calls_enabled=False,
         ai_base_url="https://api.deepseek.com",
         ai_model="deepseek-v4-pro",
-        rules_file=ROOT / "models" / "orb" / "model" / "checkpoint_ai_assisted_main_benchmark.md",
+        rules_file=ROOT / "apps" / "orb_live_agent" / "rules" / "trend_following_orb.md",
         max_ai_calls_per_day=150,
         session_timezone="America/New_York",
         ny_open_time="09:30",
@@ -279,6 +280,21 @@ def test_paper_broker_rejects_take_without_snapshot_timestamp(tmp_path: Path) ->
     assert rejected["reason"] == "missing_snapshot_timestamp_ms"
 
 
+def test_risk_gate_rejects_non_trend_entry_model() -> None:
+    rejected = RiskGate().validate(
+        {
+            "decision": "TAKE",
+            "entry_model": "mean_reversion",
+            "direction": "long",
+            "entry": 100.0,
+            "stop_loss": 99.0,
+        },
+        has_open_position=False,
+    )
+
+    assert rejected["reason"] == "unsupported_entry_model"
+
+
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
@@ -293,4 +309,5 @@ if __name__ == "__main__":
         test_paper_broker_force_exits_at_next_overnight_end(tmp_path)
         test_paper_broker_uses_profile_targets_for_mean_reversion(tmp_path)
         test_paper_broker_rejects_take_without_snapshot_timestamp(tmp_path)
+        test_risk_gate_rejects_non_trend_entry_model()
     print("orb_live_agent smoke check passed")
