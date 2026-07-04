@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, time, timezone
+from statistics import median
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -35,16 +36,20 @@ def decide_algorithm(snapshot: dict[str, Any], trigger_observation: dict[str, An
             return _wait(snapshot, "reject_opposite_orb_touched_before_short")
         if context["short_delta_ratio"] < 0.05:
             return _wait(snapshot, "reject_weak_pre_entry_short_delta")
+        if not _has_breakout_retest(snapshot, "short", orb_low, orb_high) and not _is_direct_displacement(snapshot, "short"):
+            return _wait(snapshot, "wait_for_short_breakout_retest_continuation")
         # ponytail: parameter-optimize ORB SL after setup filtering is stable.
-        return _take(snapshot, "short", close, orb_high, "algorithm_short_breakdown_ny_first_15m_session_low", f"opposite ORB high {orb_high:.6f}")
+        return _take(snapshot, "short", close, orb_high, "algorithm_short_orb_continuation_ny_first_15m_session_low", f"opposite ORB high {orb_high:.6f}")
 
     if close > orb_high and low <= orb_high and delta > 0 and strong_body and close_pos >= 0.55:
         if context["opposite_touched_for_long"]:
             return _wait(snapshot, "reject_opposite_orb_touched_before_long")
         if context["long_delta_ratio"] < 0.05:
             return _wait(snapshot, "reject_weak_pre_entry_long_delta")
+        if not _has_breakout_retest(snapshot, "long", orb_low, orb_high) and not _is_direct_displacement(snapshot, "long"):
+            return _wait(snapshot, "wait_for_long_breakout_retest_continuation")
         # ponytail: parameter-optimize ORB SL after setup filtering is stable.
-        return _take(snapshot, "long", close, orb_low, "algorithm_long_breakout_ny_first_15m_session_high", f"opposite ORB low {orb_low:.6f}")
+        return _take(snapshot, "long", close, orb_low, "algorithm_long_orb_continuation_ny_first_15m_session_high", f"opposite ORB low {orb_low:.6f}")
 
     if any(reason.endswith("_closed_below") for reason in reasons) and delta > 0:
         return _wait(snapshot, "reject_breakdown_absorption_positive_delta")
@@ -86,6 +91,53 @@ def _pre_entry_context(snapshot: dict[str, Any], orb_low: float, orb_high: float
         "opposite_touched_for_long": any(float(c.get("low", 0.0)) <= orb_low for c in prior),
         "opposite_touched_for_short": any(float(c.get("high", 0.0)) >= orb_high for c in prior),
     }
+
+
+def _has_breakout_retest(snapshot: dict[str, Any], direction: str, orb_low: float, orb_high: float) -> bool:
+    current_ms = int(snapshot.get("snapshot_timestamp_ms") or 0)
+    tz = ZoneInfo(str(snapshot.get("session_timezone") or "America/New_York"))
+    current_dt = datetime.fromtimestamp(current_ms / 1000.0, tz=timezone.utc).astimezone(tz)
+    start_ms = int(datetime.combine(current_dt.date(), time(9, 45), tzinfo=tz).astimezone(timezone.utc).timestamp() * 1000)
+    prior = sorted(
+        (c for c in snapshot.get("recent_candles") or [] if start_ms <= int(c.get("timestamp_ms", 0)) < current_ms),
+        key=lambda c: int(c.get("timestamp_ms", 0)),
+    )
+    seen_breakout = False
+    for candle in prior:
+        close = float(candle.get("close", 0.0))
+        if direction == "short":
+            if not seen_breakout:
+                seen_breakout = close < orb_low
+            elif float(candle.get("high", close)) >= orb_low and close <= orb_low:
+                return True
+        else:
+            if not seen_breakout:
+                seen_breakout = close > orb_high
+            elif float(candle.get("low", close)) <= orb_high and close >= orb_high:
+                return True
+    return False
+
+
+def _is_direct_displacement(snapshot: dict[str, Any], direction: str) -> bool:
+    candle = snapshot.get("last_candle") or {}
+    range_ = max(float(candle.get("range", 0.0)), 1e-12)
+    body_ratio = abs(float(candle.get("body", 0.0))) / range_
+    close_pos = (float(candle.get("close", 0.0)) - float(candle.get("low", 0.0))) / range_
+    if body_ratio < 0.65:
+        return False
+    if direction == "short" and close_pos > 0.30:
+        return False
+    if direction == "long" and close_pos < 0.70:
+        return False
+
+    current_ms = int(snapshot.get("snapshot_timestamp_ms") or 0)
+    prior = [c for c in snapshot.get("recent_candles") or [] if int(c.get("timestamp_ms", 0)) < current_ms]
+    ranges = [float(c.get("range", 0.0)) for c in prior[-30:] if float(c.get("range", 0.0)) > 0]
+    range_ratio = range_ / median(ranges) if ranges else 0.0
+    volume = float(candle.get("volume", 0.0))
+    delta_ratio = abs(float(candle.get("delta", 0.0))) / volume if volume > 0 else 0.0
+    # ponytail: heuristic direct-entry exception; replace with learned regime gate if this becomes strategy-critical.
+    return range_ratio >= 1.5 or delta_ratio >= 0.85
 
 
 def _wait(snapshot: dict[str, Any], reason: str) -> dict[str, Any]:

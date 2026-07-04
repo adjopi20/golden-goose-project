@@ -190,15 +190,15 @@ def test_ai_provider_key_can_be_present_without_live_calls(tmp_path: Path) -> No
     assert decision["reason"] == "stub_ai_provider"
 
 
-def test_algorithm_provider_takes_short_breakdown_without_api(tmp_path: Path) -> None:
+def test_algorithm_provider_takes_short_retest_continuation_without_api(tmp_path: Path) -> None:
     service = AiDecisionService(replace(_config(tmp_path), ai_provider="algorithm"))
     snapshot = {
         "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 10, 0),
         "session_timezone": "America/New_York",
         "last_candle": {"close": 99.0, "high": 101.0, "low": 98.5, "body": 1.5, "range": 2.5, "delta": -100.0},
         "recent_candles": [
-            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 45), "high": 99.0, "low": 98.0, "delta": -100.0, "volume": 200.0},
-            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 50), "high": 99.0, "low": 98.0, "delta": -100.0, "volume": 200.0},
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 45), "close": 99.0, "high": 99.8, "low": 98.0, "delta": -100.0, "volume": 200.0},
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 50), "close": 99.8, "high": 100.2, "low": 99.2, "delta": -40.0, "volume": 200.0},
             {"timestamp_ms": _ms_ny(2024, 7, 1, 10, 0), "high": 101.0, "low": 98.5, "delta": -100.0, "volume": 100.0},
         ],
         "session_extremes": {},
@@ -215,6 +215,52 @@ def test_algorithm_provider_takes_short_breakdown_without_api(tmp_path: Path) ->
     assert decision["stop_loss"] == 105.0
     assert decision["invalidation"] == "opposite ORB high 105.000000"
     assert service.last_request_body is None
+
+
+def test_algorithm_provider_waits_for_retest_after_first_breakout(tmp_path: Path) -> None:
+    service = AiDecisionService(replace(_config(tmp_path), ai_provider="algorithm"))
+    snapshot = {
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 9, 50),
+        "session_timezone": "America/New_York",
+        "last_candle": {"close": 99.0, "high": 101.0, "low": 98.5, "body": 1.5, "range": 2.5, "delta": -100.0},
+        "recent_candles": [
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 45), "close": 100.5, "high": 101.0, "low": 100.1, "delta": -100.0, "volume": 200.0},
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 50), "close": 99.0, "high": 101.0, "low": 98.5, "delta": -100.0, "volume": 100.0},
+        ],
+        "ny_first_15m_profile": {"session_low": 100.0, "session_high": 105.0},
+    }
+
+    decision = service.decide(snapshot, {"triggered": True, "reasons": ["ny_first_15m_profile_low_closed_below"]})
+
+    assert decision["decision"] == "WAIT"
+    assert decision["reason"] == "wait_for_short_breakout_retest_continuation"
+
+
+def test_algorithm_provider_takes_direct_displacement_breakout(tmp_path: Path) -> None:
+    service = AiDecisionService(replace(_config(tmp_path), ai_provider="algorithm"))
+    snapshot = {
+        "snapshot_timestamp_ms": _ms_ny(2024, 7, 1, 9, 50),
+        "session_timezone": "America/New_York",
+        "last_candle": {
+            "close": 99.0,
+            "high": 101.0,
+            "low": 98.5,
+            "body": 1.8,
+            "range": 2.5,
+            "delta": -90.0,
+            "volume": 100.0,
+        },
+        "recent_candles": [
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 45), "close": 100.5, "high": 101.0, "low": 100.0, "range": 1.0, "delta": -100.0, "volume": 200.0},
+            {"timestamp_ms": _ms_ny(2024, 7, 1, 9, 50), "close": 99.0, "high": 101.0, "low": 98.5, "range": 2.5, "delta": -90.0, "volume": 100.0},
+        ],
+        "ny_first_15m_profile": {"session_low": 100.0, "session_high": 105.0},
+    }
+
+    decision = service.decide(snapshot, {"triggered": True, "reasons": ["ny_first_15m_profile_low_closed_below"]})
+
+    assert decision["decision"] == "TAKE"
+    assert decision["reason"] == "algorithm_short_orb_continuation_ny_first_15m_session_low"
 
 
 def test_algorithm_provider_blocks_orb_after_bias_window(tmp_path: Path) -> None:
@@ -428,7 +474,9 @@ if __name__ == "__main__":
         test_ny_first_15m_profile_is_frozen_after_window_end(tmp_path)
         test_trigger_observer_reports_without_gating_ai(tmp_path)
         test_ai_provider_key_can_be_present_without_live_calls(tmp_path)
-        test_algorithm_provider_takes_short_breakdown_without_api(tmp_path)
+        test_algorithm_provider_takes_short_retest_continuation_without_api(tmp_path)
+        test_algorithm_provider_waits_for_retest_after_first_breakout(tmp_path)
+        test_algorithm_provider_takes_direct_displacement_breakout(tmp_path)
         test_algorithm_provider_blocks_orb_after_bias_window(tmp_path)
         test_algorithm_provider_rejects_weak_pre_entry_delta(tmp_path)
         test_algorithm_provider_rejects_prior_opposite_orb_touch(tmp_path)
