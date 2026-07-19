@@ -38,8 +38,16 @@ python -m orb_live_agent.main
 
 ```powershell
 cd C:\Users\adjop\OneDrive\Documents\golden-goose-project\apps\orb_live_agent
-copy .env.example .env
 docker compose up -d --build
+```
+
+Docker uses the frozen AVAXUSDC `variant_009` paper profile at
+`profiles/avaxusdc_variant009_paper.conf`. It uses deterministic algorithmic
+entries, cannot place real Binance orders, and writes isolated logs under
+`apps/orb_live_agent/data/live_paper/avaxusdc_variant009_v1/`.
+
+```powershell
+docker compose logs -f orb-live-agent
 ```
 
 Logs are written under `apps/orb_live_agent/data/`.
@@ -82,6 +90,13 @@ PAPER_MAX_STOP_RISK_PCT=0.025
 PAPER_TP1_R=4
 PAPER_TP1_FRACTION=0.5
 PAPER_RUNNER_TRAIL_TP1_FRACTION=0.5
+PAPER_EXIT_MODE=tp1_trail
+PAPER_TRAIL_ACTIVATION_R=4
+PAPER_TRAIL_DISTANCE_R=2
+PAPER_PROTECTION_ENABLED=true
+PAPER_PROTECTION_ACTIVATION_R=1
+PAPER_PROTECTION_STOP_R=0
+PAPER_MAX_HOLD_EXIT_TIME=01:30
 ```
 
 Fees are charged on entry and exit notional. Slippage worsens entry and exit
@@ -89,10 +104,28 @@ fills. The AI proposes entry model, direction, entry price, stop, and rationale.
 This live agent is trend-following only, so `entry_model` must be `trend`.
 The paper execution engine ignores AI take-profit output. Trend trades close
 50% at 4R, then trail the remaining 50% by half the entry-to-TP1 distance.
+`PAPER_EXIT_MODE=trail_only` skips TP1 and starts a full-position trail at
+`PAPER_TRAIL_ACTIVATION_R`. `PAPER_TRAIL_DISTANCE_R` is measured in initial R.
+Protection can be disabled, activated at another R multiple, or lock profit with
+`PAPER_PROTECTION_STOP_R` (`0` means breakeven).
 If neither stop nor TP/trailing resolves the trade, the broker force-exits at
-the first raw aggTrade at or after `PRE_NY_START_TIME` on the next NY day.
+the first raw aggTrade at or after `PAPER_MAX_HOLD_EXIT_TIME` on the next NY day.
 The risk gate rejects trend trades with stop risk below `PAPER_MIN_STOP_RISK_PCT`
 or above `PAPER_MAX_STOP_RISK_PCT`.
+
+## Overnight ORB Backtest
+
+Use a separate cache/output folder because the ORB anchor changes:
+
+```powershell
+$env:ORB_SESSION_START_TIME="17:30"
+$env:ORB_ENTRY_START_TIME="17:45"
+$env:PAPER_MAX_HOLD_EXIT_TIME="09:29"
+```
+
+This keeps the same ORB strategy logic but builds the 15-minute ORB from
+`17:30 <= time < 17:45` and force-exits unresolved positions before the next NY
+open.
 
 ## Historical Replay Backtest
 

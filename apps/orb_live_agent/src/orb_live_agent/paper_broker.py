@@ -14,13 +14,20 @@ class PaperBroker:
         self.equity = float(config.paper_initial_equity)
         self.risk_fraction = float(config.paper_risk_fraction)
         self.session_tz = ZoneInfo(config.session_timezone)
-        self.max_hold_exit_time = _parse_time(config.pre_ny_start_time)
+        self.max_hold_exit_time = _parse_time(config.paper_max_hold_exit_time)
         self.execution_config = ExecutionConfig(
             fee_bps=float(config.paper_fee_bps),
             slippage_bps=float(config.paper_slippage_bps),
             tp1_r=float(config.paper_tp1_r),
             tp1_fraction=float(config.paper_tp1_fraction),
             runner_trail_tp1_fraction=float(config.paper_runner_trail_tp1_fraction),
+            exit_mode=str(config.paper_exit_mode),
+            trail_activation_r=float(config.paper_trail_activation_r),
+            trail_distance_r=float(config.paper_trail_distance_r),
+            protection_enabled=bool(config.paper_protection_enabled),
+            protection_activation_r=float(config.paper_protection_activation_r),
+            protection_stop_r=float(config.paper_protection_stop_r),
+            protection_fraction=float(config.paper_protection_fraction),
         )
         self.position: ExecutionPosition | None = None
 
@@ -77,7 +84,7 @@ class PaperBroker:
         high = float(candle["high"])
         low = float(candle["low"])
 
-        if not pos.tp1_hit:
+        if not pos.trail_active:
             trigger_price = self._initial_stop_or_tp1_price(pos, high, low)
             if trigger_price is None:
                 return []
@@ -102,13 +109,21 @@ class PaperBroker:
         if pos.direction == "long":
             if low <= pos.stop_loss:
                 return pos.stop_loss
-            if high >= pos.tp1_price:
-                return pos.tp1_price
+            protection_price = pos.entry + self.execution_config.protection_activation_r * pos.initial_risk
+            if self.execution_config.protection_enabled and pos.entry_model == "trend" and not pos.protection_hit and high >= protection_price:
+                return protection_price
+            target = pos.trail_activation_price if pos.exit_mode == "trail_only" else pos.tp1_price
+            if high >= target:
+                return target
             return None
         if high >= pos.stop_loss:
             return pos.stop_loss
-        if low <= pos.tp1_price:
-            return pos.tp1_price
+        protection_price = pos.entry - self.execution_config.protection_activation_r * pos.initial_risk
+        if self.execution_config.protection_enabled and pos.entry_model == "trend" and not pos.protection_hit and low <= protection_price:
+            return protection_price
+        target = pos.trail_activation_price if pos.exit_mode == "trail_only" else pos.tp1_price
+        if low <= target:
+            return target
         return None
 
     def _targets(self, entry_model: str, direction: str, snapshot: dict[str, Any] | None) -> dict[str, Any]:

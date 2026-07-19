@@ -74,5 +74,38 @@ def observe_triggers(snapshot: dict[str, Any], bubbles: list[dict[str, Any]], re
         "setup_observation_active": bool(snapshot.get("setup_observation_active")),
         "triggered": bool(reasons),
         "reasons": sorted(set(reasons)),
+        "orderflow_features": _orderflow_features(snapshot, bubbles),
         "mode": "observe_only",
+    }
+
+
+def _bubble_side(bubble: dict[str, Any]) -> str:
+    if bubble.get("aggressive_side") in {"buy", "sell"}:
+        return str(bubble["aggressive_side"])
+    return "sell" if bool(bubble.get("is_buyer_maker")) else "buy"
+
+
+def _orderflow_features(snapshot: dict[str, Any], bubbles: list[dict[str, Any]]) -> dict[str, Any]:
+    candle = snapshot["last_candle"]
+    recent = snapshot.get("recent_candles") or []
+    prior = [c for c in recent if int(c.get("timestamp_ms", 0)) < int(candle.get("timestamp_ms", 0))]
+    prior_volumes = [float(c.get("volume", 0.0)) for c in prior[-30:] if float(c.get("volume", 0.0)) > 0]
+    buy_bubbles = [b for b in bubbles if _bubble_side(b) == "buy"]
+    sell_bubbles = [b for b in bubbles if _bubble_side(b) == "sell"]
+    largest = max(bubbles, key=lambda b: float(b.get("qty", 0.0)), default=None)
+    volume = float(candle.get("volume", 0.0))
+    delta = float(candle.get("delta", 0.0))
+    return {
+        "candle_delta": delta,
+        "candle_volume": volume,
+        "candle_delta_ratio": delta / volume if volume > 0 else 0.0,
+        "cvd_recent_30": sum(float(c.get("delta", 0.0)) for c in recent[-30:]),
+        "volume_expansion_ratio": volume / median(prior_volumes) if prior_volumes else 0.0,
+        "bubble_count": len(bubbles),
+        "buy_bubble_count": len(buy_bubbles),
+        "sell_bubble_count": len(sell_bubbles),
+        "buy_bubble_qty": sum(float(b.get("qty", 0.0)) for b in buy_bubbles),
+        "sell_bubble_qty": sum(float(b.get("qty", 0.0)) for b in sell_bubbles),
+        "max_bubble_qty": float(largest.get("qty", 0.0)) if largest else 0.0,
+        "max_bubble_side": _bubble_side(largest) if largest else None,
     }

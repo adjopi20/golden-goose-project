@@ -118,6 +118,22 @@ class LiveStateBuilder:
             },
             "previous_24h_profile_for_session": session_profile,
             "ny_first_15m_profile": ny_15m_profile,
+            "orb_entry_window_minutes": self.config.orb_entry_window_minutes,
+            "orb_min_volume_expansion_ratio": self.config.orb_min_volume_expansion_ratio,
+            "orb_min_supportive_bubble_qty_ratio": self.config.orb_min_supportive_bubble_qty_ratio,
+            "orb_min_candidate_body_ratio": self.config.orb_min_candidate_body_ratio,
+            "orb_short_max_close_position": self.config.orb_short_max_close_position,
+            "orb_long_min_close_position": self.config.orb_long_min_close_position,
+            "orb_require_directional_delta": self.config.orb_require_directional_delta,
+            "orb_min_preentry_delta_ratio": self.config.orb_min_preentry_delta_ratio,
+            "orb_preentry_delta_lookback_minutes": self.config.orb_preentry_delta_lookback_minutes,
+            "orb_opposite_touch_policy": self.config.orb_opposite_touch_policy,
+            "orb_direct_min_body_ratio": self.config.orb_direct_min_body_ratio,
+            "orb_direct_short_max_close_position": self.config.orb_direct_short_max_close_position,
+            "orb_direct_long_min_close_position": self.config.orb_direct_long_min_close_position,
+            "orb_direct_min_range_ratio": self.config.orb_direct_min_range_ratio,
+            "orb_direct_min_delta_ratio": self.config.orb_direct_min_delta_ratio,
+            "orb_stop_model": self.config.orb_stop_model,
         }
 
     def _profile_for(self, trades: list[dict[str, Any]]) -> dict[str, Any] | None:

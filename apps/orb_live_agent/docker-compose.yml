@@ -4,7 +4,7 @@ services:
       context: ../..
       dockerfile: apps/orb_live_agent/Dockerfile
     env_file:
-      - .env
+      - ./profiles/avaxusdc_variant009_paper.conf
     volumes:
       - ./data:/app/apps/orb_live_agent/data
     restart: unless-stopped
