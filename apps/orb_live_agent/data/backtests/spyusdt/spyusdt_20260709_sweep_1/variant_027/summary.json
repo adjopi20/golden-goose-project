@@ -1,0 +1,11 @@
+{
+  "candles": 109912,
+  "event": "fast_orb_backtest_finished",
+  "final_equity": 714.1487919794686,
+  "losses": 5,
+  "net_pnl": -285.8512080205315,
+  "output_dir": "apps\\orb_live_agent\\data\\backtests\\spyusdt\\spyusdt_20260709_sweep_1\\variant_027",
+  "rows_loaded": 1883116,
+  "trades_taken": 5,
+  "wins": 0
+}

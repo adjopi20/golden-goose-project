@@ -1,0 +1,18 @@
+{
+  "bubble_lookback_min_trades": 100,
+  "bubble_percentile": 0.95,
+  "candles": 3253841,
+  "end_date": "2026-06-30",
+  "input": "storage\\xrpusdt\\parquet\\XRPUSDT-aggTrades-2020-01_to_2026-06.parquet",
+  "ny_open_time": "09:30",
+  "orb_entry_start_time": "09:45",
+  "orb_session_start_time": "09:30",
+  "overnight_start_time": "17:30",
+  "paper_max_hold_exit_time": "01:30",
+  "pre_ny_start_time": "01:30",
+  "rows_loaded": 726058105,
+  "session_timezone": "America/New_York",
+  "setup_cutoff_time": "17:30",
+  "start_date": "2020-01-06",
+  "volume_profile_bins": 50
+}

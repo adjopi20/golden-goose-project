@@ -1,0 +1,11 @@
+{
+  "candles": 1253687,
+  "event": "fast_orb_backtest_finished",
+  "final_equity": 378.08498769475494,
+  "losses": 49,
+  "net_pnl": -621.5390930952989,
+  "output_dir": "apps\\orb_live_agent\\data\\backtests\\solusdc\\20260709_sweep_1\\variant_030",
+  "rows_loaded": 118129738,
+  "trades_taken": 72,
+  "wins": 23
+}

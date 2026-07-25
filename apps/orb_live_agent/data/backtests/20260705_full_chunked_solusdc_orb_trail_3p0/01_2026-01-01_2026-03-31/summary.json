@@ -1,0 +1,11 @@
+{
+  "candles": 129985,
+  "event": "fast_orb_backtest_finished",
+  "final_equity": 791.6859046284861,
+  "losses": 10,
+  "net_pnl": -208.31409537151356,
+  "output_dir": "apps\\orb_live_agent\\data\\backtests\\20260705_full_chunked_solusdc_orb_trail_3p0\\01_2026-01-01_2026-03-31",
+  "rows_loaded": 10312849,
+  "trades_taken": 12,
+  "wins": 2
+}

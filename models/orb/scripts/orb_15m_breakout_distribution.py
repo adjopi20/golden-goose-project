@@ -130,6 +130,7 @@ def _make_sample(
     breakout_ms = int(candle["timestamp_ms"])
     breakout_level = orb["profile_high"] if direction == "long" else orb["profile_low"]
     invalidation_level = orb["profile_low"] if direction == "long" else orb["profile_high"]
+    price = float(candle["close"])
     horizon = trade_df.loc[(trade_df["timestamp"] > breakout_ms) & (trade_df["timestamp"] <= horizon_end_ms)]
     if direction == "long":
         invalidation_hits = horizon.loc[horizon["price"] <= invalidation_level]
@@ -137,25 +138,31 @@ def _make_sample(
         end_ms = int(invalidation_hits["timestamp"].iloc[0]) if not invalidation_hits.empty else horizon_end_ms
         outcome_df = horizon.loc[horizon["timestamp"] <= end_ms]
         max_row = outcome_df.loc[outcome_df["price"].idxmax()] if not outcome_df.empty else None
+        min_price = float(outcome_df["price"].min()) if not outcome_df.empty else price
         max_price = float(max_row["price"]) if max_row is not None else float(candle["close"])
         max_ms = int(max_row["timestamp"]) if max_row is not None else breakout_ms
         expansion_abs = max_price - breakout_level
+        mfe_abs = max_price - price
+        mae_abs = price - min_price
     else:
         invalidation_hits = horizon.loc[horizon["price"] >= invalidation_level]
         same_side_reclaim_hits = horizon.loc[horizon["price"] >= breakout_level]
         end_ms = int(invalidation_hits["timestamp"].iloc[0]) if not invalidation_hits.empty else horizon_end_ms
         outcome_df = horizon.loc[horizon["timestamp"] <= end_ms]
         max_row = outcome_df.loc[outcome_df["price"].idxmin()] if not outcome_df.empty else None
+        max_adverse_price = float(outcome_df["price"].max()) if not outcome_df.empty else price
         max_price = float(max_row["price"]) if max_row is not None else float(candle["close"])
         max_ms = int(max_row["timestamp"]) if max_row is not None else breakout_ms
         expansion_abs = breakout_level - max_price
+        mfe_abs = price - max_price
+        mae_abs = max_adverse_price - price
 
     orb_width = float(orb["profile_width"])
+    risk_abs = abs(price - invalidation_level)
     pre5 = setup_from_orb_df.loc[setup_from_orb_df["timestamp"] >= breakout_ms - 5 * 60_000]
     pre15 = setup_from_orb_df.loc[setup_from_orb_df["timestamp"] >= breakout_ms - 15 * 60_000]
     volume = float(candle["volume"])
     buy_volume = float(candle["buy_volume"])
-    price = float(candle["close"])
     row: dict[str, Any] = {
         "session_day": day.isoformat(),
         "direction": direction,
@@ -184,6 +191,12 @@ def _make_sample(
         "max_expansion_abs": expansion_abs,
         "max_expansion_pct": expansion_abs / breakout_level if breakout_level else math.nan,
         "max_expansion_orb_width_multiple": expansion_abs / orb_width if orb_width > 0 else math.nan,
+        "entry_to_invalidation_risk_abs": risk_abs,
+        "max_favorable_excursion_r": mfe_abs / risk_abs if risk_abs > 0 else math.nan,
+        "max_adverse_excursion_r": mae_abs / risk_abs if risk_abs > 0 else math.nan,
+        "hit_1r_before_invalidation": bool(risk_abs > 0 and mfe_abs >= risk_abs),
+        "hit_2r_before_invalidation": bool(risk_abs > 0 and mfe_abs >= 2.0 * risk_abs),
+        "hit_4r_before_invalidation": bool(risk_abs > 0 and mfe_abs >= 4.0 * risk_abs),
         "time_to_max_expansion_seconds": (max_ms - breakout_ms) / 1000.0,
         "same_side_reclaim_time": _iso(int(same_side_reclaim_hits["timestamp"].iloc[0])) if not same_side_reclaim_hits.empty else None,
         "time_to_same_side_reclaim_seconds": (
@@ -483,6 +496,94 @@ def _pattern_report(sample_df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
+def _tradeability_report(sample_df: pd.DataFrame) -> str:
+    lines = [
+        "# ORB Tradeability Study",
+        "",
+        "This report treats each ORB breakout as a candidate entry at breakout close with the opposite ORB extreme as invalidation.",
+        "Outcome columns are labels, not setup inputs.",
+        "",
+    ]
+    if sample_df.empty:
+        lines.append("_No samples._")
+        return "\n".join(lines)
+
+    df = _with_directional_features(sample_df)
+    overview = pd.DataFrame(
+        [
+            {
+                "samples": int(len(df)),
+                "hit_1r_rate": float(df["hit_1r_before_invalidation"].mean()),
+                "hit_2r_rate": float(df["hit_2r_before_invalidation"].mean()),
+                "hit_4r_rate": float(df["hit_4r_before_invalidation"].mean()),
+                "median_mfe_r": float(df["max_favorable_excursion_r"].median()),
+                "median_mae_r": float(df["max_adverse_excursion_r"].median()),
+            }
+        ]
+    )
+    lines.extend(["## Survival Rates", "", _md_table(overview), ""])
+
+    by_direction = df.groupby("direction").agg(
+        samples=("session_day", "size"),
+        hit_1r_rate=("hit_1r_before_invalidation", "mean"),
+        hit_2r_rate=("hit_2r_before_invalidation", "mean"),
+        hit_4r_rate=("hit_4r_before_invalidation", "mean"),
+        median_mfe_r=("max_favorable_excursion_r", "median"),
+        median_mae_r=("max_adverse_excursion_r", "median"),
+    ).reset_index()
+    lines.extend(["## By Direction", "", _md_table(by_direction), ""])
+
+    failed = df[df["max_favorable_excursion_r"] < 1.0]
+    expanded = df[df["max_favorable_excursion_r"] >= 2.0]
+    rows = []
+    for col in [
+        "time_from_orb_end_to_breakout_seconds",
+        "breakout_body_to_range",
+        "breakout_close_follow_through",
+        "breakout_delta_in_direction",
+        "breakout_volume",
+        "orb_profile_width",
+        "orb_total_volume",
+        "orb_delta_in_direction",
+        "post_orb_delta_in_direction",
+        "last_5m_delta_in_direction",
+        "last_15m_delta_in_direction",
+        "pre_breakout_p95_bubble_count",
+        "breakout_candle_p95_bubble_count",
+        "abs_distance_previous_24h_poc",
+    ]:
+        if col not in df.columns:
+            continue
+        bad = failed[col].dropna()
+        good = expanded[col].dropna()
+        if len(bad) < 10 or len(good) < 10:
+            continue
+        rows.append({
+            "feature": col,
+            "failed_lt_1r_median": float(bad.median()),
+            "expanded_ge_2r_median": float(good.median()),
+            "median_delta": float(good.median() - bad.median()),
+        })
+    lines.extend(["## Failed vs Expanded Median Clues", "", _md_table(pd.DataFrame(rows)), ""])
+
+    worst_cols = [
+        "session_day",
+        "direction",
+        "breakout_time",
+        "end_reason",
+        "max_favorable_excursion_r",
+        "max_adverse_excursion_r",
+        "breakout_body_to_range",
+        "breakout_close_follow_through",
+        "breakout_delta_in_direction",
+    ]
+    worst = df.sort_values("max_favorable_excursion_r", ascending=True).head(20)
+    best = df.sort_values("max_favorable_excursion_r", ascending=False).head(20)
+    lines.extend(["## Worst 20 Candidates", "", _md_table(worst[worst_cols]), ""])
+    lines.extend(["## Best 20 Candidates", "", _md_table(best[worst_cols]), ""])
+    return "\n".join(lines)
+
+
 def _quality_report(sample_df: pd.DataFrame, skipped: dict[str, int]) -> str:
     lines = [
         "# Data Quality Checks",
@@ -568,6 +669,7 @@ def write_reports(output_dir: Path, input_path: Path, sample_df: pd.DataFrame, s
     (output_dir / "findings.md").write_text("\n".join(lines), encoding="utf-8")
     (output_dir / "distribution_summary.md").write_text("\n".join(lines), encoding="utf-8")
     (output_dir / "pattern_candidates.md").write_text(_pattern_report(sample_df), encoding="utf-8")
+    (output_dir / "tradeability_study.md").write_text(_tradeability_report(sample_df), encoding="utf-8")
     (output_dir / "data_quality.md").write_text(_quality_report(sample_df, skipped), encoding="utf-8")
 
 

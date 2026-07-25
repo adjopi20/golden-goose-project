@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from .ai_decision import AiDecisionService
@@ -29,6 +31,19 @@ def _pre_ai_wait_decision(snapshot: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def _execution_decision(decision: dict[str, Any], current_price: float) -> dict[str, Any]:
+    if decision.get("decision") != "TAKE":
+        return decision
+    return {**decision, "signal_entry": decision.get("entry"), "entry": float(current_price)}
+
+
+def _effective_config(config: Any) -> dict[str, Any]:
+    return {
+        key: str(value) if isinstance(value, Path) else value
+        for key, value in asdict(config).items()
+    }
+
+
 async def run() -> None:
     config = load_config()
     storage = JsonlStorage(config.log_dir)
@@ -36,7 +51,15 @@ async def run() -> None:
     ai = AiDecisionService(config)
     gate = RiskGate(config.paper_min_stop_risk_pct, config.paper_max_stop_risk_pct)
     broker = PaperBroker(config)
-    storage.write("system", {"event": "started", "symbol": config.symbol, "mode": "paper"})
+    storage.write(
+        "system",
+        {
+            "event": "started",
+            "symbol": config.symbol,
+            "mode": "paper",
+            "effective_config": _effective_config(config),
+        },
+    )
     bootstrap_trades = storage.read_recent_raw_aggtrades()
     for trade in bootstrap_trades:
         state.push_trade(trade)
@@ -76,9 +99,10 @@ async def run() -> None:
         if decision is None:
             decision = ai.decide(closed.snapshot, trigger_observation)
         storage.write("ai_decisions", decision)
-        gate_result = gate.validate(decision, has_open_position=broker.has_open_position())
-        storage.write("risk_gate", {"decision": decision, "gate": gate_result})
-        open_event = broker.on_decision(decision, gate_result, closed.snapshot)
+        execution_decision = _execution_decision(decision, float(trade["price"]))
+        gate_result = gate.validate(execution_decision, has_open_position=broker.has_open_position())
+        storage.write("risk_gate", {"decision": execution_decision, "gate": gate_result})
+        open_event = broker.on_decision(execution_decision, gate_result, closed.snapshot)
         if open_event is not None:
             storage.write("paper_orders", open_event)
 

@@ -10,7 +10,7 @@ from .execution_engine import ExecutionConfig, ExecutionPosition, force_exit, on
 
 
 class PaperBroker:
-    def __init__(self, config: AgentConfig) -> None:
+    def __init__(self, config: AgentConfig, long_only_spot: bool = False) -> None:
         self.equity = float(config.paper_initial_equity)
         self.risk_fraction = float(config.paper_risk_fraction)
         self.session_tz = ZoneInfo(config.session_timezone)
@@ -28,6 +28,7 @@ class PaperBroker:
             protection_activation_r=float(config.paper_protection_activation_r),
             protection_stop_r=float(config.paper_protection_stop_r),
             protection_fraction=float(config.paper_protection_fraction),
+            long_only_spot=long_only_spot,
         )
         self.position: ExecutionPosition | None = None
 
@@ -76,6 +77,11 @@ class PaperBroker:
         )
         event["timestamp"] = int(trade["timestamp"])
         return self._apply_event(event)
+
+    def force_close(self, price: float, reason: str) -> list[dict[str, Any]]:
+        if self.position is None:
+            return []
+        return self._apply_event(force_exit(self.position, price, self.execution_config, reason))
 
     def on_candle(self, candle: dict[str, Any]) -> list[dict[str, Any]]:
         if self.position is None:
@@ -140,7 +146,9 @@ class PaperBroker:
 
     def _max_hold_exit_ms(self, opened_at_ms: int) -> int:
         opened_at = datetime.fromtimestamp(opened_at_ms / 1000.0, tz=ZoneInfo("UTC")).astimezone(self.session_tz)
-        cutoff_date = opened_at.date() + timedelta(days=1)
+        cutoff_date = opened_at.date()
+        if self.max_hold_exit_time <= opened_at.time():
+            cutoff_date += timedelta(days=1)
         cutoff = datetime.combine(cutoff_date, self.max_hold_exit_time, tzinfo=self.session_tz)
         return int(cutoff.timestamp() * 1000)
 

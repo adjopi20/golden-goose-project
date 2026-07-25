@@ -1,0 +1,39 @@
+{
+  "avg_R": 0.21590945436303627,
+  "avg_minutes_held": 19.375,
+  "by_direction": {
+    "long": {
+      "count": 5,
+      "mean": -0.25454487301914197,
+      "median": -0.05468750000001071
+    },
+    "short": {
+      "count": 3,
+      "mean": 1.0,
+      "median": 1.0
+    }
+  },
+  "by_exit": {
+    "stop": {
+      "count": 1,
+      "mean": -1.0
+    },
+    "timeout": {
+      "count": 3,
+      "mean": 0.15268162189117437
+    },
+    "tp1": {
+      "count": 3,
+      "mean": 1.0
+    },
+    "vwap_fail": {
+      "count": 1,
+      "mean": -0.730769230769233
+    }
+  },
+  "events": 8,
+  "median_R": 0.25636618283676693,
+  "median_minutes_held": 15.0,
+  "profit_factor": 1.9674138863953947,
+  "win_rate": 0.625
+}

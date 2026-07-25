@@ -1,0 +1,11 @@
+{
+  "candles": 115500,
+  "event": "fast_orb_backtest_finished",
+  "final_equity": 1041.6483980521218,
+  "losses": 1,
+  "net_pnl": 41.648398052121436,
+  "output_dir": "apps\\orb_live_agent\\data\\backtests\\qqqusdt\\qqqusdt_20260709_sweep_1\\variant_011",
+  "rows_loaded": 3991758,
+  "trades_taken": 4,
+  "wins": 3
+}

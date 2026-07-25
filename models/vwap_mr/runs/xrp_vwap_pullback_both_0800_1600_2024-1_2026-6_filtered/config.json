@@ -1,0 +1,23 @@
+{
+  "atr_span": 14,
+  "atr_stop_mult": 0.7,
+  "candles": "apps\\orb_live_agent\\data\\feature_cache\\xrpusdt\\main_orb_2020-01-06_to_2026-06-30\\candles_1m.parquet",
+  "direction": "both",
+  "ema_slope_atr_max": 0.35,
+  "ema_slope_bars": 3,
+  "ema_span": 20,
+  "end_date": "2026-06-30",
+  "max_hold_bars": 36,
+  "output_dir": "models\\vwap_mr\\runs\\xrp_vwap_pullback_both_0800_1600_2024-1_2026-6_filtered",
+  "pullback_volume_max": 1.0,
+  "self_check": false,
+  "session_end": "16:00",
+  "session_start": "08:00",
+  "session_trend_atr_max": 1.5,
+  "session_tz": "UTC",
+  "skip_strong_session_trend": true,
+  "skip_weekly_vwap_agreement": true,
+  "start_date": "2024-01-01",
+  "volume_lookback": 20,
+  "weekly_slope_bars": 12
+}

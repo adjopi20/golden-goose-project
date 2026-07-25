@@ -1,0 +1,18 @@
+{
+  "bubble_lookback_min_trades": 100,
+  "bubble_percentile": 0.95,
+  "candles": 1177502,
+  "end_date": "2026-06-30",
+  "input": "storage\\avaxusdc\\parquet\\AVAXUSDC-aggTrades-2024-03_to_2026-06.parquet",
+  "ny_open_time": "09:00",
+  "orb_entry_start_time": "09:15",
+  "orb_session_start_time": "09:00",
+  "overnight_start_time": "17:30",
+  "paper_max_hold_exit_time": "04:30",
+  "pre_ny_start_time": "01:30",
+  "rows_loaded": 38156028,
+  "session_timezone": "America/New_York",
+  "setup_cutoff_time": "17:30",
+  "start_date": "2024-04-01",
+  "volume_profile_bins": 50
+}

@@ -17,6 +17,7 @@ class ExecutionConfig:
     protection_activation_r: float = 1.0
     protection_stop_r: float = 0.0
     protection_fraction: float = 0.0
+    long_only_spot: bool = False
 
 
 @dataclass
@@ -68,6 +69,8 @@ def open_position(
     tp1_price: float | None = None,
     tp2_price: float | None = None,
 ) -> tuple[ExecutionPosition | None, dict]:
+    if config.long_only_spot and direction != "long":
+        return None, {"event": "paper_reject", "reason": "short_not_available_on_spot"}
     if config.exit_mode not in {"tp1_trail", "trail_only"}:
         return None, {"event": "paper_reject", "reason": "invalid_exit_mode"}
     if not 0.0 < config.tp1_fraction <= 1.0:
@@ -83,6 +86,8 @@ def open_position(
     if risk <= 0:
         return None, {"event": "paper_reject", "reason": "zero_or_invalid_risk"}
     qty = equity * risk_fraction / risk
+    if config.long_only_spot:
+        qty = min(qty, equity / (entry * (1.0 + config.fee_bps / 10_000.0)))
     entry_fee = fee(entry, qty, config.fee_bps)
     tp1 = tp1_price if tp1_price is not None else entry + config.tp1_r * risk if direction == "long" else entry - config.tp1_r * risk
     trail_activation = entry + config.trail_activation_r * risk if direction == "long" else entry - config.trail_activation_r * risk

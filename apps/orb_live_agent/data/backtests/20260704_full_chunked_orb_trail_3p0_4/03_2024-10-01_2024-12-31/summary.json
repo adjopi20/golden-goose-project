@@ -1,0 +1,11 @@
+{
+  "candles": 132615,
+  "event": "fast_orb_backtest_finished",
+  "final_equity": 1022.6737941010392,
+  "losses": 13,
+  "net_pnl": 43.320799337593606,
+  "output_dir": "apps\\orb_live_agent\\data\\backtests\\20260704_full_chunked_orb_trail_3p0_4\\03_2024-10-01_2024-12-31",
+  "rows_loaded": 3983947,
+  "trades_taken": 15,
+  "wins": 2
+}

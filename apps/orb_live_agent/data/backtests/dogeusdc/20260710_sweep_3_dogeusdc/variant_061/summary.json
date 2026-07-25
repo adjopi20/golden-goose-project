@@ -1,0 +1,11 @@
+{
+  "candles": 1229386,
+  "event": "fast_orb_backtest_finished",
+  "final_equity": 741.4701965506002,
+  "losses": 21,
+  "net_pnl": -258.5298034493999,
+  "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260710_sweep_3_dogeusdc\\variant_061",
+  "rows_loaded": 78066302,
+  "trades_taken": 26,
+  "wins": 5
+}

@@ -1,0 +1,13 @@
+{
+  "adverse_z": 1.0,
+  "aggtrades": "storage\\avaxusdc\\parquet\\AVAXUSDC-aggTrades-2024-03_to_2026-06.parquet",
+  "anchor_period": "week",
+  "end_date": "2026-06-30",
+  "output_dir": "models\\vwap_mr\\runs\\20260720_avax_vwap_mr_distribution_week_anchor",
+  "reset_z": 0.5,
+  "self_check": false,
+  "session_end": "17:30",
+  "session_start": "09:30",
+  "session_tz": "America/New_York",
+  "start_date": "2026-02-01"
+}

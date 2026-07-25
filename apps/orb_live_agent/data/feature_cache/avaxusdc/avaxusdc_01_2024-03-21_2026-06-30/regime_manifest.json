@@ -1,0 +1,14 @@
+{
+  "params": {
+    "bar_size": "1h",
+    "contraction_momentum_z": 0.75,
+    "contraction_vol_ratio": 0.8,
+    "expansion_momentum_z": 1.0,
+    "expansion_vol_ratio": 1.25,
+    "long_vol_days": 7,
+    "momentum_hours": 24,
+    "normalization_days": 30,
+    "short_vol_hours": 6
+  },
+  "rows": 19272
+}

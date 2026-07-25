@@ -1,0 +1,2498 @@
+[
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.3794716349072386,
+      "median_quarter_r": 0.4024325692915757,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1231851358185987,
+      "quarters": 10,
+      "top3_winner_share": 0.17221601472620957,
+      "total_r": 5.245567559781324,
+      "trades": 90,
+      "win_rate": 0.5888888888888889,
+      "wins": 53,
+      "worst_quarter_r": -3.1521122519323916
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1120.7723925482642,
+      "losses": 37,
+      "net_pnl": 120.77239254826354,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_012",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 53
+    },
+    "variant": "variant_012"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.41815066913494114,
+      "median_quarter_r": 0.827264210385735,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1569949764690006,
+      "quarters": 10,
+      "top3_winner_share": 0.21910238416116293,
+      "total_r": 6.927754190614594,
+      "trades": 90,
+      "win_rate": 0.45555555555555555,
+      "wins": 41,
+      "worst_quarter_r": -3.2881731671081447
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1166.9391581139412,
+      "losses": 49,
+      "net_pnl": 166.9391581139421,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_004",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 41
+    },
+    "variant": "variant_004"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 13,
+      "max_drawdown": 0.3877071979626159,
+      "median_quarter_r": 0.7826936707373833,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1681576137622218,
+      "quarters": 10,
+      "top3_winner_share": 0.19871969133079165,
+      "total_r": 7.7454003993022695,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -3.3210700472483
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1195.1234307364357,
+      "losses": 61,
+      "net_pnl": 195.12343073643524,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_019",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_019"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.35461575510280174,
+      "median_quarter_r": 0.8594939458066342,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1303995839316245,
+      "quarters": 10,
+      "top3_winner_share": 0.12796609856031074,
+      "total_r": 5.552778935016913,
+      "trades": 90,
+      "win_rate": 0.5888888888888889,
+      "wins": 53,
+      "worst_quarter_r": -3.3959394585447766
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1157.457468552031,
+      "losses": 37,
+      "net_pnl": 157.4574685520323,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_009",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 53
+    },
+    "variant": "variant_009"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.35461575510280174,
+      "median_quarter_r": 0.8594939458066342,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1303995839316245,
+      "quarters": 10,
+      "top3_winner_share": 0.12796609856031074,
+      "total_r": 5.552778935016913,
+      "trades": 90,
+      "win_rate": 0.5888888888888889,
+      "wins": 53,
+      "worst_quarter_r": -3.3959394585447766
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1157.457468552031,
+      "losses": 37,
+      "net_pnl": 157.4574685520323,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_010",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 53
+    },
+    "variant": "variant_010"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 13,
+      "max_drawdown": 0.3877071979626158,
+      "median_quarter_r": 0.6769494746499005,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.153294868614822,
+      "quarters": 10,
+      "top3_winner_share": 0.16702952755296133,
+      "total_r": 7.0608169919629145,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -3.486477375496162
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1174.987575161847,
+      "losses": 61,
+      "net_pnl": 174.98757516184708,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_027",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_027"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.36409598347256333,
+      "median_quarter_r": 1.2133008959460496,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1735107103266036,
+      "quarters": 10,
+      "top3_winner_share": 0.16069862175212743,
+      "total_r": 7.3885712534679735,
+      "trades": 90,
+      "win_rate": 0.5888888888888889,
+      "wins": 53,
+      "worst_quarter_r": -3.653913977026722
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1240.9978537265094,
+      "losses": 37,
+      "net_pnl": 240.99785372651002,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_001",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 53
+    },
+    "variant": "variant_001"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.36409598347256333,
+      "median_quarter_r": 1.2133008959460496,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1735107103266036,
+      "quarters": 10,
+      "top3_winner_share": 0.16069862175212743,
+      "total_r": 7.3885712534679735,
+      "trades": 90,
+      "win_rate": 0.5888888888888889,
+      "wins": 53,
+      "worst_quarter_r": -3.653913977026722
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1240.9978537265094,
+      "losses": 37,
+      "net_pnl": 240.99785372651002,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_002",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 53
+    },
+    "variant": "variant_002"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 13,
+      "max_drawdown": 0.3877071979626158,
+      "median_quarter_r": 1.2859419241747374,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1513410506596489,
+      "quarters": 10,
+      "top3_winner_share": 0.14973515449466746,
+      "total_r": 6.970823431566882,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -4.443467128927251
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1177.16169704248,
+      "losses": 61,
+      "net_pnl": 177.16169704247957,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_025",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_025"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 13,
+      "max_drawdown": 0.38770719796261566,
+      "median_quarter_r": 1.516473947304473,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1652268868294617,
+      "quarters": 10,
+      "top3_winner_share": 0.1717196504968421,
+      "total_r": 7.6104100587082195,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -4.756554677394935
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1204.659798732062,
+      "losses": 61,
+      "net_pnl": 204.65979873206146,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_017",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_017"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.4093792814091413,
+      "median_quarter_r": 1.5270049655212736,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3489046813394516,
+      "quarters": 10,
+      "top3_winner_share": 0.2314243683336606,
+      "total_r": 16.64721416859354,
+      "trades": 90,
+      "win_rate": 0.2111111111111111,
+      "wins": 19,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1642.941309936491,
+      "losses": 71,
+      "net_pnl": 642.9413099364907,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_049",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 19
+    },
+    "variant": "variant_049"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.4235111534618443,
+      "median_quarter_r": 1.1767953577082033,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3432753239385822,
+      "quarters": 10,
+      "top3_winner_share": 0.27623776854596566,
+      "total_r": 16.378621847263645,
+      "trades": 90,
+      "win_rate": 0.2111111111111111,
+      "wins": 19,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1604.5991622040458,
+      "losses": 71,
+      "net_pnl": 604.5991622040447,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_061",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 19
+    },
+    "variant": "variant_061"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.42433396534144574,
+      "median_quarter_r": 1.3773605110593974,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3477839065351327,
+      "quarters": 10,
+      "top3_winner_share": 0.25663727718577567,
+      "total_r": 16.59373888092862,
+      "trades": 90,
+      "win_rate": 0.2111111111111111,
+      "wins": 19,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1624.891300591834,
+      "losses": 71,
+      "net_pnl": 624.8913005918329,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_059",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 19
+    },
+    "variant": "variant_059"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.4367695567791922,
+      "median_quarter_r": 0.6473746851730907,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3807627536923914,
+      "quarters": 10,
+      "top3_winner_share": 0.2796625330457293,
+      "total_r": 18.057059639735368,
+      "trades": 90,
+      "win_rate": 0.23333333333333334,
+      "wins": 21,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1741.4141465514422,
+      "losses": 69,
+      "net_pnl": 741.4141465514426,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_035",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 21
+    },
+    "variant": "variant_035"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.4368451536029879,
+      "median_quarter_r": 0.7454142256104844,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3085054507598957,
+      "quarters": 10,
+      "top3_winner_share": 0.30079914849188905,
+      "total_r": 14.71965435161891,
+      "trades": 90,
+      "win_rate": 0.2111111111111111,
+      "wins": 19,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1488.1040193034726,
+      "losses": 71,
+      "net_pnl": 488.10401930347285,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_063",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 19
+    },
+    "variant": "variant_063"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.44453957364309865,
+      "median_quarter_r": 0.08504332267311365,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3601461296312496,
+      "quarters": 10,
+      "top3_winner_share": 0.31104020737652377,
+      "total_r": 17.079349486544306,
+      "trades": 90,
+      "win_rate": 0.23333333333333334,
+      "wins": 21,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1652.9973307949922,
+      "losses": 69,
+      "net_pnl": 652.997330794992,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_037",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 21
+    },
+    "variant": "variant_037"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.44654222396483134,
+      "median_quarter_r": 0.6659777991606252,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3088391570841462,
+      "quarters": 10,
+      "top3_winner_share": 0.2417270970125496,
+      "total_r": 14.646199042512766,
+      "trades": 90,
+      "win_rate": 0.23333333333333334,
+      "wins": 21,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1537.1798768115348,
+      "losses": 69,
+      "net_pnl": 537.1798768115355,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_043",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 21
+    },
+    "variant": "variant_043"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.4513753494170751,
+      "median_quarter_r": 0.6638258729944635,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3587977088077867,
+      "quarters": 10,
+      "top3_winner_share": 0.3210253014379016,
+      "total_r": 17.119238064658507,
+      "trades": 90,
+      "win_rate": 0.2111111111111111,
+      "wins": 19,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1619.7637687777453,
+      "losses": 71,
+      "net_pnl": 619.7637687777453,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_053",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 19
+    },
+    "variant": "variant_053"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.48228887424207256,
+      "median_quarter_r": 0.7902768930405039,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.1698159550981733,
+      "quarters": 10,
+      "top3_winner_share": 0.19375748266006484,
+      "total_r": 8.05324785381604,
+      "trades": 90,
+      "win_rate": 0.23333333333333334,
+      "wins": 21,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1172.0941707591433,
+      "losses": 69,
+      "net_pnl": 172.09417075914354,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_041",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 21
+    },
+    "variant": "variant_041"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.412220035847241,
+      "median_quarter_r": 1.7522480860594105,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3366799722930256,
+      "quarters": 10,
+      "top3_winner_share": 0.21520334059941543,
+      "total_r": 16.063939249887,
+      "trades": 90,
+      "win_rate": 0.2111111111111111,
+      "wins": 19,
+      "worst_quarter_r": -4.881790821580876
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1608.4092362048762,
+      "losses": 71,
+      "net_pnl": 608.4092362048767,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_057",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 19
+    },
+    "variant": "variant_057"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.4275551004489643,
+      "median_quarter_r": 0.9646736030212536,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3655605827026123,
+      "quarters": 10,
+      "top3_winner_share": 0.2925683516859342,
+      "total_r": 17.441913615155965,
+      "trades": 90,
+      "win_rate": 0.2111111111111111,
+      "wins": 19,
+      "worst_quarter_r": -4.881790821580876
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1655.0905481144355,
+      "losses": 71,
+      "net_pnl": 655.0905481144357,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_051",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 19
+    },
+    "variant": "variant_051"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.45158943930870454,
+      "median_quarter_r": 0.29109022416064023,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.295094741043385,
+      "quarters": 10,
+      "top3_winner_share": 0.26384732644430253,
+      "total_r": 13.994392273718725,
+      "trades": 90,
+      "win_rate": 0.23333333333333334,
+      "wins": 21,
+      "worst_quarter_r": -4.881790821580876
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1487.7656235084712,
+      "losses": 69,
+      "net_pnl": 487.7656235084703,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_045",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 21
+    },
+    "variant": "variant_045"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.49020696310358935,
+      "median_quarter_r": 0.8338233259929084,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.172227950713432,
+      "quarters": 10,
+      "top3_winner_share": 0.21498102392793988,
+      "total_r": 8.167632856690277,
+      "trades": 90,
+      "win_rate": 0.23333333333333334,
+      "wins": 21,
+      "worst_quarter_r": -4.881790821580876
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1172.938261103732,
+      "losses": 69,
+      "net_pnl": 172.93826110373337,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_033",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 21
+    },
+    "variant": "variant_033"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.5927438772977669,
+      "median_quarter_r": 0.33337322599290886,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.0646742345128908,
+      "quarters": 10,
+      "top3_winner_share": 0.17914973594406225,
+      "total_r": 4.395082413319731,
+      "trades": 90,
+      "win_rate": 0.3333333333333333,
+      "wins": 30,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 884.3278758564162,
+      "losses": 60,
+      "net_pnl": -115.67212414358343,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_034",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 30
+    },
+    "variant": "variant_034"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.5988519978312455,
+      "median_quarter_r": 0.28982679304050385,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.0509672545820046,
+      "quarters": 10,
+      "top3_winner_share": 0.16059261037622388,
+      "total_r": 3.4635939018947206,
+      "trades": 90,
+      "win_rate": 0.3333333333333333,
+      "wins": 30,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 854.3295063771071,
+      "losses": 60,
+      "net_pnl": -145.67049362289237,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_042",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 30
+    },
+    "variant": "variant_042"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.45781777665869,
+      "median_quarter_r": -0.0022285355624452885,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.0915159433954678,
+      "quarters": 10,
+      "top3_winner_share": 0.17658065317319835,
+      "total_r": 5.535679443088946,
+      "trades": 90,
+      "win_rate": 0.4111111111111111,
+      "wins": 37,
+      "worst_quarter_r": -2.8389235647810613
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1011.5688325596261,
+      "losses": 53,
+      "net_pnl": 11.568832559625417,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_030",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 37
+    },
+    "variant": "variant_030"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.46886682050291106,
+      "median_quarter_r": -0.24356811705615944,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1060853038566498,
+      "quarters": 10,
+      "top3_winner_share": 0.17840115090587144,
+      "total_r": 6.416960957670503,
+      "trades": 90,
+      "win_rate": 0.4111111111111111,
+      "wins": 37,
+      "worst_quarter_r": -3.0686151863811646
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1045.9087036882734,
+      "losses": 53,
+      "net_pnl": 45.90870368827322,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_020",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 37
+    },
+    "variant": "variant_020"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.3749029123615236,
+      "median_quarter_r": -0.11373908863345839,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.0915841290505066,
+      "quarters": 10,
+      "top3_winner_share": 0.15864298365213847,
+      "total_r": 3.899908322101562,
+      "trades": 90,
+      "win_rate": 0.5888888888888889,
+      "wins": 53,
+      "worst_quarter_r": -3.152112251932392
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1058.7799712927701,
+      "losses": 37,
+      "net_pnl": 58.77997129276994,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_011",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 53
+    },
+    "variant": "variant_011"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.40439701928876653,
+      "median_quarter_r": -0.24183014440226402,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1151990506294975,
+      "quarters": 10,
+      "top3_winner_share": 0.20921594738746377,
+      "total_r": 4.909265334094946,
+      "trades": 90,
+      "win_rate": 0.5666666666666667,
+      "wins": 51,
+      "worst_quarter_r": -3.2881731671081442
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1077.2150005798678,
+      "losses": 39,
+      "net_pnl": 77.2150005798682,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_003",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 51
+    },
+    "variant": "variant_003"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 13,
+      "max_drawdown": 0.3948083351706585,
+      "median_quarter_r": 0.12868650611637655,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.2263940210738375,
+      "quarters": 10,
+      "top3_winner_share": 0.2793598961460747,
+      "total_r": 10.427790344982226,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -3.585028741385529
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1318.1579827149922,
+      "losses": 61,
+      "net_pnl": 318.15798271499256,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_031",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_031"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.37320426384235766,
+      "median_quarter_r": -0.21665984266687327,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1319505566235109,
+      "quarters": 10,
+      "top3_winner_share": 0.20822997657206826,
+      "total_r": 5.686646659192136,
+      "trades": 90,
+      "win_rate": 0.4888888888888889,
+      "wins": 44,
+      "worst_quarter_r": -3.652562351932383
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1117.8257453615524,
+      "losses": 46,
+      "net_pnl": 117.8257453615519,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_014",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 44
+    },
+    "variant": "variant_014"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.47175098533062,
+      "median_quarter_r": 0.032693520737403725,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1143550798628497,
+      "quarters": 10,
+      "top3_winner_share": 0.21811705960083205,
+      "total_r": 6.917188867015735,
+      "trades": 90,
+      "win_rate": 0.4111111111111111,
+      "wins": 37,
+      "worst_quarter_r": -3.819290336381152
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1038.6638387902608,
+      "losses": 53,
+      "net_pnl": 38.66383879026017,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_022",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 37
+    },
+    "variant": "variant_022"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 13,
+      "max_drawdown": 0.4521800550682049,
+      "median_quarter_r": -0.3927033503544797,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.2778063424507446,
+      "quarters": 10,
+      "top3_winner_share": 0.3556010120630327,
+      "total_r": 12.795860428831235,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -3.8808906215808765
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1383.827199260131,
+      "losses": 61,
+      "net_pnl": 383.82719926013186,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_023",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_023"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 13,
+      "max_drawdown": 0.3877071979626159,
+      "median_quarter_r": 0.08997365620349462,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1560199365974289,
+      "quarters": 10,
+      "top3_winner_share": 0.2149106114042229,
+      "total_r": 7.186334607064493,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -3.9860274754961624
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1164.6916785342269,
+      "losses": 61,
+      "net_pnl": 164.69167853422795,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_029",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_029"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 13,
+      "max_drawdown": 0.4084473294013038,
+      "median_quarter_r": 0.03269352073740428,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1722452157361316,
+      "quarters": 10,
+      "top3_winner_share": 0.26821316693100056,
+      "total_r": 7.933676821954638,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -4.070395197248302
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1167.532012071196,
+      "losses": 61,
+      "net_pnl": 167.53201207119488,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_021",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_021"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.47459329528301336,
+      "median_quarter_r": -0.8422950544352371,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.2777660465336218,
+      "quarters": 10,
+      "top3_winner_share": 0.3703980313166201,
+      "total_r": 11.843246459038882,
+      "trades": 90,
+      "win_rate": 0.5555555555555556,
+      "wins": 50,
+      "worst_quarter_r": -4.381340721580878
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1358.1414606074757,
+      "losses": 40,
+      "net_pnl": 358.1414606074749,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_007",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 50
+    },
+    "variant": "variant_007"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.4615835442131664,
+      "median_quarter_r": 0.22443681621793166,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.2807290476801072,
+      "quarters": 10,
+      "top3_winner_share": 0.3569369900699222,
+      "total_r": 13.313122429671887,
+      "trades": 90,
+      "win_rate": 0.23333333333333334,
+      "wins": 21,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1381.0071831012972,
+      "losses": 69,
+      "net_pnl": 381.00718310129713,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_039",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 21
+    },
+    "variant": "variant_039"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.482297411921205,
+      "median_quarter_r": -0.23984229608651098,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.3066428990397567,
+      "quarters": 10,
+      "top3_winner_share": 0.3597625454315981,
+      "total_r": 14.630786821191407,
+      "trades": 90,
+      "win_rate": 0.2111111111111111,
+      "wins": 19,
+      "worst_quarter_r": -4.881790821580875
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1440.5040300284418,
+      "losses": 71,
+      "net_pnl": 440.504030028441,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_055",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 19
+    },
+    "variant": "variant_055"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 14,
+      "max_drawdown": 0.4092097003122815,
+      "median_quarter_r": 1.0516815499504584,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.2421500197426234,
+      "quarters": 10,
+      "top3_winner_share": 0.29334519845605367,
+      "total_r": 11.483574235803783,
+      "trades": 90,
+      "win_rate": 0.23333333333333334,
+      "wins": 21,
+      "worst_quarter_r": -4.881790821580876
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1323.974799990366,
+      "losses": 69,
+      "net_pnl": 323.97479999036653,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_047",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 21
+    },
+    "variant": "variant_047"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.5565842597327432,
+      "median_quarter_r": 0.14692458517309137,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.2101135010981836,
+      "quarters": 10,
+      "top3_winner_share": 0.2307485809715689,
+      "total_r": 14.27873341575617,
+      "trades": 90,
+      "win_rate": 0.3333333333333333,
+      "wins": 30,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1312.2725284582698,
+      "losses": 60,
+      "net_pnl": 312.27252845827036,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_036",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 30
+    },
+    "variant": "variant_036"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.5695096711878099,
+      "median_quarter_r": 0.16552769916062637,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1479267656388663,
+      "quarters": 10,
+      "top3_winner_share": 0.19888678201087578,
+      "total_r": 10.052694570185677,
+      "trades": 90,
+      "win_rate": 0.3333333333333333,
+      "wins": 30,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1120.0889249145469,
+      "losses": 60,
+      "net_pnl": 120.0889249145472,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_044",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 30
+    },
+    "variant": "variant_044"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6001024435711222,
+      "median_quarter_r": -0.415406777326886,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1846800766671775,
+      "quarters": 10,
+      "top3_winner_share": 0.24948167977788574,
+      "total_r": 12.55034811256512,
+      "trades": 90,
+      "win_rate": 0.3333333333333333,
+      "wins": 30,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1207.1420655484217,
+      "losses": 60,
+      "net_pnl": 207.1420655484214,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_038",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 30
+    },
+    "variant": "variant_038"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6018182341310736,
+      "median_quarter_r": -0.2093598758393599,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1309711493515289,
+      "quarters": 10,
+      "top3_winner_share": 0.2110199598531096,
+      "total_r": 8.900437701391644,
+      "trades": 90,
+      "win_rate": 0.3333333333333333,
+      "wins": 30,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1061.2815727317857,
+      "losses": 60,
+      "net_pnl": 61.28157273178667,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_046",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 30
+    },
+    "variant": "variant_046"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6135233321401983,
+      "median_quarter_r": -0.16589821777950364,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1484370655232796,
+      "quarters": 10,
+      "top3_winner_share": 0.17132037146761583,
+      "total_r": 10.42747187620165,
+      "trades": 90,
+      "win_rate": 0.3111111111111111,
+      "wins": 28,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1099.9960423140963,
+      "losses": 62,
+      "net_pnl": 99.99604231409671,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_058",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 28
+    },
+    "variant": "variant_058"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6140633428316101,
+      "median_quarter_r": -0.15290854533525888,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1626512568016125,
+      "quarters": 10,
+      "top3_winner_share": 0.18291691266491347,
+      "total_r": 11.425996599627439,
+      "trades": 90,
+      "win_rate": 0.3111111111111111,
+      "wins": 28,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1142.8511630912242,
+      "losses": 62,
+      "net_pnl": 142.8511630912251,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_050",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 28
+    },
+    "variant": "variant_050"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6142795203734394,
+      "median_quarter_r": -0.44039642468397777,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.0817862226464694,
+      "quarters": 10,
+      "top3_winner_share": 0.23505442749763947,
+      "total_r": 5.55796588104501,
+      "trades": 90,
+      "win_rate": 0.3333333333333333,
+      "wins": 30,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 911.0475620956225,
+      "losses": 60,
+      "net_pnl": -88.95243790437674,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_048",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 30
+    },
+    "variant": "variant_048"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6269422022292063,
+      "median_quarter_r": -0.5694788829048301,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.154847305284768,
+      "quarters": 10,
+      "top3_winner_share": 0.2097422422895819,
+      "total_r": 10.877781201551041,
+      "trades": 90,
+      "win_rate": 0.3111111111111111,
+      "wins": 28,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1107.3221077903618,
+      "losses": 62,
+      "net_pnl": 107.3221077903614,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_060",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 28
+    },
+    "variant": "variant_060"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6341787499280092,
+      "median_quarter_r": -0.8047352546018354,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1722666164438453,
+      "quarters": 10,
+      "top3_winner_share": 0.23953956985511263,
+      "total_r": 12.101460587651527,
+      "trades": 90,
+      "win_rate": 0.3111111111111111,
+      "wins": 28,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1145.051715864311,
+      "losses": 62,
+      "net_pnl": 145.0517158643112,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_052",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 28
+    },
+    "variant": "variant_052"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6483879358769968,
+      "median_quarter_r": -0.9714598919020574,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1446610696595685,
+      "quarters": 10,
+      "top3_winner_share": 0.2203446169895735,
+      "total_r": 10.162214067886076,
+      "trades": 90,
+      "win_rate": 0.3111111111111111,
+      "wins": 28,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1070.9686072839745,
+      "losses": 62,
+      "net_pnl": 70.96860728397394,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_062",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 28
+    },
+    "variant": "variant_062"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.44828808967136213,
+      "median_quarter_r": -0.09325141501394041,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1244289456248246,
+      "quarters": 10,
+      "top3_winner_share": 0.16364348341640178,
+      "total_r": 7.526543800614808,
+      "trades": 90,
+      "win_rate": 0.4111111111111111,
+      "wins": 37,
+      "worst_quarter_r": -2.3179400363811595
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1117.8898523961966,
+      "losses": 53,
+      "net_pnl": 117.88985239619673,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_018",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 37
+    },
+    "variant": "variant_018"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.3822128739520656,
+      "median_quarter_r": -0.4162352934900909,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1145495639078393,
+      "quarters": 10,
+      "top3_winner_share": 0.20951529954553005,
+      "total_r": 4.8778407591879125,
+      "trades": 90,
+      "win_rate": 0.5888888888888889,
+      "wins": 53,
+      "worst_quarter_r": -3.6525623519323833
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1091.102514822234,
+      "losses": 37,
+      "net_pnl": 91.10251482223498,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_013",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 53
+    },
+    "variant": "variant_013"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.4434971317306932,
+      "median_quarter_r": -0.20089610660045099,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.2001409753028025,
+      "quarters": 10,
+      "top3_winner_share": 0.27944180670401697,
+      "total_r": 8.522562405397517,
+      "trades": 90,
+      "win_rate": 0.5888888888888889,
+      "wins": 53,
+      "worst_quarter_r": -3.8808906215808805
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1260.4054744158939,
+      "losses": 37,
+      "net_pnl": 260.405474415895,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_015",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 53
+    },
+    "variant": "variant_015"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.39795593476622615,
+      "median_quarter_r": -0.467306579262593,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1495862342995724,
+      "quarters": 10,
+      "top3_winner_share": 0.2802390910171969,
+      "total_r": 6.376163989724472,
+      "trades": 90,
+      "win_rate": 0.5666666666666667,
+      "wins": 51,
+      "worst_quarter_r": -4.0388483171081315
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1114.5896716320167,
+      "losses": 39,
+      "net_pnl": 114.58967163201727,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_005",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 51
+    },
+    "variant": "variant_005"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.4043189825345766,
+      "median_quarter_r": -0.46730657926259356,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.153693084422817,
+      "quarters": 10,
+      "top3_winner_share": 0.24490586380544838,
+      "total_r": 7.589372839730813,
+      "trades": 90,
+      "win_rate": 0.3888888888888889,
+      "wins": 35,
+      "worst_quarter_r": -4.038848317108132
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1143.0313044726568,
+      "losses": 55,
+      "net_pnl": 143.03130447265713,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_006",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 35
+    },
+    "variant": "variant_006"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.4962536071678684,
+      "median_quarter_r": -1.2387793348064757,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1122679065748837,
+      "quarters": 10,
+      "top3_winner_share": 0.2846324947019698,
+      "total_r": 5.064301596261354,
+      "trades": 90,
+      "win_rate": 0.37777777777777777,
+      "wins": 34,
+      "worst_quarter_r": -4.106440715298583
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1045.889792829947,
+      "losses": 56,
+      "net_pnl": 45.88979282994811,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_016",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 34
+    },
+    "variant": "variant_016"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.5524805399342915,
+      "median_quarter_r": -2.009271310805485,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1065992948084842,
+      "quarters": 10,
+      "top3_winner_share": 0.30477461370552184,
+      "total_r": 6.6151625236652025,
+      "trades": 90,
+      "win_rate": 0.34444444444444444,
+      "wins": 31,
+      "worst_quarter_r": -4.422165388052154
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 958.9429975625336,
+      "losses": 59,
+      "net_pnl": -41.057002437465556,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_024",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 31
+    },
+    "variant": "variant_024"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.5594075735719276,
+      "median_quarter_r": -2.084328174995062,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.119543445166304,
+      "quarters": 10,
+      "top3_winner_share": 0.32373717378905453,
+      "total_r": 6.6558552453346325,
+      "trades": 90,
+      "win_rate": 0.32222222222222224,
+      "wins": 29,
+      "worst_quarter_r": -4.719665862157432
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1010.3671885546986,
+      "losses": 61,
+      "net_pnl": 10.367188554698583,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_008",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 29
+    },
+    "variant": "variant_008"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6195251312842364,
+      "median_quarter_r": -1.544673735551486,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1109026866095881,
+      "quarters": 10,
+      "top3_winner_share": 0.2871637705884455,
+      "total_r": 7.5366403820451655,
+      "trades": 90,
+      "win_rate": 0.3333333333333333,
+      "wins": 30,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 955.8368786058905,
+      "losses": 60,
+      "net_pnl": -44.16312139410777,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_040",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 30
+    },
+    "variant": "variant_040"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6381537895112223,
+      "median_quarter_r": -1.4710099919020614,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1092065972585197,
+      "quarters": 10,
+      "top3_winner_share": 0.24101151786185548,
+      "total_r": 7.671592789809656,
+      "trades": 90,
+      "win_rate": 0.3111111111111111,
+      "wins": 28,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 958.8272777983012,
+      "losses": 62,
+      "net_pnl": -41.17272220169845,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_064",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 28
+    },
+    "variant": "variant_064"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6555537265107819,
+      "median_quarter_r": -2.083272641690222,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.103805554404473,
+      "quarters": 10,
+      "top3_winner_share": 0.28925334375309625,
+      "total_r": 7.292177970039448,
+      "trades": 90,
+      "win_rate": 0.3111111111111111,
+      "wins": 28,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 916.1642230141198,
+      "losses": 62,
+      "net_pnl": -83.8357769858808,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_056",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 28
+    },
+    "variant": "variant_056"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.6653568089390117,
+      "median_quarter_r": -1.3339474916902165,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.156987263006046,
+      "quarters": 10,
+      "top3_winner_share": 0.25634631352643916,
+      "total_r": 11.028109887154079,
+      "trades": 90,
+      "win_rate": 0.3111111111111111,
+      "wins": 28,
+      "worst_quarter_r": -5.726214148987818
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1086.3271455903625,
+      "losses": 62,
+      "net_pnl": 86.32714559036195,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_054",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 28
+    },
+    "variant": "variant_054"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.4422507623312697,
+      "median_quarter_r": -0.23240115282160623,
+      "positive_quarter_ratio": 0.3,
+      "positive_quarters": 3,
+      "profit_factor_r": 1.0982318539034512,
+      "quarters": 10,
+      "top3_winner_share": 0.13855763279806668,
+      "total_r": 5.94191606548833,
+      "trades": 90,
+      "win_rate": 0.4111111111111111,
+      "wins": 37,
+      "worst_quarter_r": -2.288165034944335
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1051.713288603607,
+      "losses": 53,
+      "net_pnl": 51.71328860360762,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_026",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 37
+    },
+    "variant": "variant_026"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.456025504642713,
+      "median_quarter_r": -0.6167716244919752,
+      "positive_quarter_ratio": 0.3,
+      "positive_quarters": 3,
+      "profit_factor_r": 1.0860027593913344,
+      "quarters": 10,
+      "top3_winner_share": 0.1482147911135537,
+      "total_r": 5.202194170192125,
+      "trades": 90,
+      "win_rate": 0.4111111111111111,
+      "wins": 37,
+      "worst_quarter_r": -2.33847346478107
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1009.9038384038644,
+      "losses": 53,
+      "net_pnl": 9.903838403864814,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_028",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 37
+    },
+    "variant": "variant_028"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.4842632936076517,
+      "median_quarter_r": -1.3868731703560613,
+      "positive_quarter_ratio": 0.3,
+      "positive_quarters": 3,
+      "profit_factor_r": 1.0881872070857195,
+      "quarters": 10,
+      "top3_winner_share": 0.2397417298218121,
+      "total_r": 5.3343285475219195,
+      "trades": 90,
+      "win_rate": 0.4111111111111111,
+      "wins": 37,
+      "worst_quarter_r": -3.240840265895063
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 0.75,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 1.5,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 972.2412906253919,
+      "losses": 53,
+      "net_pnl": -27.75870937460774,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\dogeusdc\\20260712_avaxusdc_sweep_1\\variant_032",
+      "rows_loaded": 36880075,
+      "trades_taken": 90,
+      "wins": 37
+    },
+    "variant": "variant_032"
+  }
+]

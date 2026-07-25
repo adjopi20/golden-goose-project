@@ -1,0 +1,13 @@
+{
+  "adverse_z": 1.0,
+  "aggtrades": "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\storage\\xrpusdt\\parquet\\XRPUSDT-aggTrades-2020-01_to_2026-06.parquet",
+  "anchor_period": "session",
+  "end_date": "2026-06-30",
+  "output_dir": "models\\vwap_mr\\runs\\xrpusdt\\20260720_xrp_vwap_mr_distribution",
+  "reset_z": 0.5,
+  "self_check": false,
+  "session_end": "17:30",
+  "session_start": "09:30",
+  "session_tz": "America/New_York",
+  "start_date": "2026-02-01"
+}

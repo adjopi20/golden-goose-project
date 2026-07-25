@@ -1,0 +1,11 @@
+{
+  "candles": 1143235,
+  "event": "fast_orb_backtest_finished",
+  "final_equity": 1220.4051739832798,
+  "losses": 36,
+  "net_pnl": 220.40517398328083,
+  "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_014",
+  "rows_loaded": 36880075,
+  "trades_taken": 74,
+  "wins": 38
+}

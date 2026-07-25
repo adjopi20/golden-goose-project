@@ -1,0 +1,11 @@
+{
+  "candles": 1143235,
+  "event": "fast_orb_backtest_finished",
+  "final_equity": 1858.4565178458183,
+  "losses": 48,
+  "net_pnl": 858.4565178458179,
+  "output_dir": "apps\\orb_live_agent\\data\\backtests\\20260709_sweep_1\\variant_031",
+  "rows_loaded": 36880075,
+  "trades_taken": 74,
+  "wins": 26
+}

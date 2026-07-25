@@ -3,17 +3,30 @@ from pathlib import Path
 import argparse
 import os
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 
 REQUIRED_COLUMNS = [
     "timestamp",
     "price",
     "qty",
+    "is_buyer_maker",
+]
+
+CANONICAL_OUTPUT_COLUMNS = [
+    "agg_trade_id",
+    "price",
+    "qty",
+    "first_trade_id",
+    "last_trade_id",
+    "timestamp",
     "is_buyer_maker",
 ]
 
@@ -29,6 +42,28 @@ BINANCE_AGGTRADES_NO_HEADER_COLUMNS = [
 ]
 
 SUPPORTED_EXTENSIONS = {".csv", ".parquet"}
+STREAM_BATCH_SIZE = 1_000_000
+
+
+def normalize_epoch_ms(series: pd.Series, source: str | Path) -> pd.Series:
+    values = pd.to_numeric(series, errors="raise").astype("int64")
+    magnitude = values.abs()
+    invalid = magnitude < 100_000_000_000
+    if invalid.any():
+        sample = values[invalid].iloc[0]
+        raise ValueError(f"{source} has unsupported timestamp magnitude: {sample}")
+
+    normalized = values.copy()
+    nanoseconds = magnitude >= 100_000_000_000_000_000
+    microseconds = (magnitude >= 100_000_000_000_000) & ~nanoseconds
+    normalized.loc[nanoseconds] //= 1_000_000
+    normalized.loc[microseconds] //= 1_000
+
+    valid_ms = normalized.between(100_000_000_000, 99_999_999_999_999)
+    if not valid_ms.all():
+        sample = values[~valid_ms].iloc[0]
+        raise ValueError(f"{source} cannot be normalized to milliseconds: {sample}")
+    return normalized.astype("int64")
 
 
 @dataclass(frozen=True)
@@ -372,7 +407,7 @@ def normalize_core_dtypes(df: pd.DataFrame, path: Path) -> pd.DataFrame:
 
     df = df.copy()
 
-    df["timestamp"] = pd.to_numeric(df["timestamp"], errors="raise").astype("int64")
+    df["timestamp"] = normalize_epoch_ms(df["timestamp"], path)
     df["price"] = pd.to_numeric(df["price"], errors="raise").astype("float64")
     df["qty"] = pd.to_numeric(df["qty"], errors="raise").astype("float64")
 
@@ -395,10 +430,13 @@ def normalize_core_dtypes(df: pd.DataFrame, path: Path) -> pd.DataFrame:
             raise ValueError(f"{path} has invalid is_buyer_maker values: {bad_values[:10]}")
         df["is_buyer_maker"] = mapped.astype(bool)
 
-    if "agg_trade_id" in df.columns:
-        df["agg_trade_id"] = pd.to_numeric(df["agg_trade_id"], errors="raise").astype("int64")
+    for column in ("agg_trade_id", "first_trade_id", "last_trade_id"):
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="raise").astype("int64")
+        else:
+            df[column] = pd.Series(pd.NA, index=df.index, dtype="Int64")
 
-    return df
+    return df[CANONICAL_OUTPUT_COLUMNS]
 
 
 def read_and_normalize(path: Path, csv_format: str) -> pd.DataFrame:
@@ -412,6 +450,28 @@ def read_and_normalize(path: Path, csv_format: str) -> pd.DataFrame:
         raise ValueError(f"Unsupported input extension for {path}")
 
     return normalize_core_dtypes(df, path)
+
+
+def iter_normalized_chunks(path: Path, csv_format: str) -> Iterable[pd.DataFrame]:
+    suffix = path.suffix.lower()
+    if suffix == ".csv":
+        if csv_format == "header":
+            raw_chunks = pd.read_csv(path, chunksize=STREAM_BATCH_SIZE)
+        elif csv_format == "binance-no-header":
+            raw_chunks = pd.read_csv(path, header=None, names=BINANCE_AGGTRADES_NO_HEADER_COLUMNS, chunksize=STREAM_BATCH_SIZE)
+        elif looks_like_header_csv(path):
+            raw_chunks = pd.read_csv(path, chunksize=STREAM_BATCH_SIZE)
+        else:
+            raw_chunks = pd.read_csv(path, header=None, names=BINANCE_AGGTRADES_NO_HEADER_COLUMNS, chunksize=STREAM_BATCH_SIZE)
+        for chunk in raw_chunks:
+            yield normalize_core_dtypes(chunk, path)
+        return
+    if suffix != ".parquet":
+        raise ValueError(f"Unsupported input extension for {path}")
+
+    parquet = pq.ParquetFile(path)
+    for batch in parquet.iter_batches(batch_size=STREAM_BATCH_SIZE):
+        yield normalize_core_dtypes(batch.to_pandas(), path)
 
 
 def part_output_path(input_path: Path, parts_output_dir: Path) -> Path:
@@ -449,6 +509,96 @@ def print_file_summary(df: pd.DataFrame, path: Path) -> None:
     )
 
 
+def write_normalized_part(
+    *,
+    input_path: Path,
+    output_path: Path,
+    csv_format: str,
+    compression: str,
+    fail_on_unsorted_input: bool,
+) -> tuple[int, int, int]:
+    writer: pq.ParquetWriter | None = None
+    rows = 0
+    min_ts: int | None = None
+    max_ts: int | None = None
+    previous_ts: int | None = None
+
+    try:
+        for chunk in iter_normalized_chunks(input_path, csv_format):
+            if chunk.empty:
+                continue
+            input_sorted = validate_timestamp_order(
+                chunk,
+                label=str(input_path),
+                fail=fail_on_unsorted_input,
+            )
+            if not input_sorted:
+                raise ValueError(
+                    f"{input_path} is not timestamp-sorted. Streaming combine cannot sort a large input safely; "
+                    "sort/export that file first or rerun with a smaller normalized part."
+                )
+
+            chunk_min = int(chunk["timestamp"].min())
+            chunk_max = int(chunk["timestamp"].max())
+            if previous_ts is not None and chunk_min < previous_ts:
+                raise ValueError(f"{input_path} is not timestamp-sorted across parquet batches")
+
+            table = pa.Table.from_pandas(chunk, preserve_index=False)
+            if writer is None:
+                writer = pq.ParquetWriter(output_path, table.schema, compression=compression)
+            elif table.schema != writer.schema:
+                raise ValueError(f"Input schemas do not match inside {input_path}")
+            writer.write_table(table)
+
+            rows += len(chunk)
+            min_ts = chunk_min if min_ts is None else min(min_ts, chunk_min)
+            max_ts = chunk_max if max_ts is None else max(max_ts, chunk_max)
+            previous_ts = chunk_max
+    finally:
+        if writer is not None:
+            writer.close()
+
+    if rows == 0 or min_ts is None or max_ts is None:
+        raise ValueError(f"{input_path} contains no rows")
+    return min_ts, max_ts, rows
+
+
+def print_part_summary(rows: int, min_ts: int, max_ts: int) -> None:
+    print(
+        f"   rows={rows:,} | "
+        f"min_ts={pd.to_datetime(min_ts, unit='ms', utc=True)} | "
+        f"max_ts={pd.to_datetime(max_ts, unit='ms', utc=True)}"
+    )
+
+
+def write_sorted_parts(parts: list[tuple[Path, int, int, int]], output_path: Path, compression: str) -> None:
+    parts.sort(key=lambda part: part[1])
+    previous_max: int | None = None
+    writer: pq.ParquetWriter | None = None
+
+    try:
+        for path, min_ts, max_ts, _ in parts:
+            if previous_max is not None and min_ts < previous_max:
+                raise ValueError(
+                    "Input timestamp ranges overlap. Re-run with --drop-duplicates; "
+                    "overlap requires the in-memory merge path."
+                )
+
+            with pq.ParquetFile(path) as parquet:
+                for batch in parquet.iter_batches():
+                    table = pa.Table.from_batches([batch])
+                    if writer is None:
+                        writer = pq.ParquetWriter(output_path, table.schema, compression=compression)
+                    elif table.schema != writer.schema:
+                        raise ValueError(f"Input schemas do not match while combining: {path}")
+                    writer.write_table(table)
+
+            previous_max = max_ts
+    finally:
+        if writer is not None:
+            writer.close()
+
+
 def main() -> None:
     args = parse_args()
 
@@ -470,47 +620,78 @@ def main() -> None:
     frames: list[pd.DataFrame] = []
     previous_max_ts: int | None = None
 
-    for path in input_paths:
-        print(f"\nLoading: {path}")
-        df = read_and_normalize(path, csv_format=args.csv_format)
+    with tempfile.TemporaryDirectory(prefix="combine-aggtrades-") as temp_dir:
+        sorted_parts: list[tuple[Path, int, int, int]] = []
 
-        input_sorted = validate_timestamp_order(
-            df,
-            label=str(path),
-            fail=args.fail_on_unsorted_input,
-        )
-        if not input_sorted:
-            print("   warning: input file is not timestamp-sorted; combined output will be sorted later")
+        for index, path in enumerate(input_paths):
+            print(f"\nLoading: {path}")
+            if not args.drop_duplicates:
+                part_path = part_output_path(path, parts_output_dir) if parts_output_dir is not None else Path(temp_dir) / f"{index:04d}.parquet"
+                current_min_ts, current_max_ts, row_count = write_normalized_part(
+                    input_path=path,
+                    output_path=part_path,
+                    csv_format=args.csv_format,
+                    compression=args.compression,
+                    fail_on_unsorted_input=args.fail_on_unsorted_input,
+                )
 
-        current_min_ts = int(df["timestamp"].min())
-        current_max_ts = int(df["timestamp"].max())
+                if previous_max_ts is not None and current_min_ts < previous_max_ts:
+                    print(
+                        "   warning: this file overlaps or starts before the previous file ends. "
+                        "Use --drop-duplicates if overlap is expected."
+                    )
 
-        if previous_max_ts is not None and current_min_ts < previous_max_ts:
-            print(
-                "   warning: this file overlaps or starts before the previous file ends. "
-                "Use --drop-duplicates if overlap is expected."
+                previous_max_ts = current_max_ts
+                print_part_summary(row_count, current_min_ts, current_max_ts)
+                if parts_output_dir is not None:
+                    print(f"   wrote normalized monthly parquet: {part_path}")
+                sorted_parts.append((part_path, current_min_ts, current_max_ts, row_count))
+                continue
+
+            df = read_and_normalize(path, csv_format=args.csv_format)
+
+            input_sorted = validate_timestamp_order(
+                df,
+                label=str(path),
+                fail=args.fail_on_unsorted_input,
             )
+            if not input_sorted:
+                print("   warning: input file is not timestamp-sorted; sorting this part")
+                df = df.sort_values(["timestamp"], kind="mergesort").reset_index(drop=True)
 
-        previous_max_ts = current_max_ts
+            current_min_ts = int(df["timestamp"].min())
+            current_max_ts = int(df["timestamp"].max())
 
-        print_file_summary(df, path)
+            if previous_max_ts is not None and current_min_ts < previous_max_ts:
+                print(
+                    "   warning: this file overlaps or starts before the previous file ends. "
+                    "Use --drop-duplicates if overlap is expected."
+                )
 
-        if parts_output_dir is not None:
-            part_path = part_output_path(path, parts_output_dir)
-            df.sort_values(["timestamp"], kind="mergesort").reset_index(drop=True).to_parquet(
-                part_path,
-                index=False,
-                compression=args.compression,
-            )
-            print(f"   wrote normalized monthly parquet: {part_path}")
+            previous_max_ts = current_max_ts
+            print_file_summary(df, path)
+            if parts_output_dir is not None:
+                part_path = part_output_path(path, parts_output_dir)
+                df.to_parquet(part_path, index=False, compression=args.compression)
+                print(f"   wrote normalized monthly parquet: {part_path}")
+            frames.append(df)
 
-        frames.append(df)
+        if not args.drop_duplicates:
+            total_rows = sum(part[3] for part in sorted_parts)
+            print(f"\nCombined rows before duplicate handling: {total_rows:,}")
+            write_sorted_parts(sorted_parts, output_path, args.compression)
 
-    combined = pd.concat(frames, ignore_index=True)
+            ordered = sorted(sorted_parts, key=lambda part: part[1])
+            print("\nCombined output:")
+            print(f"rows={total_rows:,}")
+            print(f"first timestamp UTC={pd.to_datetime(ordered[0][1], unit='ms', utc=True)}")
+            print(f"last timestamp UTC={pd.to_datetime(ordered[-1][2], unit='ms', utc=True)}")
+            print(f"wrote combined parquet to: {output_path}")
+            print("Done.")
+            return
 
-    print(f"\nCombined rows before duplicate handling: {len(combined):,}")
-
-    if args.drop_duplicates:
+        combined = pd.concat(frames, ignore_index=True)
+        print(f"\nCombined rows before duplicate handling: {len(combined):,}")
         before = len(combined)
 
         if dedupe_subset is not None:

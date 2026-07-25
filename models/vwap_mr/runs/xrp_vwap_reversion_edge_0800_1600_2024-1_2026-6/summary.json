@@ -1,0 +1,13 @@
+{
+  "anchors": [
+    "session",
+    "week"
+  ],
+  "events": 6677,
+  "outputs": [
+    "events.csv",
+    "distribution.csv",
+    "by_regime.csv",
+    "by_month.csv"
+  ]
+}

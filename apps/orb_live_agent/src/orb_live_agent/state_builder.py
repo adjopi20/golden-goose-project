@@ -196,6 +196,8 @@ class LiveStateBuilder:
 
         window_start = window_end - timedelta(hours=24)
         window_start_ms = int(window_start.astimezone(timezone.utc).timestamp() * 1000)
+        if not self.recent_trades or int(self.recent_trades[0]["timestamp"]) > window_start_ms:
+            return None
         trades = [
             trade
             for trade in self.recent_trades

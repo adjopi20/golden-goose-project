@@ -1,0 +1,2498 @@
+[
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.2250238464639212,
+      "median_quarter_r": 1.4271746246499117,
+      "positive_quarter_ratio": 0.7,
+      "positive_quarters": 7,
+      "profit_factor_r": 1.359843824552447,
+      "quarters": 10,
+      "top3_winner_share": 0.16604150898484266,
+      "total_r": 12.655037933613018,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1605.224176460829,
+      "losses": 48,
+      "net_pnl": 605.2241764608277,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_025",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_025"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.22502384646392176,
+      "median_quarter_r": 0.7251775471317299,
+      "positive_quarter_ratio": 0.7,
+      "positive_quarters": 7,
+      "profit_factor_r": 1.3721419022565842,
+      "quarters": 10,
+      "top3_winner_share": 0.18387069846494306,
+      "total_r": 13.087538449774286,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1628.1480224498182,
+      "losses": 48,
+      "net_pnl": 628.1480224498188,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_027",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_027"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.203898191865915,
+      "median_quarter_r": 1.3150126330559013,
+      "positive_quarter_ratio": 0.7,
+      "positive_quarters": 7,
+      "profit_factor_r": 1.3393360119190278,
+      "quarters": 10,
+      "top3_winner_share": 0.14192427943166355,
+      "total_r": 10.996255033362338,
+      "trades": 74,
+      "win_rate": 0.6216216216216216,
+      "wins": 46,
+      "worst_quarter_r": -2.3088437154407435
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1549.182131325988,
+      "losses": 28,
+      "net_pnl": 549.1821313259893,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_009",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 46
+    },
+    "variant": "variant_009"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.203898191865915,
+      "median_quarter_r": 1.3150126330559013,
+      "positive_quarter_ratio": 0.7,
+      "positive_quarters": 7,
+      "profit_factor_r": 1.3393360119190278,
+      "quarters": 10,
+      "top3_winner_share": 0.14192427943166355,
+      "total_r": 10.996255033362338,
+      "trades": 74,
+      "win_rate": 0.6216216216216216,
+      "wins": 46,
+      "worst_quarter_r": -2.3088437154407435
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1549.182131325988,
+      "losses": 28,
+      "net_pnl": 549.1821313259893,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_010",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 46
+    },
+    "variant": "variant_010"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.2250238464639216,
+      "median_quarter_r": 1.6354295318960033,
+      "positive_quarter_ratio": 0.7,
+      "positive_quarters": 7,
+      "profit_factor_r": 1.3827121696010793,
+      "quarters": 10,
+      "top3_winner_share": 0.1895294263675037,
+      "total_r": 13.459275089632952,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -2.454047718497338
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1655.367194847807,
+      "losses": 48,
+      "net_pnl": 655.3671948478082,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_017",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_017"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.2038981918659151,
+      "median_quarter_r": 1.6478927703705353,
+      "positive_quarter_ratio": 0.7,
+      "positive_quarters": 7,
+      "profit_factor_r": 1.4127971522453173,
+      "quarters": 10,
+      "top3_winner_share": 0.17540368968116152,
+      "total_r": 13.37677877884164,
+      "trades": 74,
+      "win_rate": 0.6216216216216216,
+      "wins": 46,
+      "worst_quarter_r": -2.566818233922688
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1706.2286557328657,
+      "losses": 28,
+      "net_pnl": 706.2286557328691,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_001",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 46
+    },
+    "variant": "variant_001"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.2038981918659151,
+      "median_quarter_r": 1.6478927703705353,
+      "positive_quarter_ratio": 0.7,
+      "positive_quarters": 7,
+      "profit_factor_r": 1.4127971522453173,
+      "quarters": 10,
+      "top3_winner_share": 0.17540368968116152,
+      "total_r": 13.37677877884164,
+      "trades": 74,
+      "win_rate": 0.6216216216216216,
+      "wins": 46,
+      "worst_quarter_r": -2.566818233922688
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1706.2286557328657,
+      "losses": 28,
+      "net_pnl": 706.2286557328691,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_002",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 46
+    },
+    "variant": "variant_002"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.2162781899013147,
+      "median_quarter_r": 0.34040218530127087,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.2893463272037855,
+      "quarters": 10,
+      "top3_winner_share": 0.1764931361420149,
+      "total_r": 9.376328757169306,
+      "trades": 74,
+      "win_rate": 0.6216216216216216,
+      "wins": 46,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1421.0297170272063,
+      "losses": 28,
+      "net_pnl": 421.0297170272081,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_011",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 46
+    },
+    "variant": "variant_011"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.2248929369655592,
+      "median_quarter_r": 0.22111227931139818,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.248638520089495,
+      "quarters": 10,
+      "top3_winner_share": 0.18224712212552469,
+      "total_r": 8.05718368221489,
+      "trades": 74,
+      "win_rate": 0.6216216216216216,
+      "wins": 46,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1331.2077797391219,
+      "losses": 28,
+      "net_pnl": 331.2077797391222,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_012",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 46
+    },
+    "variant": "variant_012"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.22502384646392137,
+      "median_quarter_r": 0.8717255753034173,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.4011592861572852,
+      "quarters": 10,
+      "top3_winner_share": 0.21698653202829105,
+      "total_r": 14.108025863874852,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1682.6254478200008,
+      "losses": 48,
+      "net_pnl": 682.625447820001,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_019",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_019"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.2250238464639215,
+      "median_quarter_r": 0.43138005121600265,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3508063032986817,
+      "quarters": 10,
+      "top3_winner_share": 0.23326016366278507,
+      "total_r": 12.337205122574842,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1555.062270890089,
+      "losses": 48,
+      "net_pnl": 555.06227089009,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_029",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_029"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.25035517684452924,
+      "median_quarter_r": 0.7586269133467913,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3377851058028598,
+      "quarters": 10,
+      "top3_winner_share": 0.2293391467356229,
+      "total_r": 10.94688936455209,
+      "trades": 74,
+      "win_rate": 0.6081081081081081,
+      "wins": 45,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1488.4049072884602,
+      "losses": 29,
+      "net_pnl": 488.40490728846055,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_003",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 45
+    },
+    "variant": "variant_003"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.2676659572478877,
+      "median_quarter_r": 0.6968784683273985,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.2649146762668206,
+      "quarters": 10,
+      "top3_winner_share": 0.23219649085793465,
+      "total_r": 8.968171752120465,
+      "trades": 74,
+      "win_rate": 0.4864864864864865,
+      "wins": 36,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1347.2134984066745,
+      "losses": 38,
+      "net_pnl": 347.21349840667506,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_004",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 36
+    },
+    "variant": "variant_004"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.251274534423513,
+      "median_quarter_r": 0.4310293314298257,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3691558877204315,
+      "quarters": 10,
+      "top3_winner_share": 0.2901078465992192,
+      "total_r": 12.982525873075682,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -2.732194593277119
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1557.8721484585374,
+      "losses": 48,
+      "net_pnl": 557.8721484585368,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_021",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_021"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.29794527247694724,
+      "median_quarter_r": 0.7336041833655337,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.61673416413145,
+      "quarters": 10,
+      "top3_winner_share": 0.3378601712992301,
+      "total_r": 22.428216621667932,
+      "trades": 74,
+      "win_rate": 0.25675675675675674,
+      "wins": 19,
+      "worst_quarter_r": -3.794695078476842
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2244.4171052295933,
+      "losses": 55,
+      "net_pnl": 1244.4171052295949,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_037",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 19
+    },
+    "variant": "variant_037"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.2523656327319306,
+      "median_quarter_r": 1.263067316370246,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.616951815718776,
+      "quarters": 10,
+      "top3_winner_share": 0.2353508661585096,
+      "total_r": 22.496531403717157,
+      "trades": 74,
+      "win_rate": 0.24324324324324326,
+      "wins": 18,
+      "worst_quarter_r": -3.7946950784768423
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2305.2709947975723,
+      "losses": 56,
+      "net_pnl": 1305.2709947975727,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_049",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 18
+    },
+    "variant": "variant_049"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.2748798547965242,
+      "median_quarter_r": 1.1329467191731462,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.5319260123002327,
+      "quarters": 10,
+      "top3_winner_share": 0.2872412004612158,
+      "total_r": 19.34407484523079,
+      "trades": 74,
+      "win_rate": 0.25675675675675674,
+      "wins": 19,
+      "worst_quarter_r": -3.7946950784768423
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2015.1164450504489,
+      "losses": 55,
+      "net_pnl": 1015.1164450504481,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_045",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 19
+    },
+    "variant": "variant_045"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.28092695079381347,
+      "median_quarter_r": 1.777639277595773,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3905405769205115,
+      "quarters": 10,
+      "top3_winner_share": 0.23633300196007134,
+      "total_r": 14.202437886767509,
+      "trades": 74,
+      "win_rate": 0.25675675675675674,
+      "wins": 19,
+      "worst_quarter_r": -3.7946950784768423
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1634.6568411620074,
+      "losses": 55,
+      "net_pnl": 634.656841162008,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_033",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 19
+    },
+    "variant": "variant_033"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.2451171580841047,
+      "median_quarter_r": 1.5008923911584082,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.6147027651243018,
+      "quarters": 10,
+      "top3_winner_share": 0.22118167433895244,
+      "total_r": 22.414522021399055,
+      "trades": 74,
+      "win_rate": 0.24324324324324326,
+      "wins": 18,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2302.2533894196977,
+      "losses": 56,
+      "net_pnl": 1302.253389419697,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_057",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 18
+    },
+    "variant": "variant_057"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.2531760789581751,
+      "median_quarter_r": 1.1298767859522871,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.6360944025566653,
+      "quarters": 10,
+      "top3_winner_share": 0.2648704674564788,
+      "total_r": 23.194546702440682,
+      "trades": 74,
+      "win_rate": 0.24324324324324326,
+      "wins": 18,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2349.457444598783,
+      "losses": 56,
+      "net_pnl": 1349.4574445987846,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_059",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 18
+    },
+    "variant": "variant_059"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.2612645093764008,
+      "median_quarter_r": 0.7549892109523065,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.637057215624843,
+      "quarters": 10,
+      "top3_winner_share": 0.293178694641148,
+      "total_r": 23.229654718775702,
+      "trades": 74,
+      "win_rate": 0.24324324324324326,
+      "wins": 18,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2343.911982356536,
+      "losses": 56,
+      "net_pnl": 1343.911982356536,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_061",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 18
+    },
+    "variant": "variant_061"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.26682093392245426,
+      "median_quarter_r": 1.3016316900888718,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.5360880386525302,
+      "quarters": 10,
+      "top3_winner_share": 0.2560462718377839,
+      "total_r": 19.49543151402483,
+      "trades": 74,
+      "win_rate": 0.25675675675675674,
+      "wins": 19,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2037.0998842741326,
+      "losses": 55,
+      "net_pnl": 1037.0998842741324,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_043",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 19
+    },
+    "variant": "variant_043"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.2696483006210474,
+      "median_quarter_r": 0.7065439085610641,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.6490392718673204,
+      "quarters": 10,
+      "top3_winner_share": 0.3000939158306953,
+      "total_r": 23.666568425279593,
+      "trades": 74,
+      "win_rate": 0.24324324324324326,
+      "wins": 18,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2357.1505434765004,
+      "losses": 56,
+      "net_pnl": 1357.1505434764993,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_051",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 18
+    },
+    "variant": "variant_051"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.27490326462412007,
+      "median_quarter_r": 1.828970115326638,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.3811302874929403,
+      "quarters": 10,
+      "top3_winner_share": 0.2140115502246246,
+      "total_r": 13.860222355297175,
+      "trades": 74,
+      "win_rate": 0.25675675675675674,
+      "wins": 19,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1616.7370526674104,
+      "losses": 55,
+      "net_pnl": 616.7370526674105,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_041",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 19
+    },
+    "variant": "variant_041"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.26880345474131523,
+      "median_quarter_r": 0.9866316397391238,
+      "positive_quarter_ratio": 0.6,
+      "positive_quarters": 6,
+      "profit_factor_r": 1.622977203659896,
+      "quarters": 10,
+      "top3_winner_share": 0.2930378947048679,
+      "total_r": 22.655251624858995,
+      "trades": 74,
+      "win_rate": 0.25675675675675674,
+      "wins": 19,
+      "worst_quarter_r": -3.794695078476843
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2288.3400187837005,
+      "losses": 55,
+      "net_pnl": 1288.340018783702,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_035",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 19
+    },
+    "variant": "variant_035"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.30107456752865897,
+      "median_quarter_r": -0.32350831472262975,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.2019543714469696,
+      "quarters": 10,
+      "top3_winner_share": 0.24227801832850374,
+      "total_r": 6.64550544118337,
+      "trades": 74,
+      "win_rate": 0.5135135135135135,
+      "wins": 38,
+      "worst_quarter_r": -2.56546660882835
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1220.4051739832798,
+      "losses": 36,
+      "net_pnl": 220.40517398328083,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_014",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 38
+    },
+    "variant": "variant_014"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.3585155065383053,
+      "median_quarter_r": -0.8830462805811474,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.0797126075456012,
+      "quarters": 10,
+      "top3_winner_share": 0.20146922045201432,
+      "total_r": 3.918138855132625,
+      "trades": 74,
+      "win_rate": 0.4189189189189189,
+      "wins": 31,
+      "worst_quarter_r": -3.0157275707416393
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 982.5393373970071,
+      "losses": 43,
+      "net_pnl": -17.46066260299351,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_020",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 31
+    },
+    "variant": "variant_020"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.28273276850493206,
+      "median_quarter_r": 0.13294651917314504,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.4904060853536565,
+      "quarters": 10,
+      "top3_winner_share": 0.3188190459129941,
+      "total_r": 17.83415700731584,
+      "trades": 74,
+      "win_rate": 0.25675675675675674,
+      "wins": 19,
+      "worst_quarter_r": -3.794695078476842
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1874.6406928211277,
+      "losses": 55,
+      "net_pnl": 874.6406928211287,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_047",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 19
+    },
+    "variant": "variant_047"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.31140174168796836,
+      "median_quarter_r": 0.14421254606109257,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.6504834914695878,
+      "quarters": 10,
+      "top3_winner_share": 0.34251373423196,
+      "total_r": 23.719230449782128,
+      "trades": 74,
+      "win_rate": 0.24324324324324326,
+      "wins": 18,
+      "worst_quarter_r": -3.7946950784768423
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2341.965980829644,
+      "losses": 56,
+      "net_pnl": 1341.9659808296446,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_053",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 18
+    },
+    "variant": "variant_053"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.27986682257943074,
+      "median_quarter_r": 0.005214060952303035,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.6052856772504114,
+      "quarters": 10,
+      "top3_winner_share": 0.3208265215380432,
+      "total_r": 22.071137323130966,
+      "trades": 74,
+      "win_rate": 0.24324324324324326,
+      "wins": 18,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2219.2640096069063,
+      "losses": 56,
+      "net_pnl": 1219.2640096069053,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_063",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 18
+    },
+    "variant": "variant_063"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.30719527206376956,
+      "median_quarter_r": -0.1663087309420842,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.0894085346098938,
+      "quarters": 10,
+      "top3_winner_share": 0.17211322820593,
+      "total_r": 4.394725805890743,
+      "trades": 74,
+      "win_rate": 0.4189189189189189,
+      "wins": 31,
+      "worst_quarter_r": -4.075874625888257
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1019.275125192512,
+      "losses": 43,
+      "net_pnl": 19.27512519251224,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_018",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 31
+    },
+    "variant": "variant_018"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.4498214212421806,
+      "median_quarter_r": -0.8825137770854753,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.0784334800857904,
+      "quarters": 10,
+      "top3_winner_share": 0.26352122578101544,
+      "total_r": 3.855265501026315,
+      "trades": 74,
+      "win_rate": 0.4189189189189189,
+      "wins": 31,
+      "worst_quarter_r": -4.140390295741637
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 954.5519815351022,
+      "losses": 43,
+      "net_pnl": -45.44801846489817,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_022",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 31
+    },
+    "variant": "variant_022"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6294747768809091,
+      "median_quarter_r": -0.9252222493013977,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1187197020375625,
+      "quarters": 10,
+      "top3_winner_share": 0.27944728523427825,
+      "total_r": 6.8525801031876155,
+      "trades": 74,
+      "win_rate": 0.3108108108108108,
+      "wins": 23,
+      "worst_quarter_r": -6.017515410014791
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 971.4553242402189,
+      "losses": 51,
+      "net_pnl": -28.5446757597812,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_052",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 23
+    },
+    "variant": "variant_052"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6103931635940402,
+      "median_quarter_r": -0.6876221745132303,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.110542011671765,
+      "quarters": 10,
+      "top3_winner_share": 0.24651303964135615,
+      "total_r": 6.380558380348702,
+      "trades": 74,
+      "win_rate": 0.3108108108108108,
+      "wins": 23,
+      "worst_quarter_r": -6.058035213262659
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 968.2847580303754,
+      "losses": 51,
+      "net_pnl": -31.71524196962432,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_060",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 23
+    },
+    "variant": "variant_060"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.5976498711288111,
+      "median_quarter_r": -0.4378471245132214,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.097028226160213,
+      "quarters": 10,
+      "top3_winner_share": 0.20566335720097964,
+      "total_r": 5.600533699307079,
+      "trades": 74,
+      "win_rate": 0.3108108108108108,
+      "wins": 23,
+      "worst_quarter_r": -6.301604307166714
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 948.830493279926,
+      "losses": 51,
+      "net_pnl": -51.16950672007266,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_058",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 23
+    },
+    "variant": "variant_058"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6252214751850987,
+      "median_quarter_r": -0.9373972245132145,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.1111502516595742,
+      "quarters": 10,
+      "top3_winner_share": 0.2728704259137655,
+      "total_r": 6.415666396683727,
+      "trades": 74,
+      "win_rate": 0.3108108108108108,
+      "wins": 23,
+      "worst_quarter_r": -6.30781026326266
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 965.999299922697,
+      "losses": 51,
+      "net_pnl": -34.00070007730272,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_062",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 23
+    },
+    "variant": "variant_062"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6108985685504457,
+      "median_quarter_r": -0.5505596743013839,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 1.0984490237702345,
+      "quarters": 10,
+      "top3_winner_share": 0.21885978316218316,
+      "total_r": 5.682543081625184,
+      "trades": 74,
+      "win_rate": 0.3108108108108108,
+      "wins": 23,
+      "worst_quarter_r": -6.382869050870874
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 950.0741426594313,
+      "losses": 51,
+      "net_pnl": -49.925857340567994,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_050",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 23
+    },
+    "variant": "variant_050"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6093225385676627,
+      "median_quarter_r": -0.03635393091952799,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 0.9706238317991477,
+      "quarters": 10,
+      "top3_winner_share": 0.21745513020333646,
+      "total_r": -1.6633334097289214,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -6.632644100870873
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 707.7180896229276,
+      "losses": 50,
+      "net_pnl": -292.28191037707273,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_034",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_034"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6024555197251449,
+      "median_quarter_r": 0.014976906811337676,
+      "positive_quarter_ratio": 0.5,
+      "positive_quarters": 5,
+      "profit_factor_r": 0.9663212688531295,
+      "quarters": 10,
+      "top3_winner_share": 0.19645491292208633,
+      "total_r": -1.9069525450307814,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -6.801154407166711
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 703.0138831347948,
+      "losses": 50,
+      "net_pnl": -296.9861168652054,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_042",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_042"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.24911258066403366,
+      "median_quarter_r": -0.6168286308268625,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.4768390725210363,
+      "quarters": 10,
+      "top3_winner_share": 0.30383573530867725,
+      "total_r": 16.76954317192417,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -2.2200397001666485
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1858.4565178458183,
+      "losses": 48,
+      "net_pnl": 858.4565178458179,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_031",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_031"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.25195976105939716,
+      "median_quarter_r": -0.14354450535913005,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.2940348452937236,
+      "quarters": 10,
+      "top3_winner_share": 0.22851564061440022,
+      "total_r": 9.528261174698262,
+      "trades": 74,
+      "win_rate": 0.6216216216216216,
+      "wins": 46,
+      "worst_quarter_r": -2.56546660882835
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1413.366972956357,
+      "losses": 28,
+      "net_pnl": 413.36697295635634,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_013",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 46
+    },
+    "variant": "variant_013"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.3084506265438937,
+      "median_quarter_r": -1.0364136860087918,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.5582050415539634,
+      "quarters": 10,
+      "top3_winner_share": 0.3819278806727385,
+      "total_r": 19.631032947099666,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -2.793794878476844
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2003.8016706097408,
+      "losses": 48,
+      "net_pnl": 1003.8016706097418,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_023",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_023"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.29817626059797775,
+      "median_quarter_r": -0.2941707783907035,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.4432578814298809,
+      "quarters": 10,
+      "top3_winner_share": 0.3053507790019227,
+      "total_r": 14.363865132339455,
+      "trades": 74,
+      "win_rate": 0.6216216216216216,
+      "wins": 46,
+      "worst_quarter_r": -2.793794878476848
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1726.2461211354039,
+      "losses": 28,
+      "net_pnl": 726.246121135405,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_015",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 46
+    },
+    "variant": "variant_015"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.32343512431814203,
+      "median_quarter_r": -0.8797928952458293,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.0761672526753356,
+      "quarters": 10,
+      "top3_winner_share": 0.16773680660977047,
+      "total_r": 3.743872912766177,
+      "trades": 74,
+      "win_rate": 0.4189189189189189,
+      "wins": 31,
+      "worst_quarter_r": -2.848446804859187
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 989.630192877912,
+      "losses": 43,
+      "net_pnl": -10.3698071220878,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_028",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 31
+    },
+    "variant": "variant_028"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.2828192347025539,
+      "median_quarter_r": -0.4218192288924968,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.3448063880653651,
+      "quarters": 10,
+      "top3_winner_share": 0.30331457066306355,
+      "total_r": 11.174787990845525,
+      "trades": 74,
+      "win_rate": 0.6081081081081081,
+      "wins": 45,
+      "worst_quarter_r": -2.9517525740040984
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1464.193072809474,
+      "losses": 29,
+      "net_pnl": 464.1930728094751,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_005",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 45
+    },
+    "variant": "variant_005"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.3546304573382592,
+      "median_quarter_r": -0.6484725356185668,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.177732937269677,
+      "quarters": 10,
+      "top3_winner_share": 0.2912098529628326,
+      "total_r": 6.850654390573186,
+      "trades": 74,
+      "win_rate": 0.40540540540540543,
+      "wins": 30,
+      "worst_quarter_r": -2.951752574004099
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1167.0407037154982,
+      "losses": 44,
+      "net_pnl": 167.0407037155,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_006",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 30
+    },
+    "variant": "variant_006"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 4,
+      "max_drawdown": 0.3348644954974529,
+      "median_quarter_r": -0.7861886360087909,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.5684025497161285,
+      "quarters": 10,
+      "top3_winner_share": 0.39685086095131994,
+      "total_r": 18.428193927307316,
+      "trades": 74,
+      "win_rate": 0.5945945945945946,
+      "wins": 44,
+      "worst_quarter_r": -3.2942449784768453
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1937.9899570687232,
+      "losses": 30,
+      "net_pnl": 937.9899570687228,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_007",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 44
+    },
+    "variant": "variant_007"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.29799909977282707,
+      "median_quarter_r": -0.3807667629136765,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.0826312040515307,
+      "quarters": 10,
+      "top3_winner_share": 0.14921818560216377,
+      "total_r": 4.061597546604919,
+      "trades": 74,
+      "win_rate": 0.4189189189189189,
+      "wins": 31,
+      "worst_quarter_r": -3.5552115082902676
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1010.4441740203429,
+      "losses": 43,
+      "net_pnl": 10.444174020343517,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_026",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 31
+    },
+    "variant": "variant_026"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.38500579459326967,
+      "median_quarter_r": -0.6639528793195826,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.0753145010354617,
+      "quarters": 10,
+      "top3_winner_share": 0.20964993998325532,
+      "total_r": 3.7019573433619692,
+      "trades": 74,
+      "win_rate": 0.4189189189189189,
+      "wins": 31,
+      "worst_quarter_r": -3.5982219548591847
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 976.1057050496953,
+      "losses": 43,
+      "net_pnl": -23.894294950304676,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_030",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 31
+    },
+    "variant": "variant_030"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.329643761045011,
+      "median_quarter_r": -0.7663961166344676,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.5544542737115854,
+      "quarters": 10,
+      "top3_winner_share": 0.38350117936970823,
+      "total_r": 20.16333986479551,
+      "trades": 74,
+      "win_rate": 0.25675675675675674,
+      "wins": 19,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2005.2750708362282,
+      "losses": 55,
+      "net_pnl": 1005.2750708362282,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_039",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 19
+    },
+    "variant": "variant_039"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 10,
+      "max_drawdown": 0.33801139926820517,
+      "median_quarter_r": -0.9804501789389116,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.6028261839079403,
+      "quarters": 10,
+      "top3_winner_share": 0.38375750889357957,
+      "total_r": 21.981454356315023,
+      "trades": 74,
+      "win_rate": 0.24324324324324326,
+      "wins": 18,
+      "worst_quarter_r": -3.7946950784768427
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": true,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 2148.2031006452,
+      "losses": 56,
+      "net_pnl": 1148.2031006451996,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_055",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 18
+    },
+    "variant": "variant_055"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.5073460503173428,
+      "median_quarter_r": -2.4759973512370816,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1804864942080309,
+      "quarters": 10,
+      "top3_winner_share": 0.3844629841308726,
+      "total_r": 8.024921205865505,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -3.837845943191605
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1133.2299905388159,
+      "losses": 50,
+      "net_pnl": 133.2299905388159,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_008",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_008"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6089057331915344,
+      "median_quarter_r": -2.049209974301379,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.0895254077492376,
+      "quarters": 10,
+      "top3_winner_share": 0.35664730352540774,
+      "total_r": 5.167466034223047,
+      "trades": 74,
+      "win_rate": 0.3108108108108108,
+      "wins": 23,
+      "worst_quarter_r": -5.79067988384884
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 885.341560150518,
+      "losses": 51,
+      "net_pnl": -114.65843984948143,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_056",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 23
+    },
+    "variant": "variant_056"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.594346889405602,
+      "median_quarter_r": -1.4369473245132178,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.0910791488128817,
+      "quarters": 10,
+      "top3_winner_share": 0.29819429455774055,
+      "total_r": 5.2571490010389885,
+      "trades": 74,
+      "win_rate": 0.3108108108108108,
+      "wins": 23,
+      "worst_quarter_r": -5.906811529152025
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 914.6279791054931,
+      "losses": 51,
+      "net_pnl": -85.37202089450741,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_064",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 23
+    },
+    "variant": "variant_064"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.5856398279320966,
+      "median_quarter_r": -2.298985024301375,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.0779032675842453,
+      "quarters": 10,
+      "top3_winner_share": 0.35520366410510285,
+      "total_r": 4.411028246228771,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -6.0404549338488405
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 872.5348640525488,
+      "losses": 50,
+      "net_pnl": -127.46513594745069,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_040",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_040"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6025748969315543,
+      "median_quarter_r": -0.8273615687761776,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.121912976387748,
+      "quarters": 10,
+      "top3_winner_share": 0.2722636137038097,
+      "total_r": 6.9029400062922575,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -6.267290460014792
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 995.7020242428941,
+      "losses": 50,
+      "net_pnl": -4.297975757105437,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_036",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_036"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6506573154858936,
+      "median_quarter_r": -1.2998848243013736,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1196320620192761,
+      "quarters": 10,
+      "top3_winner_share": 0.31896779885178783,
+      "total_r": 6.905242127690153,
+      "trades": 74,
+      "win_rate": 0.3108108108108108,
+      "wins": 23,
+      "worst_quarter_r": -6.392177985014791
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 4.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 965.1972919433977,
+      "losses": 51,
+      "net_pnl": -34.80270805660162,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_054",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 23
+    },
+    "variant": "variant_054"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.5829752782168262,
+      "median_quarter_r": -1.6810466893421554,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.0378408927098612,
+      "quarters": 10,
+      "top3_winner_share": 0.2940564194182795,
+      "total_r": 2.142621892274346,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -6.406361629152023
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 817.8761703860021,
+      "losses": 50,
+      "net_pnl": -182.12382961399763,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_048",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_048"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.5940159421580918,
+      "median_quarter_r": -0.5123615184264285,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.067180698578863,
+      "quarters": 10,
+      "top3_winner_share": 0.23670594884474902,
+      "total_r": 3.8038963989833383,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -6.557585313262658
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 1.5
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 888.7545535654643,
+      "losses": 50,
+      "net_pnl": -111.24544643453561,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_044",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_044"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6239634812691092,
+      "median_quarter_r": -1.080389025149766,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.1179033061663648,
+      "quarters": 10,
+      "top3_winner_share": 0.3138224029927406,
+      "total_r": 6.675905003101192,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -6.641953035014791
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 976.5902954012536,
+      "losses": 50,
+      "net_pnl": -23.409704598746544,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_038",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_038"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.6086951322374408,
+      "median_quarter_r": -0.6810464893421546,
+      "positive_quarter_ratio": 0.4,
+      "positive_quarters": 4,
+      "profit_factor_r": 1.0645075850979409,
+      "quarters": 10,
+      "top3_winner_share": 0.2654901016823343,
+      "total_r": 3.6525397301892935,
+      "trades": 74,
+      "win_rate": 0.32432432432432434,
+      "wins": 24,
+      "worst_quarter_r": -6.807360363262657
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 3.0,
+      "PAPER_TRAIL_DISTANCE_R": 2.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 879.1635257204837,
+      "losses": 50,
+      "net_pnl": -120.8364742795161,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_046",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 24
+    },
+    "variant": "variant_046"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 8,
+      "max_drawdown": 0.4146537285321467,
+      "median_quarter_r": -1.4838443717497185,
+      "positive_quarter_ratio": 0.3,
+      "positive_quarters": 3,
+      "profit_factor_r": 1.2136142339920133,
+      "quarters": 10,
+      "top3_winner_share": 0.33838802983218436,
+      "total_r": 7.4283499847115815,
+      "trades": 74,
+      "win_rate": 0.3783783783783784,
+      "wins": 28,
+      "worst_quarter_r": -3.0193449721945496
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 1.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1217.4775091179115,
+      "losses": 46,
+      "net_pnl": 217.47750911791294,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_016",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 28
+    },
+    "variant": "variant_016"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 6,
+      "max_drawdown": 0.44031487352213056,
+      "median_quarter_r": -1.573944744364585,
+      "positive_quarter_ratio": 0.3,
+      "positive_quarters": 3,
+      "profit_factor_r": 1.1186636264342689,
+      "quarters": 10,
+      "top3_winner_share": 0.2869915426595491,
+      "total_r": 5.832710530226636,
+      "trades": 74,
+      "win_rate": 0.4189189189189189,
+      "wins": 31,
+      "worst_quarter_r": -3.910924384764183
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.5,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1043.292928506467,
+      "losses": 43,
+      "net_pnl": 43.292928506466986,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_032",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 31
+    },
+    "variant": "variant_032"
+  },
+  {
+    "metrics": {
+      "longest_loss_streak": 9,
+      "max_drawdown": 0.522296122347149,
+      "median_quarter_r": -2.101109776237085,
+      "positive_quarter_ratio": 0.3,
+      "positive_quarters": 3,
+      "profit_factor_r": 1.1393801486869328,
+      "quarters": 10,
+      "top3_winner_share": 0.36308857181950605,
+      "total_r": 7.051395281323313,
+      "trades": 74,
+      "win_rate": 0.35135135135135137,
+      "wins": 26,
+      "worst_quarter_r": -4.6094439405991325
+    },
+    "parameters": {
+      "ORB_ENTRY_WINDOW_MINUTES": 30,
+      "ORB_MIN_SUPPORTIVE_BUBBLE_QTY_RATIO": 1.0,
+      "ORB_MIN_VOLUME_EXPANSION_RATIO": 2.0,
+      "PAPER_EXIT_MODE": "tp1_trail",
+      "PAPER_PROTECTION_ENABLED": false,
+      "PAPER_TP1_FRACTION": 0.25,
+      "PAPER_TP1_R": 2.0,
+      "PAPER_TRAIL_DISTANCE_R": 3.0
+    },
+    "summary": {
+      "candles": 1143235,
+      "event": "fast_orb_backtest_finished",
+      "final_equity": 1033.264975508553,
+      "losses": 48,
+      "net_pnl": 33.26497550855326,
+      "output_dir": "apps\\orb_live_agent\\data\\backtests\\avaxusdc\\20260709_sweep_4_avaxusdc\\variant_024",
+      "rows_loaded": 36880075,
+      "trades_taken": 74,
+      "wins": 26
+    },
+    "variant": "variant_024"
+  }
+]

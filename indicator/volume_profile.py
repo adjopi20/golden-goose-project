@@ -26,8 +26,8 @@ def _format_export_volume_profile(volume_profile: list[dict]) -> list[dict]:
     return [
         {
             "bin_index": int(bin_row["bin_index"]),
-            "bin_low": _round_float(bin_row["bin_low"], 2),
-            "bin_high": _round_float(bin_row["bin_high"], 2),
+            "bin_low": float(bin_row["bin_low"]),
+            "bin_high": float(bin_row["bin_high"]),
             "buy_volume": _round_float(bin_row["buy_volume"], 3),
             "sell_volume": _round_float(bin_row["sell_volume"], 3),
             "total_volume": _round_float(bin_row["total_volume"], 3),
@@ -46,7 +46,7 @@ def _format_export_regions(regions: list[dict]) -> list[dict]:
             "start_bin": int(region["start_bin"]),
             "end_bin": int(region["end_bin"]),
             "dominant_bin": int(region["dominant_bin"]),
-            "dominant_price": _round_float(region["dominant_price"], 2),
+            "dominant_price": float(region["dominant_price"]),
             "max_density": _round_float(region["max_density"], 4),
             "mean_density": _round_float(region["mean_density"], 4),
         }
@@ -575,15 +575,15 @@ def build_volume_profile(trades_df: pd.DataFrame, n_bins: int = 50) -> dict:
     segmentation = _segment_profile_regimes(volume_profile)
 
     return {
-        "session_low": _round_float(session_low, 2),
-        "session_high": _round_float(session_high, 2),
-        "bin_width": _round_float(bin_width, 2),
+        "session_low": float(session_low),
+        "session_high": float(session_high),
+        "bin_width": float(bin_width),
         "bins": int(n_bins),
         "poc_bin_index": int(poc_data["poc_bin_index"]),
-        "poc_price": _round_float(poc_data["poc_price"], 2),
+        "poc_price": float(poc_data["poc_price"]),
         "poc_volume": _round_float(poc_data["poc_volume"], 3),
-        "val": _round_float(value_area_data["val"], 2),
-        "vah": _round_float(value_area_data["vah"], 2),
+        "val": float(value_area_data["val"]),
+        "vah": float(value_area_data["vah"]),
         "hvn_regions": _format_export_regions(segmentation["hvn_regions"]),
         "lvn_regions": _format_export_regions(segmentation["lvn_regions"]),
         "volume_profile": _format_export_volume_profile(volume_profile),
