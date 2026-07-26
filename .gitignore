@@ -3,17 +3,19 @@
 
 # ignore folder
 /data/
+apps/orb_live_agent/data/
 __pycache__/
 /_archive/
 reports/
 /storage/
+tmp/
 _tmp_binance_historical/
 .venv/
 .pytest_cache/
 .pytest_tmp*/
 .tmp-pytest*/
 .tmp-mpl-cache/
-models/orb/runs/
+models/**/runs/
 
 # ignore extension
 *.log
