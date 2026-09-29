@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "mode": "paper",
+  "venue": "lighter",
+  "stage": "ledger_foundation_only_no_feed",
+  "mapping_status": "UNVERIFIED: symbols below are research identities, not Lighter market IDs; venue-native feeds and fee schedule must be validated before use",
+  "accounts": [
+    {
+      "id": "tf-preny-eth-v1",
+      "symbol": "ETHUSDC",
+      "contract": "TF-PRENY-ETH-001-lighter-paper-pending-parity",
+      "allowed_risks": [0.0025, 0.005],
+      "execution": {"initial_equity": 1000, "risk_fraction": 0.005, "fee_bps": 4, "max_leverage": 5, "max_entry_delay_ms": 300000, "tp1_r": 1, "tp1_fraction": 0.1}
+    },
+    {
+      "id": "tf-preny-bnb-v1",
+      "symbol": "BNBUSDC",
+      "contract": "TF-PRENY-BNB-001-lighter-paper-pending-parity",
+      "allowed_risks": [0.0025, 0.005],
+      "execution": {"initial_equity": 1000, "risk_fraction": 0.005, "fee_bps": 4, "max_leverage": 5, "max_entry_delay_ms": 300000, "tp1_r": 2, "tp1_fraction": 0.1}
+    },
+    {
+      "id": "tf-preny-hype-v1",
+      "symbol": "HYPEUSDT",
+      "contract": "TF-PRENY-HYPE-001-lighter-paper-pending-parity",
+      "allowed_risks": [0.005],
+      "execution": {"initial_equity": 1000, "risk_fraction": 0.005, "fee_bps": 4, "max_leverage": 5, "max_entry_delay_ms": 300000, "tp1_r": 1, "tp1_fraction": 0.1}
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+**
+!live_engine/
+!live_engine/**
+!backtest_engine/
+!backtest_engine/**
+!models/
+!models/trend_following_preny_profile_15m/
+!models/trend_following_preny_profile_15m/**
+**/__pycache__/
+**/*.pyc
+models/trend_following_preny_profile_15m/runs/
+models/trend_following_preny_profile_15m/images/
+models/trend_following_preny_profile_15m/*.parquet
+models/trend_following_preny_profile_15m/*.jsonl
