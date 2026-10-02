@@ -1,6 +1,6 @@
 """Local Binance public-feed collection and opt-in paper evaluation. No real orders."""
 import argparse
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from datetime import date, datetime, timedelta
 import json
 import math
@@ -101,10 +101,13 @@ def prepare_context(minutes, day, asof):
 
 
 class Worker:
-    def __init__(self, store, manager, *, paper=False, calibration=None, now_ms=None):
+    def __init__(self, store, manager, *, paper=False, calibration=None, now_ms=None,
+                 strict_coverage=False, min_native_reference_sessions=0):
         self.store, self.manager = store, manager
         self.paper, self.calibration = paper, calibration
         self.now_ms = now_ms or (lambda:int(time.time()*1000))
+        self.strict_coverage = strict_coverage
+        self.min_native_reference_sessions = min_native_reference_sessions
 
     def boundary(self, symbol, asof, state):
         local = datetime.fromtimestamp(asof/1000, NY)
@@ -117,6 +120,19 @@ class Worker:
             return
         result = dict(state="NOT_READY", session_day=str(day), as_of_ms=asof, candidate=False)
         try:
+            if self.strict_coverage and state["coverage_start_ms"] > clock_ms(day,1):
+                raise NotReady("Collector did not cover full 01:00-09:00 profile; wait for next session")
+            if asof > start and self.min_native_reference_sessions:
+                prior_minutes = db.execute(
+                    "SELECT timestamp_ms FROM minutes WHERE symbol=? AND source='aggregate_trades' AND timestamp_ms>=? AND timestamp_ms<?",
+                    (symbol, asof-25*86_400_000, start)).fetchall()
+                counts = Counter()
+                for row in prior_minutes:
+                    local_minute = datetime.fromtimestamp(row[0]/1000, NY)
+                    if local_minute.date() < day and 9 <= local_minute.hour < 12:
+                        counts[local_minute.date()] += 1
+                if sum(count >= 60 for count in counts.values()) < self.min_native_reference_sessions:
+                    raise NotReady("Need earlier native 09:00-12:00 sessions before relative order-flow evaluation")
             stored = db.execute("SELECT payload FROM profiles WHERE symbol=? AND session=?", (symbol,str(day))).fetchone()
             if stored:
                 profile = json.loads(stored[0])

@@ -1,14 +1,15 @@
 # Paper deployment preparation — foundation only
 
-**2026-09-29 update:** Binance paper collector/evaluator and a Docker Compose
-package are prepared but have not been deployed. Use
+**2026-10-02 update:** Binance collector/evaluator is running on the VPS. A
+separate Lighter public trade collector/evaluator is available for deployment;
+its historical delta references and paper fill parity have not yet been
+validated. Use
 [SERVER_RUNBOOK.md](SERVER_RUNBOOK.md) for the server steps and
 [PAPER_FEED_V01.md](../docs/PAPER_FEED_V01.md) for local commands/readiness.
-The foundation notes below predate that worker. Lighter public markets are
-identified but recovery and executable paper support remain pending.
+The foundation notes below predate these workers.
 
-Shared infrastructure: `live_engine/`. Alpha remains in this model. No Docker
-service or server has been deployed yet.
+Shared infrastructure: `live_engine/`. Alpha remains in this model. Each venue
+uses its own feed and SQLite volume. Neither worker sends real orders.
 The two config files create separate venue ledgers, not actual market mappings.
 
 Each model has **1,000 virtual units** for plumbing tests; this is not a real

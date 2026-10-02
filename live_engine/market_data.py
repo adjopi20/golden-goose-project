@@ -49,12 +49,12 @@ class MarketData:
                         (symbol, row["timestamp_ms"], encode(row), "binance_native_kline"))
 
     def consume(self, symbol, ticks, *, account=None, profile_key=lambda stamp:None,
-                on_boundary=lambda symbol, end, state:None):
+                on_boundary=lambda symbol, end, state:None, consecutive_ids=True):
         """Atomic checkpoint + bars + paper fills. Callback precedes new-bar fills.
 
-        ID continuity is Binance-specific and enforced here deliberately. The
-        Lighter adapter must not be connected to this collector without a
-        venue-specific continuity contract.
+        Binance aggregate trade IDs are consecutive per market. Lighter IDs are
+        only monotonic per market; its adapter repairs reconnects from venue
+        history before calling this method with consecutive_ids=False.
         """
         with self.store.transaction():
             state = self.state(symbol)
@@ -81,7 +81,7 @@ class MarketData:
                         if tick != previous:
                             raise ValueError("Conflicting feed duplicate")
                         continue
-                    if tick["agg_trade_id"] != previous["agg_trade_id"]+1:
+                    if consecutive_ids and tick["agg_trade_id"] != previous["agg_trade_id"]+1:
                         raise ValueError("Unrepaired feed ID gap")
                     if stamp < previous["timestamp_ms"]:
                         raise ValueError("Feed timestamp regressed")
@@ -119,3 +119,8 @@ class MarketData:
             execute()
             if state:
                 self.store.db.execute("INSERT OR REPLACE INTO feeds VALUES (?,?)", (symbol, encode(state)))
+
+    def reset_coverage(self, symbol):
+        """Discard continuity after a venue history gap; future profiles must wait."""
+        with self.store.transaction():
+            self.store.db.execute("DELETE FROM feeds WHERE symbol=?", (symbol,))

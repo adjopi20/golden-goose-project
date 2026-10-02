@@ -2,8 +2,8 @@
   "schema_version": 1,
   "mode": "paper",
   "venue": "lighter",
-  "stage": "ledger_foundation_only_no_feed",
-  "mapping_status": "UNVERIFIED: symbols below are research identities, not Lighter market IDs; venue-native feeds and fee schedule must be validated before use",
+  "stage": "venue_native_public_feed_observation",
+  "mapping_status": "ETH=0, HYPE=24, BNB=25; checked against active Lighter perp orderBooks at worker startup. Account symbols are internal research identities. Fees remain unverified research proxies; no paper fills are enabled.",
   "accounts": [
     {
       "id": "tf-preny-eth-v1",

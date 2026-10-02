@@ -27,6 +27,36 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+  lighter-observe:
+    build:
+      context: ../../..
+      dockerfile: live_engine/Dockerfile
+    image: golden-goose/preny15m-binance-paper:local
+    entrypoint: ["python", "-m", "models.trend_following_preny_profile_15m.lighter_worker"]
+    command: ["--database", "/data/lighter.sqlite", "--action", "run"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - lighter_observation_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-m", "live_engine.healthcheck", "--database", "/data/lighter.sqlite", "--symbols", "ETHUSDC", "BNBUSDC", "HYPEUSDT", "--max-age-seconds", "180"]
+      interval: 60s
+      timeout: 10s
+      start_period: 5m
+      retries: 3
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   binance_paper_data:
+  lighter_observation_data:

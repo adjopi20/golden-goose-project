@@ -1,9 +1,12 @@
 # Binance paper collector on an Ubuntu droplet
 
 This package runs the **model-specific** ETHUSDC, BNBUSDC and HYPEUSDT
-Binance USDC-M public-data collector and evaluator. It never sends real orders.
+Binance USDC-M public-data collector and evaluator. A second service collects
+ETH, BNB and HYPE trades from Lighter's own perp markets in its own database.
+Neither sends real orders.
 The default command is collection/evaluation only; simulated fills require an
-explicit `--paper` in a later, reviewed invocation. Lighter is not included.
+explicit `--paper` in a later, reviewed invocation. Lighter currently runs
+venue-native public-feed observation only; its paper fills remain disabled.
 
 ## First deployment
 
@@ -43,6 +46,38 @@ docker compose logs --tail=100 binance-paper
 docker compose logs -f --tail=100 binance-paper
 docker compose exec binance-paper python -m models.trend_following_preny_profile_15m.paper_worker --database /data/binance.sqlite --action status
 ```
+
+## Add Lighter observation alongside Binance
+
+After pushing the Lighter worker changes, on the server's deployment branch:
+
+```bash
+git pull --ff-only
+docker compose build lighter-observe
+docker compose up -d --no-deps --no-build lighter-observe
+docker compose ps
+docker compose logs --tail=100 lighter-observe
+docker compose exec lighter-observe python -m models.trend_following_preny_profile_15m.lighter_worker --database /data/lighter.sqlite --action status
+```
+
+Do not run Binance warmup in the Lighter volume. Lighter candles do not provide
+historical aggressive buy/sell delta, so this service starts collecting its own
+native trades and builds its own profile/minute bars over time. Entry evaluation
+waits for 10 earlier native 09:00–12:00 sessions with usable minute coverage;
+until then it records NOT_READY. ETH, BNB and HYPE native market IDs are checked
+at startup.
+On reconnect, the worker uses Lighter's trade-history pagination to recover
+missed prints. If that history cannot bridge the gap, it resets coverage and
+waits for a fresh, complete Pre-NY window before trusting a new profile.
+Lighter trade IDs are monotonic for a market, not consecutive like Binance's
+aggregate-trade IDs; the two feeds use different continuity checks.
+
+The two services have independent named volumes and can run at the same time.
+At 2 GB RAM, check `docker stats --no-stream` during the 09:00–12:00 New York
+evaluation window. If memory pressure is high, stop and diagnose rather than
+assuming the model ran accurately. This Lighter service does not generate
+simulated fills yet; its fee schedule and order execution assumptions need a
+separate parity test before enabling paper fills.
 
 The worker writes compact structured evaluation/feed events to stdout. Docker's
 `local` logging driver caps retained container logs at three 10 MB files. The
@@ -85,8 +120,8 @@ while WAL writes are active.
 
 ## Scope and limitations
 
-One named volume holds three isolated virtual account ledgers in a single
-Binance paper database. No real API key or exchange order adapter is mounted.
+Each venue has one named volume containing three isolated virtual account
+ledgers. No real API key or exchange order adapter is mounted.
 No public ports are exposed. HYPE C1 calibration expired; without a new valid
 venue-native artifact HYPE must remain NOT_READY for entry. Costs remain the
 research proxy, not verified live Binance fees. This deploy is an observation
