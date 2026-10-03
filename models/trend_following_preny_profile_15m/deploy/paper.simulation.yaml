@@ -1,0 +1,19 @@
+# Apply with -f compose.yaml -f paper.simulation.yaml after reviewing readiness.
+# No exchange credentials or real-order adapter exists in these services.
+services:
+  binance-paper:
+    command:
+      - --database
+      - /data/binance.sqlite
+      - --action
+      - run
+      - --paper
+      - --c1-calibration
+      - models/trend_following_preny_profile_15m/deploy/hype.binance.c1_2026-10.json
+  lighter-observe:
+    command:
+      - --database
+      - /data/lighter.sqlite
+      - --action
+      - run
+      - --paper

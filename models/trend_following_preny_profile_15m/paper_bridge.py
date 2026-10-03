@@ -47,7 +47,22 @@ def _risk(symbol, trend, direction, asof):
     return .005 if adx >= 30 else .0025
 
 
-def _hype_gate(bars, direction, atr_before, calibration, day):
+def hype_candidate_features(bars, direction, atr_before, signal_atr=None):
+    recent = bars[-4:]
+    volume = sum(float(b["buy_volume"]) + float(b["sell_volume"]) for b in recent)
+    # The research C1 feature uses the last completed 1h ATR at signal time.
+    atr = (signal_atr["atr14"] if signal_atr is not None else
+           atr_before.get(int(recent[-1]["open_timestamp_ms"])))
+    if not volume > 0 or not _finite(atr) or atr <= 0:
+        raise NotReady("HYPE C1 needs completed-hour ATR and positive volume")
+    sign = 1 if direction == "long" else -1
+    return {
+        "directional_delta_imbalance": sign * sum(float(b["buy_volume"]) - float(b["sell_volume"]) for b in recent) / volume,
+        "directional_result_atr": sign * (float(recent[-1]["close"]) - float(recent[0]["open"])) / atr,
+    }
+
+
+def _hype_gate(bars, direction, atr_before, calibration, day, signal_atr=None):
     if calibration is None:
         raise NotReady("HYPE C1 calibration missing")
     try:
@@ -61,23 +76,14 @@ def _hype_gate(bars, direction, atr_before, calibration, day):
     keys = ("directional_delta_imbalance", "directional_result_atr")
     if any(not _finite(thresholds.get(key)) for key in keys):
         raise NotReady("HYPE C1 thresholds incomplete")
-    recent = bars[-4:]
-    volume = sum(float(b["buy_volume"]) + float(b["sell_volume"]) for b in recent)
-    atr = atr_before.get(int(recent[-1]["open_timestamp_ms"]))
-    if not volume > 0 or not _finite(atr) or atr <= 0:
-        raise NotReady("HYPE C1 needs completed-hour ATR and positive volume")
-    sign = 1 if direction == "long" else -1
-    features = {
-        "directional_delta_imbalance": sign * sum(float(b["buy_volume"]) - float(b["sell_volume"]) for b in recent) / volume,
-        "directional_result_atr": sign * (float(recent[-1]["close"]) - float(recent[0]["open"])) / atr,
-    }
+    features = hype_candidate_features(bars, direction, atr_before, signal_atr)
     # Existing research gate; do not create a new threshold or selector.
     return _gate(features, "delta_without_result", thresholds), features
 
 
 def evaluate_completed_bar(*, symbol, profile, bars, as_of_ms,
                            references=None, atr_before=None, trend=None,
-                           c1_calibration=None):
+                           c1_calibration=None, signal_atr=None):
     """Evaluate one just-completed 15m bar. Returns None or immutable evidence.
 
     Bars after as_of_ms are rejected, never silently sliced away. The caller
@@ -113,10 +119,16 @@ def evaluate_completed_bar(*, symbol, profile, bars, as_of_ms,
         raise ValueError("Future ATR snapshot supplied")
     # HYPE's frozen selector is C1, not C2. Do not impose unrelated C2 warmup.
     if symbol == "HYPEUSDT":
+        if signal_atr is not None:
+            end = signal_atr.get("end_ms")
+            if (type(end) is not int or end > as_of_ms or as_of_ms-end >= 3_600_000
+                    or not _finite(signal_atr.get("atr14")) or signal_atr["atr14"] <= 0):
+                raise NotReady("Completed signal-time HYPE ATR is unavailable")
         expected = list(range(start, as_of_ms, BAR_MS))
         if [b["open_timestamp_ms"] for b in checked] != expected:
             raise NotReady("Incomplete 09:00-to-signal order-flow coverage")
-        gate, features = _hype_gate(checked, signal["direction"], atr_before, c1_calibration, day)
+        gate, features = _hype_gate(checked, signal["direction"], atr_before,
+                                    c1_calibration, day, signal_atr)
         row = dict(trend_15m={}, effort_result_pre_entry={"setup_direction":{"labels":[], "state":"NOT_USED"}},
                    research_gates={"delta_without_result":{"gate":gate}})
         selected = bool(keep(row, POLICIES[symbol]))

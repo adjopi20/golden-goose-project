@@ -1,0 +1,16 @@
+{
+  "venue": "binance",
+  "symbol": "HYPEUSDT",
+  "policy": "c1_delta",
+  "source": "four_asset_observation_context_v01/candidate_context.jsonl",
+  "source_sha256": "e5f1c8acbcded2e3466dc4d33c79f923fb6152edcd22712e61135ec35dc612b1",
+  "calibration_rule": "Median of finite pre-entry C1 features on executed Pre-NY baseline candidates, 2026-03-01 through 2026-08-30; no outcomes used",
+  "candidate_count": 123,
+  "trained_through": "2026-08-30",
+  "valid_from": "2026-10-02",
+  "valid_to_exclusive": "2026-11-01",
+  "thresholds": {
+    "directional_delta_imbalance": 0.10232641904798565,
+    "directional_result_atr": 0.796741490860352
+  }
+}

@@ -18,7 +18,7 @@ from live_engine.market_data import MarketData
 from live_engine.order_manager import PaperOrderManager
 from live_engine.state_store import StateStore, encode
 from .audit_opportunity import hourly_indicators, trend_indicators_15m, trend_snapshot_15m
-from .paper_bridge import ACCOUNT_IDS, NotReady, evaluate_completed_bar
+from .paper_bridge import ACCOUNT_IDS, NotReady, evaluate_completed_bar, hype_candidate_features
 from .strategy import BAR_MS, NY, clock_ms, evaluate_session
 
 
@@ -88,6 +88,13 @@ def prepare_context(minutes, day, asof):
             refs[slot].update({k:statistics.median(x[k] for x in past)
                                for k in ("volume","buy_volume","sell_volume","body")})
     hours = hourly_indicators(minutes)
+    completed_hours = hours.loc[hours.end_ms <= asof]
+    signal_atr = None
+    if not completed_hours.empty:
+        last_hour = completed_hours.iloc[-1]
+        if (asof-int(last_hour.end_ms) < 3_600_000
+                and math.isfinite(float(last_hour.atr14)) and last_hour.atr14 > 0):
+            signal_atr = dict(end_ms=int(last_hour.end_ms), atr14=float(last_hour.atr14))
     atr_before = {}
     for b in bars:
         stamp = b["open_timestamp_ms"]
@@ -97,7 +104,18 @@ def prepare_context(minutes, day, asof):
     trend = trend_snapshot_15m(trend_indicators_15m(minutes), asof, "long")
     # Direction-independent fields drive sizing; actual alignment is set below.
     return dict(bars=bars, references=dict(through_session_day=str(day-timedelta(days=1)), slots=refs),
-                atr_before=atr_before, trend=trend)
+                atr_before=atr_before, signal_atr=signal_atr, trend=trend)
+
+
+def paper_activation_signal(signal, ready_ms, max_delay_ms=300_000):
+    """Use the first print after computation finishes, within the frozen deadline."""
+    eligible = max(signal["entry_eligible_timestamp_ms"], ready_ms)
+    deadline = min(signal["entry_deadline_timestamp_ms"],
+                   signal["feature_as_of_ms"] + max_delay_ms)
+    if eligible > deadline:
+        raise NotReady("Candidate evaluated after entry deadline; no retrospective fill")
+    return {**signal, "entry_eligible_timestamp_ms": eligible,
+            "entry_deadline_timestamp_ms": deadline}
 
 
 class Worker:
@@ -122,7 +140,7 @@ class Worker:
         try:
             if self.strict_coverage and state["coverage_start_ms"] > clock_ms(day,1):
                 raise NotReady("Collector did not cover full 01:00-09:00 profile; wait for next session")
-            if asof > start and self.min_native_reference_sessions:
+            if asof > start and self.min_native_reference_sessions and symbol != "HYPEUSDT":
                 prior_minutes = db.execute(
                     "SELECT timestamp_ms FROM minutes WHERE symbol=? AND source='aggregate_trades' AND timestamp_ms>=? AND timestamp_ms<?",
                     (symbol, asof-25*86_400_000, start)).fetchall()
@@ -164,9 +182,10 @@ class Worker:
                         signal = signals[0]
                         if signal["feature_as_of_ms"] != asof:
                             raise NotReady("First candidate was missed; no replacement entry")
-                        # Backfill restores state, never creates retrospective fills.
-                        if self.now_ms()-asof > 300_000 or self.now_ms()-state["next_event_ms"] > 5000:
-                            raise NotReady("Historical candidate: observe only, no retrospective entry")
+                        if symbol == "HYPEUSDT":
+                            result["c1_candidate_features"] = hype_candidate_features(
+                                context["bars"], signal["direction"],
+                                context["atr_before"], context["signal_atr"])
                         trend = context["trend"]
                         structure = trend.get("ma_structure")
                         if structure in ("bullish_stack", "bearish_stack"):
@@ -175,8 +194,15 @@ class Worker:
                         c1_calibration=self.calibration, **context)
                     result.update(evaluated)
                     if evaluated["signal"] is not None:
+                        ready_ms = self.now_ms()
+                        result["decision_ready_ms"] = ready_ms
+                        result["decision_delay_ms"] = ready_ms-asof
                         if self.paper:
-                            result["paper_result"] = self.manager.submit(ACCOUNT_IDS[symbol], evaluated["signal"],
+                            # The evaluator can take seconds. Paper entry becomes eligible only
+                            # when the decision is actually ready, never at a past candle close.
+                            paper_signal = paper_activation_signal(evaluated["signal"], ready_ms)
+                            result["paper_signal"] = paper_signal
+                            result["paper_result"] = self.manager.submit(ACCOUNT_IDS[symbol], paper_signal,
                                 snapshot=evaluated["snapshot"], risk_fraction=evaluated["risk_fraction"], selected=evaluated["selected"])
                         else:
                             result["paper_result"] = "collection_only_no_order"
@@ -202,6 +228,8 @@ def main():
     if set(symbols) != set(ACCOUNT_IDS) or len(symbols) != 3:
         raise ValueError("Expected the three frozen contract markets")
     calibration = json.loads(args.c1_calibration.read_text()) if args.c1_calibration else None
+    if calibration is not None and calibration.get("venue") != "binance":
+        raise ValueError("HYPE C1 calibration must be Binance-native")
     with_store = StateStore(args.database, "binance")
     try:
         if args.action != "status":
@@ -216,7 +244,8 @@ def main():
         if args.action == "status":
             feeds = {s:market.state(s) for s in symbols}
             latest = {s:with_store.db.execute("SELECT payload FROM evaluations WHERE symbol=? ORDER BY asof DESC LIMIT 1",(s,)).fetchone() for s in symbols}
-            print(json.dumps(dict(accounts=manager.status(), feeds=feeds,
+            mode = with_store.db.execute("SELECT value FROM metadata WHERE key='execution_mode'").fetchone()
+            print(json.dumps(dict(execution_mode=mode[0] if mode else "unknown", accounts=manager.status(), feeds=feeds,
                 latest_evaluation={s:json.loads(r[0]) if r else None for s,r in latest.items()},
                 feed_age_seconds={s:(int(time.time()*1000)-v["cursor"]["timestamp_ms"])/1000 if v else None for s,v in feeds.items()},
                 completed_minutes={s:with_store.db.execute("SELECT COUNT(*) FROM minutes WHERE symbol=?",(s,)).fetchone()[0] for s in symbols}), indent=2))
@@ -233,6 +262,10 @@ def main():
                 market.seed_minutes(symbol, api.minute_history(symbol, end-25*86_400_000, end))
             print("Warmup complete. Run collector before next 01:00 NY for a complete profile.", flush=True)
             return
+        with with_store.transaction():
+            with_store.db.execute("INSERT INTO metadata(key,value) VALUES ('execution_mode',?) "
+                                  "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                                  ("simulated" if args.paper else "observation",))
         worker = Worker(with_store, manager, paper=args.paper, calibration=calibration)
         buffers = defaultdict(list)
         last_flush = time.monotonic()

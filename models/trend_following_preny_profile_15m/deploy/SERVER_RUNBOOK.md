@@ -4,9 +4,9 @@ This package runs the **model-specific** ETHUSDC, BNBUSDC and HYPEUSDT
 Binance USDC-M public-data collector and evaluator. A second service collects
 ETH, BNB and HYPE trades from Lighter's own perp markets in its own database.
 Neither sends real orders.
-The default command is collection/evaluation only; simulated fills require an
-explicit `--paper` in a later, reviewed invocation. Lighter currently runs
-venue-native public-feed observation only; its paper fills remain disabled.
+The default command is collection/evaluation only. `paper.simulation.yaml`
+enables simulated fills on the existing SQLite ledgers. It does not add real
+exchange orders or credentials.
 
 ## First deployment
 
@@ -72,12 +72,57 @@ waits for a fresh, complete Pre-NY window before trusting a new profile.
 Lighter trade IDs are monotonic for a market, not consecutive like Binance's
 aggregate-trade IDs; the two feeds use different continuity checks.
 
+## Simulated fills after updating both workers
+
+The Binance HYPE C1 artifact was fitted to 123 Binance HYPE Pre-NY baseline
+candidates from 2026-03-01 through 2026-08-30, using pre-entry features only.
+It is valid from 2026-10-02 through 2026-10-31. Lighter cannot use that artifact;
+HYPE there remains unready until a Lighter-native calibration exists. ETH and
+BNB on Lighter need 10 earlier native 09:00-12:00 sessions with usable coverage.
+HYPE starts recording its own C1 pre-entry features as soon as its native
+profile and completed-hour ATR are available. Once at least 25 earlier HYPE
+candidates exist, freeze their 180-day feature medians for a new 30-day window:
+
+```bash
+docker compose exec -T lighter-observe python -m models.trend_following_preny_profile_15m.calibrate_c1_native \
+  --database /data/lighter.sqlite --venue lighter --valid-from YYYY-MM-DD \
+  --output /data/lighter-hype-c1-YYYY-MM.json
+```
+
+Use the next NY session date for `--valid-from`; the artifact refuses to use
+candidates from that date or later. Add `--c1-calibration` with that exact
+path to the Lighter command in `paper.simulation.yaml`, rebuild/recreate only
+the Lighter service, then inspect its status. The Binance artifact is never
+used for Lighter.
+
+From the repository root on the deployment branch, build the updated shared
+image and recreate the two existing services. Their named volumes persist:
+
+```bash
+git pull --ff-only
+docker compose -f models/trend_following_preny_profile_15m/deploy/compose.yaml \
+  -f models/trend_following_preny_profile_15m/deploy/paper.simulation.yaml config --quiet
+docker compose -f models/trend_following_preny_profile_15m/deploy/compose.yaml \
+  -f models/trend_following_preny_profile_15m/deploy/paper.simulation.yaml build binance-paper
+docker compose -f models/trend_following_preny_profile_15m/deploy/compose.yaml \
+  -f models/trend_following_preny_profile_15m/deploy/paper.simulation.yaml up -d --no-deps --no-build binance-paper lighter-observe
+docker compose -f models/trend_following_preny_profile_15m/deploy/compose.yaml \
+  -f models/trend_following_preny_profile_15m/deploy/paper.simulation.yaml ps
+```
+
+Check each service's `--action status` and confirm `execution_mode: simulated`.
+The original completed 15-minute candle remains the signal time. The simulated
+entry becomes eligible only when evaluation finishes and only within the
+original 5-minute deadline. Entry, TP1, POC stop and next-day time exit use
+the next native public trade print as a proxy fill. Pending candidates,
+positions, triggers, fills and closed equity persist across worker restarts.
+Historical candidates cannot create retrospective paper fills.
+
 The two services have independent named volumes and can run at the same time.
 At 2 GB RAM, check `docker stats --no-stream` during the 09:00–12:00 New York
-evaluation window. If memory pressure is high, stop and diagnose rather than
-assuming the model ran accurately. This Lighter service does not generate
-simulated fills yet; its fee schedule and order execution assumptions need a
-separate parity test before enabling paper fills.
+evaluation window. The Lighter paper fills are proxies from its next public
+trade, with the existing 4 bps research fee assumption. They do not represent
+verified executable bid/ask fills or Lighter's actual fee schedule.
 
 The worker writes compact structured evaluation/feed events to stdout. Docker's
 `local` logging driver caps retained container logs at three 10 MB files. The
@@ -122,7 +167,6 @@ while WAL writes are active.
 
 Each venue has one named volume containing three isolated virtual account
 ledgers. No real API key or exchange order adapter is mounted.
-No public ports are exposed. HYPE C1 calibration expired; without a new valid
-venue-native artifact HYPE must remain NOT_READY for entry. Costs remain the
-research proxy, not verified live Binance fees. This deploy is an observation
-step, not approval for unattended real trading.
+No public ports are exposed. Binance HYPE has a dated calibration artifact;
+Lighter HYPE needs its own native one. Costs remain research proxies, not
+verified venue fees. This deploy is paper simulation, not real trading.

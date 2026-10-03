@@ -1,4 +1,4 @@
-"""Venue-native Lighter public feed observation. No simulated or real orders."""
+"""Venue-native Lighter feed with opt-in simulated fills. No real orders."""
 import argparse
 import json
 from collections import defaultdict
@@ -22,6 +22,8 @@ def main():
     parser.add_argument("--config", type=Path, default=Path(__file__).parent/"deploy/lighter.paper.yaml")
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--action", choices=("run", "status"), required=True)
+    parser.add_argument("--paper", action="store_true", help="Enable simulated fills; default collects only")
+    parser.add_argument("--c1-calibration", type=Path, help="Valid Lighter-native HYPE C1 calibration")
     args = parser.parse_args()
     cfg = json.loads(args.config.read_text(encoding="utf-8-sig"))
     if cfg.get("mode") != "paper" or cfg.get("venue") != "lighter" or cfg.get("schema_version") != 1:
@@ -29,6 +31,9 @@ def main():
     symbols = [account["symbol"] for account in cfg["accounts"]]
     if set(symbols) != set(INTERNAL_SYMBOLS) or len(symbols) != 3:
         raise ValueError("Expected ETH, BNB and HYPE venue-native markets")
+    calibration = json.loads(args.c1_calibration.read_text()) if args.c1_calibration else None
+    if calibration is not None and calibration.get("venue") != "lighter":
+        raise ValueError("HYPE C1 calibration must be Lighter-native")
     store = StateStore(args.database, "lighter")
     try:
         if args.action == "run":
@@ -45,7 +50,8 @@ def main():
             latest = {symbol:store.db.execute(
                 "SELECT payload FROM evaluations WHERE symbol=? ORDER BY asof DESC LIMIT 1", (symbol,)).fetchone()
                 for symbol in symbols}
-            print(json.dumps({"venue":"lighter", "mode":"public_feed_observation", "accounts":manager.status(),
+            mode = store.db.execute("SELECT value FROM metadata WHERE key='execution_mode'").fetchone()
+            print(json.dumps({"venue":"lighter", "execution_mode":mode[0] if mode else "unknown", "accounts":manager.status(),
                 "feed_age_seconds":{symbol:(int(time.time()*1000)-state["cursor"]["timestamp_ms"])/1000
                                     if state else None for symbol,state in feeds.items()},
                 "latest_evaluation":{symbol:json.loads(row[0]) if row else None for symbol,row in latest.items()},
@@ -54,8 +60,12 @@ def main():
                     for symbol in symbols}}, indent=2))
             return
         api = LighterPublic()
-        print(encode({"markets":api.validate_markets(), "mode":"public_feed_observation", "real_orders":False}), flush=True)
-        worker = Worker(store, manager, paper=False, strict_coverage=True,
+        print(encode({"markets":api.validate_markets(), "paper":args.paper, "real_orders":False}), flush=True)
+        with store.transaction():
+            store.db.execute("INSERT INTO metadata(key,value) VALUES ('execution_mode',?) "
+                             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                             ("simulated" if args.paper else "observation",))
+        worker = Worker(store, manager, paper=args.paper, calibration=calibration, strict_coverage=True,
                         min_native_reference_sessions=10)
         buffers = defaultdict(list)
         last_flush = time.monotonic()
