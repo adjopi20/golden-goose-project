@@ -7,7 +7,7 @@ from pathlib import Path
 import sqlite3
 from statistics import median
 
-from .strategy import NY
+from trading_core.session import NY
 
 
 KEYS = ("directional_delta_imbalance", "directional_result_atr")

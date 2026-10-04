@@ -45,6 +45,8 @@ class LighterPublic:
             if tick is not None:
                 tick.pop("market_id")
                 tick["symbol"] = symbol
+                if tick["agg_trade_id"] in by_id and by_id[tick["agg_trade_id"]] != tick:
+                    raise ValueError("Conflicting Lighter feed duplicate")
                 by_id[tick["agg_trade_id"]] = tick
         return [by_id[key] for key in sorted(by_id)]
 
@@ -75,7 +77,7 @@ class LighterPublic:
             cursor = next_cursor
         return None
 
-    def stream(self, cursors):
+    def stream(self, cursors, *, heartbeats=False):
         """Yield (symbol, sorted ticks, coverage_reset) from one subscription cycle."""
         by_id = {MARKETS[native]: internal for internal, native in INTERNAL_SYMBOLS.items()}
         subscribed = set()
@@ -85,11 +87,21 @@ class LighterPublic:
                 raise ValueError("Lighter websocket did not acknowledge connection")
             for market_id in by_id:
                 ws.send(json.dumps({"type": "subscribe", "channel": f"trade/{market_id}"}))
+            last_message = time.monotonic()
             while True:
-                message = json.loads(ws.recv(timeout=60))
+                try:
+                    message = json.loads(ws.recv(timeout=1 if heartbeats else 60))
+                except TimeoutError:
+                    if not heartbeats or time.monotonic()-last_message > 60:
+                        raise
+                    yield None, [], False
+                    continue
+                last_message = time.monotonic()
                 kind = message.get("type")
                 if kind == "ping":
                     ws.send(json.dumps({"type": "pong"}))
+                    if heartbeats:
+                        yield None, [], False
                     continue
                 if kind not in ("subscribed/trade", "update/trade"):
                     continue

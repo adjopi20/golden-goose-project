@@ -15,3 +15,17 @@ models/orb/runs/
 *.xlsx
 apps/orb_live_agent/data/
 apps/orb_live_agent/.env
+models/bitcoin_onchain_cycles/data/
+**/runs/
+reports/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.tar.gz
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key

@@ -1,0 +1,84 @@
+name: golden-goose-phase2-shadow
+
+x-collector: &collector
+  build:
+    context: ../../..
+    dockerfile: market_data/Dockerfile
+  image: golden-goose/market-data-phase2:local
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: [/tmp:size=32m]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  mem_limit: 128m
+  cpus: 0.25
+  networks: [broker, outbound]
+  depends_on:
+    broker-init: {condition: service_completed_successfully}
+  logging:
+    driver: local
+    options: {max-size: "5m", max-file: "2"}
+
+services:
+  nats:
+    image: nats:2.12.12-alpine@sha256:2ca98656a279b2d88cfdf2b8c3f0d5d7f3941ae9dc2ab12ebaa92d83e0f4ccdb
+    command: ["-c", "/etc/nats/nats.conf"]
+    restart: unless-stopped
+    mem_limit: 192m
+    cpus: 0.25
+    networks: [broker]
+    volumes:
+      - ./nats.conf:/etc/nats/nats.conf:ro
+      - broker_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8222/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: local
+      options: {max-size: "5m", max-file: "2"}
+  broker-init:
+    <<: *collector
+    restart: "no"
+    entrypoint: ["python", "-m", "market_data.broker"]
+    command: ["--url", "nats://nats:4222"]
+    depends_on:
+      nats: {condition: service_healthy}
+  binance-collector:
+    <<: *collector
+    command: ["--config", "/app/config/binance.json", "--database", "/data/binance.sqlite"]
+    volumes: [binance_data:/data]
+    healthcheck:
+      test: ["CMD", "python", "-m", "market_data.healthcheck", "--database", "/data/binance.sqlite"]
+      interval: 60s
+      timeout: 10s
+      start_period: 5m
+      retries: 3
+  lighter-collector:
+    <<: *collector
+    command: ["--config", "/app/config/lighter.json", "--database", "/data/lighter.sqlite"]
+    volumes: [lighter_data:/data]
+    healthcheck:
+      test: ["CMD", "python", "-m", "market_data.healthcheck", "--database", "/data/lighter.sqlite"]
+      interval: 60s
+      timeout: 10s
+      start_period: 5m
+      retries: 3
+  shadow-receipts:
+    <<: *collector
+    mem_limit: 128m
+    entrypoint: ["python", "-m", "market_data.shadow"]
+    command: ["--database", "/data/receipts.sqlite"]
+    volumes: [shadow_data:/data]
+    networks: [broker]
+
+networks:
+  broker: {internal: true}
+  outbound: {}
+volumes:
+  broker_data:
+  binance_data:
+  lighter_data:
+  shadow_data:

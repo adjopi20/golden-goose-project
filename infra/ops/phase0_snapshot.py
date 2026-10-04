@@ -14,7 +14,7 @@ import sqlite3
 import sys
 
 
-CODE_ROOTS = ("live_engine", "backtest_engine", "models/trend_following_preny_profile_15m")
+CODE_ROOTS = ("trading_core", "market_data", "live_engine", "backtest_engine", "models/trend_following_preny_profile_15m")
 SKIP_PARTS = {"runs", "research", "tests", "__pycache__", "images", ".git"}
 
 
@@ -58,7 +58,9 @@ def process_config(root, output, proc_root=Path("/proc")):
             arguments = process_file.read_bytes().decode().split("\0")
         except (OSError, UnicodeError):
             continue
-        if ("models.trend_following_preny_profile_15m.paper_worker" in arguments
+        if (any(module in arguments for module in (
+                "models.trend_following_preny_profile_15m.paper_worker",
+                "models.trend_following_preny_profile_15m.lighter_worker"))
                 and "--action" in arguments
                 and arguments[arguments.index("--action") + 1:][:1] == ["run"]
                 and Path(arguments[0]).name.startswith("python")):
@@ -70,7 +72,6 @@ def process_config(root, output, proc_root=Path("/proc")):
     arguments = workers[0]
     if not arguments:
         return captured
-    arguments = process_file.read_bytes().decode().split("\0")
     for option in ("--config", "--database", "--action", "--c1-calibration"):
         if option in arguments:
             index = arguments.index(option)

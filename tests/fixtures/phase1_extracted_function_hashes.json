@@ -1,0 +1,102 @@
+[
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/baseline.py",
+    "function": "number",
+    "sha256": "917d184f0e18bd727fef3515b8b792b2c0d86756404f8b08cd2a5360f9b7f8e9"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/baseline.py",
+    "function": "validate_bar",
+    "sha256": "6ae319b46dba38401b1a6db964fe04aeff4b8d6eb14d8bd7f0b1f3b39c6250fd"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/baseline.py",
+    "function": "evaluate_session",
+    "sha256": "c5f72678304f539de6e48d6ea8a328da5d75df4b626fbe98f139bd3ae1b62d01"
+  },
+  {
+    "file": "trading_core/indicators.py",
+    "function": "_finite",
+    "sha256": "2608cb72833ee0dca14bb7252a0d704344370cd41f95471763caa5b36f399d41"
+  },
+  {
+    "file": "trading_core/indicators.py",
+    "function": "hourly_indicators",
+    "sha256": "8b61529057fb93340527ebb8ed035f65d848b2e25ce32893ca215de77925cd35"
+  },
+  {
+    "file": "trading_core/indicators.py",
+    "function": "trend_indicators_15m",
+    "sha256": "80102f437040ab7276dbf45c7feccc95fd3f98e010ca7a8d8271a6e9b926ed49"
+  },
+  {
+    "file": "trading_core/indicators.py",
+    "function": "trend_snapshot_15m",
+    "sha256": "43fa92eb7fb0b138c62e30676596d876db8e10c898cf61c0371640190eecc564"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/effort_result.py",
+    "function": "ratio",
+    "sha256": "4caee4cac21a7e7600be99018613fab5da9dcb701b27f6e158a9646f8efac23b"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/effort_result.py",
+    "function": "annotate_session",
+    "sha256": "b5dccd17c232008b14c024b385623eff4e0f8ab095614060ca659fa85a733fe0"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/selectors.py",
+    "function": "keep",
+    "sha256": "7e6ae2f448b7e14a54a627f7e722bb9c39cf6b096a899ca9120badff387d1005"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/gates.py",
+    "function": "_gate",
+    "sha256": "200efd938b84b7ce420c4322dab5d1a0b17da7b9682125bc90f100d53c43df5d"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/evaluator.py",
+    "function": "_finite",
+    "sha256": "2a4ca52337a4195406e30bc65b6946165a41901649d25955eef905a0e50ca54b"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/evaluator.py",
+    "function": "_risk",
+    "sha256": "28ffff21fe2150d885cd1ea552dccfb22dbf266d85f9e7603591353ba98181d1"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/evaluator.py",
+    "function": "hype_candidate_features",
+    "sha256": "13fc17f78a2ca2e9beaa78c2ab7dcda1615349a1c32749e7ee7bc4eb079a029c"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/evaluator.py",
+    "function": "_hype_gate",
+    "sha256": "2b5eb6dd9d77edcb32751b39909496f38e033885af0b2c4273082cbb3bfea0d9"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/evaluator.py",
+    "function": "evaluate_completed_bar",
+    "sha256": "708bf5d17c0086dad807e82d4a62f4772899d3836d99ded7d0d3fedeca34eba7"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/preparation.py",
+    "function": "profile_key",
+    "sha256": "f67c434d494543a51b24c61d26dc664127cf5212213f103c1daba0cf1d15ad66"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/preparation.py",
+    "function": "quarter_bars",
+    "sha256": "7dee34855cf4da0feb741da2ce277ebcb4361b4c90f248f0c1068bc559696a1b"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/preparation.py",
+    "function": "prepare_context",
+    "sha256": "023c36d051fedbefd312f234b70a8874abba2b6c837276b43425928153c926fa"
+  },
+  {
+    "file": "models/trend_following_preny_profile_15m/runtime/preparation.py",
+    "function": "paper_activation_signal",
+    "sha256": "ae5f8e73ea248624b1f6e3576606fa412414fdcb5f899bd08280de36715f69b5"
+  }
+]

@@ -13,7 +13,7 @@ from live_engine.adapters.lighter_public import INTERNAL_SYMBOLS, LighterPublic
 from live_engine.market_data import MarketData
 from live_engine.order_manager import PaperOrderManager
 from live_engine.state_store import StateStore, encode
-from .paper_bridge import ACCOUNT_IDS
+from .runtime.evaluator import ACCOUNT_IDS
 from .paper_worker import Worker, profile_key
 
 
