@@ -140,6 +140,46 @@ It does not mount the old paper ledgers. Do not run `down -v` or stop/rebuild th
 old model Compose services. Extra exchange subscriptions are temporary shadow
 overlap; single-upstream sharing happens after the migration gates pass.
 
+## Idle pull timeout repair (2026-10-05)
+
+The first VPS shadow run exposed a consumer-only regression: an empty
+`fetch(100, timeout=1)` can raise builtin/asyncio `TimeoutError`, while the old
+handler caught only its NATS subclass. An idle stream therefore restarted the
+receipt consumer. Collector health and bootstrap success do not test this path.
+
+`fetch_batch` now treats both timeout variants as an empty batch. Other failures
+and cancellation still propagate; receipt commit-before-ack is unchanged.
+Local evidence: 18 Phase 2 tests passed, including both timeout types, resumption,
+non-timeout errors and cancellation. Real NATS 2.12.12/nats-py 2.15.0 scratch test
+also passed idle timeout followed by successful reception, alongside ACK-loss,
+deduplication, independent consumers and redelivery. VPS acceptance remains pending.
+
+After committing/pushing the four repair files, run on the VPS:
+
+```bash
+cd ~/golden-goose-project
+git pull --ff-only origin deploy/orb-live-agent
+phase2=infra/deploy/phase2/compose.yaml
+docker compose -f "$phase2" build shadow-receipts
+docker compose -f "$phase2" run --rm --no-deps \
+  --entrypoint python binance-collector -m market_data.selftest
+```
+
+Only if the scratch test reports `status: pass`, `idle_timeout: true` and
+`resumes_after_idle: true`, recreate the receipt consumer:
+
+```bash
+docker compose -f "$phase2" up -d --no-deps --no-build shadow-receipts
+docker compose -f "$phase2" ps -a
+docker compose -f "$phase2" logs --since 5m --tail=100 shadow-receipts
+```
+
+The consumer prints its receipt/checkpoint status every 60 seconds. Verify it
+remains up, records incoming receipts and no longer emits timeout tracebacks.
+Do not rerun warmup, delete any volume/database, or recreate collectors/old paper
+services for this repair. Rebuilding the shared image does not alter running
+collector containers. This patch does not change trading or evaluation rules.
+
 ## 4. Capture and acceptance gate
 
 After at least one complete native Pre-NY window and preferably 24–48 hours:

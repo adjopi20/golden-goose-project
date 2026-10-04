@@ -14,13 +14,51 @@ from live_engine.adapters.lighter_public import LighterPublic
 from market_data.collector import Collector
 from market_data.store import DataStore, Backpressure
 from market_data.broker import flush_outbox
-from market_data.shadow import ReceiptStore
+from market_data.shadow import ReceiptStore, fetch_batch
 from models.trend_following_preny_profile_15m.runtime.preparation import make_profile, profile_key, quarter_bars
 from trading_core.session import clock_ms
 
 
 def tick(i,stamp,price=100.,buy=True):
     return dict(symbol='ETHUSDC',agg_trade_id=i,timestamp_ms=stamp,price=price,quantity=.3,buy=buy)
+
+
+@pytest.mark.parametrize('timeout_kind',['asyncio','nats'])
+def test_shadow_empty_pull_resumes_after_timeout(timeout_kind):
+    if timeout_kind=='nats':
+        pytest.importorskip('nats')
+        from nats.errors import TimeoutError as Error
+    else:
+        Error=asyncio.TimeoutError
+    message=object()
+    class Subscription:
+        calls=0
+        async def fetch(self,batch,timeout):
+            assert (batch,timeout)==(100,1)
+            self.calls+=1
+            if self.calls==1: raise Error()
+            return [message]
+    async def exercise():
+        sub=Subscription()
+        assert await fetch_batch(sub)==[]
+        assert await fetch_batch(sub)==[message]
+        assert sub.calls==2
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize('error',[OSError('disconnected'),ValueError('invalid subscription')])
+def test_shadow_does_not_hide_non_timeout_errors(error):
+    class Subscription:
+        async def fetch(self,batch,timeout): raise error
+    with pytest.raises(type(error),match=str(error)):
+        asyncio.run(fetch_batch(Subscription()))
+
+
+def test_shadow_cancellation_is_not_treated_as_idle():
+    class Subscription:
+        async def fetch(self,batch,timeout): raise asyncio.CancelledError()
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(fetch_batch(Subscription()))
 
 
 @pytest.mark.parametrize('venue,step',[('binance',1),('lighter',7)])

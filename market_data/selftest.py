@@ -13,6 +13,7 @@ import uuid
 from .broker import connect,flush_outbox
 from .collector import Collector
 from .store import DataStore
+from .shadow import fetch_batch
 
 
 async def test(url):
@@ -61,8 +62,15 @@ async def test(url):
                 again=(await a.fetch(1,timeout=3))[0]
                 assert again.data==first.data and again.metadata.num_delivered >= 2
                 await again.ack_sync(timeout=3)
+                # Exercise the same batch size/idle path as the production consumer.
+                assert await fetch_batch(a)==[]
+                await js.publish(subject,first.data,headers={'Nats-Msg-Id':uuid.uuid4().hex})
+                resumed=await fetch_batch(a)
+                assert len(resumed)==1 and resumed[0].data==first.data
+                await resumed[0].ack_sync(timeout=3)
                 print(json.dumps(dict(status='pass',ack_loss=True,deduplicated=True,
-                    independent_consumers=True,redelivery=True,real_orders=False)),flush=True)
+                    independent_consumers=True,redelivery=True,idle_timeout=True,
+                    resumes_after_idle=True,real_orders=False)),flush=True)
             finally:
                 store.close()
     finally:

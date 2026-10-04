@@ -57,8 +57,15 @@ class ReceiptStore:
                     warnings=self.db.execute('SELECT COUNT(*) FROM warnings').fetchone()[0])
 
 
+async def fetch_batch(sub):
+    """An empty pull is normal; both asyncio and NATS timeouts inherit this type."""
+    try:
+        return await sub.fetch(100,timeout=1)
+    except TimeoutError:
+        return []
+
+
 async def consume(url, database, consumer_prefix):
-    from nats.errors import TimeoutError
     from nats.js.api import ConsumerConfig,AckPolicy,DeliverPolicy
     store = ReceiptStore(database)
     nc = await connect(url)
@@ -74,10 +81,7 @@ async def consume(url, database, consumer_prefix):
                 deliver_policy=DeliverPolicy.ALL,ack_wait=30,max_ack_pending=200))))
         async def pump(stream, sub):
             while True:
-                try:
-                    messages = await sub.fetch(100,timeout=1)
-                except TimeoutError:
-                    continue
+                messages = await fetch_batch(sub)
                 for msg in messages:
                     store.apply(stream,msg.metadata.sequence.stream,json.loads(msg.data),int(time.time()*1000))
                     await msg.ack()  # only after local transaction commits
