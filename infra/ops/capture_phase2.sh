@@ -16,7 +16,7 @@ containers="$(docker compose -f "$compose" ps -a -q)"
 test -n "$containers"
 mkdir "$root/images"
 for container in $containers; do
-  docker inspect --format '{"container_id":{{json .Id}},"name":{{json .Name}},"image_id":{{json .Image}},"configured_image":{{json .Config.Image}},"started_at":{{json .State.StartedAt}},"running":{{json .State.Running}},"restart_count":{{json .RestartCount}},"health":{{if .State.Health}}{{json .State.Health.Status}}{{else}}null{{end}}}' "$container" >> "$root/containers.jsonl"
+  docker inspect --format '{"container_id":{{json .Id}},"name":{{json .Name}},"image_id":{{json .Image}},"configured_image":{{json .Config.Image}},"started_at":{{json .State.StartedAt}},"running":{{json .State.Running}},"restart_count":{{json .RestartCount}},"health":{{with index .State "Health"}}{{json .Status}}{{else}}null{{end}}}' "$container" >> "$root/containers.jsonl"
   image_id="$(docker inspect --format '{{.Image}}' "$container")"
   if docker image inspect --format '{{json .RepoDigests}}' "$image_id" \
       > "$root/images/$container.json" 2> "$root/images/$container.stderr.txt"; then

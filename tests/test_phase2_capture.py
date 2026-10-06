@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skipif(not BASH or not Path(BASH).exists(), reason="Bas
 SCRIPT = Path(__file__).resolve().parents[1] / "infra/ops/capture_phase2.sh"
 
 
-def capture(tmp_path, mode):
+def capture(tmp_path, mode, health="present"):
     script = tmp_path / "capture.sh"
     script.write_text(SCRIPT.read_text(), encoding="utf-8", newline="\n")
     wrapper = tmp_path / "fake.sh"
@@ -35,7 +35,15 @@ docker() {
     esac
   elif [[ "$1" == inspect ]]; then
     if [[ "$3" == '{{.Image}}' ]]; then echo sha256:old;
-    else echo '{"container_id":"fake-container","image_id":"sha256:old"}'; fi
+    else
+      # Docker's strict template lookup errors on .State.Health if absent.
+      if [[ "$HEALTH" == absent && "$3" == *'.State.Health'* ]]; then
+        echo 'template parsing error: map has no entry for key "Health"' >&2
+        return 1
+      fi
+      if [[ "$HEALTH" == absent ]]; then health=null; else health='"healthy"'; fi
+      printf '{"container_id":"fake-container","image_id":"sha256:old","health":%s}\n' "$health"
+    fi
   elif [[ "$1 $2" == 'image inspect' ]]; then
     case "$MODE" in
       available) echo '["repo@sha256:old"]' ;;
@@ -52,7 +60,7 @@ docker() {
 }
 source "$SCRIPT" "$OUTPUT"
 ''', encoding="utf-8")
-    env = dict(os.environ, MODE=mode, SCRIPT="./capture.sh", OUTPUT="./out", CALLS="./calls")
+    env = dict(os.environ, MODE=mode, HEALTH=health, SCRIPT="./capture.sh", OUTPUT="./out", CALLS="./calls")
     result = subprocess.run([BASH, wrapper.as_posix()], env=env, cwd=tmp_path,
                             capture_output=True, text=True, timeout=30)
     assert (tmp_path / "out").exists(), result.stderr
@@ -64,8 +72,9 @@ source "$SCRIPT" "$OUTPUT"
 
 
 @pytest.mark.parametrize("mode", ["available", "missing"])
-def test_capture_continues_only_for_missing_image_metadata(tmp_path, mode):
-    result, out = capture(tmp_path, mode)
+@pytest.mark.parametrize("health", ["present", "absent"])
+def test_capture_continues_only_for_missing_image_metadata(tmp_path, mode, health):
+    result, out = capture(tmp_path, mode, health)
     assert result.returncode == 0, result.stderr
     assert (out / "CAPTURE_COMPLETE.txt").exists()
     assert Path(str(out) + ".tar.gz").exists()
@@ -74,6 +83,7 @@ def test_capture_continues_only_for_missing_image_metadata(tmp_path, mode):
     assert (out / "shadow-status.json").exists()
     recorded = json.loads((out / "containers.jsonl").read_text())
     assert recorded["image_id"] == "sha256:old"
+    assert recorded["health"] == ("healthy" if health == "present" else None)
     metadata = json.loads((out / "images/fake-container.json").read_text())
     if mode == "missing":
         assert metadata["status"] == "unavailable"
