@@ -36,6 +36,7 @@ class Collector:
             event_type=kind,event_timestamp_ms=timestamp,
             available_at_ms=received,received_timestamp_ms=received,
             stream_sequence=self.store.next_sequence(),source_sequence=source_sequence,
+            source_epoch=self.store.get_meta('source_epoch'),
             feature_version=FEATURE_VERSION,quality=quality,payload=payload)
         channel = 'exec' if kind=='trade' else 'md'
         subject = f'{channel}.v1.{self.venue}.futures.{native}.{kind}'
@@ -49,6 +50,19 @@ class Collector:
             source_sequence=f"minute:{bar['timestamp_ms']}")
 
     def boundary(self, symbol, end, state):
+        local = datetime.fromtimestamp(end/1000,NY)
+        if 9 <= local.hour < 12 or (local.hour == 12 and local.minute == 0):
+            if local.hour == 9 and local.minute == 0:
+                self.freeze_profile(symbol, end, state)
+            # Sparse markets may have no trade in the last minute of a quarter.
+            # Publish the same source-confirmed boundary as the legacy worker,
+            # after all earlier bars/profile, never from wall-clock alone.
+            self.emit(symbol, 'evaluation_boundary', end, dict(as_of_ms=end,
+                coverage_start_ms=state['coverage_start_ms'],
+                complete_from_ms=state['complete_from_ms'], next_event_ms=state['next_event_ms']),
+                source_sequence=f'boundary:{end}')
+
+    def freeze_profile(self, symbol, end, state):
         local = datetime.fromtimestamp(end/1000,NY)
         if local.hour != 9 or local.minute != 0:
             return

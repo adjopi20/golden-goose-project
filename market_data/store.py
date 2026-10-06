@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import sqlite3
+import uuid
 
 from live_engine.state_store import StateStore
 from trading_core.contracts import canonical_json, validate_event
@@ -42,6 +43,7 @@ class DataStore(StateStore):
                     if self.db.execute('SELECT value FROM metadata WHERE key=?',(key,)).fetchone()[0] != value:
                         raise ValueError(f'Collector database {key} mismatch')
                 self.db.execute("INSERT OR IGNORE INTO metadata VALUES ('stream_sequence','0')")
+                self.db.execute("INSERT OR IGNORE INTO metadata VALUES ('source_epoch',?)", (uuid.uuid4().hex,))
         except BaseException:
             self.close()
             raise

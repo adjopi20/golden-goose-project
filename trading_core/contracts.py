@@ -9,7 +9,7 @@ import json
 import math
 
 SCHEMA_VERSION = 1
-EVENT_TYPES = {'trade', 'completed_bar', 'profile', 'coverage', 'quote', 'mark_price', 'funding', 'instrument'}
+EVENT_TYPES = {'trade', 'completed_bar', 'profile', 'coverage', 'quote', 'mark_price', 'funding', 'instrument', 'evaluation_boundary'}
 QUALITY = {'complete', 'partial', 'gap', 'stale', 'invalid'}
 
 
@@ -61,6 +61,13 @@ def validate_event(row):
             _integer(row['payload'], key)
         if not row['payload']['open_timestamp_ms'] < row['payload']['close_timestamp_ms'] <= row['available_at_ms']:
             raise ValueError('Unfinished completed_bar')
+    if row['event_type'] == 'evaluation_boundary':
+        for key in ('as_of_ms', 'coverage_start_ms', 'complete_from_ms', 'next_event_ms'):
+            _integer(row['payload'], key)
+        p = row['payload']
+        if (p['as_of_ms'] != row['event_timestamp_ms'] or p['as_of_ms'] % 900_000
+                or not p['as_of_ms'] <= p['next_event_ms'] <= row['available_at_ms']):
+            raise ValueError('Invalid source-confirmed evaluation boundary')
     canonical_json(row)
     return deepcopy(row)
 

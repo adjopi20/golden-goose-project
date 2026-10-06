@@ -1,0 +1,42 @@
+# Overlay AFTER infra/deploy/phase2/compose.yaml; does not include legacy paper.
+x-strategy: &strategy
+  build:
+    context: ../../..
+    dockerfile: models/trend_following_preny_profile_15m/deploy/Dockerfile.shadow
+    args:
+      CODE_VERSION: ${GG_PHASE3_COMMIT:?Set the exact tested git commit}
+  image: golden-goose/preny-strategy-shadow:${GG_PHASE3_COMMIT}
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs: [/tmp:size=32m]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  mem_limit: 256m
+  cpus: 0.25
+  networks: [broker]
+  depends_on:
+    nats: {condition: service_healthy}
+  logging:
+    driver: local
+    options: {max-size: "5m", max-file: "2"}
+  healthcheck:
+    test: ["CMD", "python", "-m", "models.trend_following_preny_profile_15m.shadow_consumer", "--database", "/data/strategy.sqlite", "--healthcheck"]
+    interval: 60s
+    timeout: 10s
+    start_period: 10m
+    retries: 3
+
+services:
+  binance-strategy-shadow:
+    <<: *strategy
+    command: ["--database", "/data/strategy.sqlite", "--bootstrap-database", "/bootstrap/binance.sqlite", "--config", "/app/config/binance.paper.yaml", "--c1-calibration", "/app/config/hype.binance.c1_2026-10.json", "--code-version", "${GG_PHASE3_COMMIT}"]
+    volumes: [binance_strategy_shadow:/data, binance_data:/bootstrap:ro]
+  lighter-strategy-shadow:
+    <<: *strategy
+    command: ["--database", "/data/strategy.sqlite", "--bootstrap-database", "/bootstrap/lighter.sqlite", "--config", "/app/config/lighter.paper.yaml", "--code-version", "${GG_PHASE3_COMMIT}"]
+    volumes: [lighter_strategy_shadow:/data, lighter_data:/bootstrap:ro]
+
+volumes:
+  binance_strategy_shadow:
+  lighter_strategy_shadow:

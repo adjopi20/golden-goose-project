@@ -1,0 +1,18 @@
+FROM python:3.13-slim-bookworm
+ARG CODE_VERSION
+RUN test -n "$CODE_VERSION"
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 GG_CODE_VERSION=$CODE_VERSION
+LABEL org.opencontainers.image.revision=$CODE_VERSION
+WORKDIR /app
+COPY models/trend_following_preny_profile_15m/deploy/requirements-shadow.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && useradd --system --uid 10001 --create-home strategy \
+    && mkdir /data && chown strategy:strategy /data
+COPY trading_core /app/trading_core
+COPY live_engine/__init__.py live_engine/state_store.py live_engine/strategy_store.py /app/live_engine/
+COPY market_data/__init__.py market_data/broker.py market_data/shadow.py /app/market_data/
+COPY models/trend_following_preny_profile_15m/runtime /app/models/trend_following_preny_profile_15m/runtime
+COPY models/trend_following_preny_profile_15m/shadow_consumer.py /app/models/trend_following_preny_profile_15m/
+COPY models/trend_following_preny_profile_15m/deploy/binance.paper.yaml models/trend_following_preny_profile_15m/deploy/lighter.paper.yaml models/trend_following_preny_profile_15m/deploy/hype.binance.c1_2026-10.json /app/config/
+USER strategy
+ENTRYPOINT ["python", "-m", "models.trend_following_preny_profile_15m.shadow_consumer"]
