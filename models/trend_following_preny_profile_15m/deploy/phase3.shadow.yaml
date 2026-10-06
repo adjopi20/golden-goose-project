@@ -21,7 +21,9 @@ x-strategy: &strategy
     driver: local
     options: {max-size: "5m", max-file: "2"}
   healthcheck:
-    test: ["CMD", "python", "-m", "models.trend_following_preny_profile_15m.shadow_consumer", "--database", "/data/strategy.sqlite", "--healthcheck"]
+    # Standard-library only: importing the evaluator here loads pandas/numpy
+    # inside the same 0.25 CPU budget and can time out during an otherwise healthy poll.
+    test: ["CMD", "python", "-c", "import sqlite3,time,sys; db=sqlite3.connect('file:/data/strategy.sqlite?mode=ro',uri=True,timeout=2); row=db.execute('SELECT value FROM metadata WHERE key=\"last_poll_ms\"').fetchone(); sys.exit(0 if row and 0 <= int(time.time()*1000)-int(row[0]) <= 180000 else 1)"]
     interval: 60s
     timeout: 10s
     start_period: 10m

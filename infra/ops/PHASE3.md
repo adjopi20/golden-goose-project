@@ -1,6 +1,6 @@
 # Phase 3 — independent strategy shadows
 
-2026-10-06. Implemented and locally tested; **server acceptance pending**.
+2026-10-06. **Bounded server session/recovery acceptance passed** (details below).
 This is not an account-service cutover, profitability claim, or live activation.
 
 ## Scope
@@ -113,6 +113,57 @@ collectors must continue advancing. Promote nothing before this gate passes.
 This phase stores proposed intentions, not positions or equity. Existing paper
 services remain the authoritative paper ledgers until Phase 4 is accepted.
 Onchain deployment is not silently included in this change.
+
+## 2026-10-06 acceptance follow-up
+
+The completed live session matched 78/78 decision states and all six profiles.
+75/78 numeric snapshots matched exactly; the other three were traced to different
+legacy warmup histories. Identical-input replay remained exact. Do not splice
+legacy paper history into the collector, loosen tolerances, or tune the evaluator
+to hide this provenance difference. Lighter native-history/calibration readiness
+requirements remain unchanged.
+
+The collector is the authoritative warmup source for each independent strategy.
+Use `infra/ops/phase3_continuity.py` with read-only strategy/collector snapshots to
+verify the full retained history, epoch and minute payloads. It rejects missing
+collector history in the strategy, but permits older strategy rows outside the
+collector's retention. No repair or synthetic minutes are performed by this tool.
+
+The Compose healthcheck now uses only Python's standard library and a read-only
+SQLite heartbeat lookup. It keeps the 180-second heartbeat freshness guard and
+rejects future timestamps; it does not import pandas/numpy/evaluator under the
+0.25-CPU strategy limit. This is deployment configuration only: the running image,
+trading formulas, DB identity and durable remain unchanged. No image rebuild or
+DB identity migration is needed for this healthcheck update.
+
+Apply configuration only to one strategy service at a time with `up -d --no-deps
+--no-build --force-recreate <strategy-service>`, using the exact existing
+`GG_PHASE3_COMMIT`, then check heartbeat/cursor progress, unchanged decision and
+proposal hashes, and the other services' unchanged container IDs. Never recreate
+collectors, NATS, or legacy paper as part of this recovery drill. Server acceptance
+still depends on the actual continuity and restart results, not this document.
+
+Acceptance evidence on 2026-10-06:
+
+- 52 installed focused tests passed with the existing local NATS test dependency.
+- Full retained collector/shadow history initially matched on 124,527 minute
+  records, with matching epoch and zero missing/conflicting rows. The audit was
+  repeated after recreation to include subsequently received minutes.
+- Binance and Lighter strategies were recreated separately with unchanged image,
+  persistent DB and durable. Both resumed cursor progress and remained healthy.
+- Each venue retained the exact SHA256 of its 39 evaluations. Binance retained
+  exactly one proposal; Lighter retained zero. No duplicate proposal appeared.
+- NATS showed zero pending messages, pending ACKs and redelivered messages for
+  both Phase 3 consumers after recovery.
+- Legacy paper, both collectors, NATS and receipt observer retained their original
+  container IDs/start times. No account ledger was migrated or execution enabled.
+- The lightweight healthcheck completed in roughly 0.6–1.9 seconds in observed
+  successful checks, instead of the previous roughly 10-second evaluator import.
+
+This accepts the tested session and short orderly restart paths, not arbitrary
+outages or all future decisions. Legacy warmup provenance differences remain
+documented; Lighter calibration/history readiness is still enforced. Phase 4
+account/position ownership is the next separate implementation milestone.
 
 ## Rollback of new strategies only
 
