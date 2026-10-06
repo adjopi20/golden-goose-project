@@ -195,6 +195,15 @@ It is a consistent SQLite backup, not a raw copy of an active DB.
 
 Before cutover require:
 
+Capture repair (2026-10-06): `docker compose images` can fail when an old
+collector container still runs but its image metadata is no longer in the image
+store. Capture now records container-owned image IDs directly and marks missing
+repository digests as unavailable in `images/` and `warnings.txt`. It does not
+substitute the current mutable tag or claim that the old image is reproducible.
+Other inspection failures still abort capture. No collector restart, rebuild or
+warmup is needed to capture evidence. Preserve these warnings for release review;
+future promotion must use a verified, retained immutable image.
+
 1. Shared complete minutes, delta and profiles match; missing/invalid coverage is
    distinguished from valid zero-volume silence. Compare exports with
    `python -m infra.ops.compare_phase2_history --legacy OLD --collector NEW`.
