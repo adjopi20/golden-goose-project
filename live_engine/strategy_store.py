@@ -112,6 +112,24 @@ class StrategyStore(StateStore):
         if first_sequence > int(self.get_meta('broker_sequence', 0))+1:
             raise ValueError('Broker retention gap; stop shadow and create reviewed fresh bootstrap')
 
+    def enable_publication(self):
+        self.db.execute('CREATE TABLE IF NOT EXISTS outbox(sequence INTEGER PRIMARY KEY,event_id TEXT UNIQUE,'
+                        'subject TEXT NOT NULL,payload TEXT NOT NULL,published INTEGER NOT NULL DEFAULT 0)')
+
+    def queue_intention(self, intention):
+        self.enable_publication()
+        self.db.execute('INSERT INTO outbox(event_id,subject,payload) VALUES (?,?,?)',
+            (intention['intention_id'],f"intent.v1.{intention['venue']}.{intention['product']}.{intention['instrument_id']}",
+             canonical_json(intention)))
+
+    def pending(self, limit=100):
+        return [dict(r) for r in self.db.execute(
+            'SELECT * FROM outbox WHERE published=0 ORDER BY sequence LIMIT ?', (limit,))]
+
+    def published(self, sequence):
+        with self.transaction():
+            self.db.execute('UPDATE outbox SET published=1 WHERE sequence=?', (sequence,))
+
     def prune(self, now_ms):
         with self.transaction():
             self.db.execute('DELETE FROM minutes WHERE timestamp_ms<?', (now_ms-45*86400_000,))

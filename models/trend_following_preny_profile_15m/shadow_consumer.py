@@ -6,10 +6,11 @@ import json
 import math
 from pathlib import Path
 import sqlite3
+import re
 import time
 
 from live_engine.strategy_store import StrategyStore
-from market_data.broker import connect
+from market_data.broker import connect, flush_outbox
 from market_data.shadow import fetch_batch
 from trading_core.contracts import canonical_json, content_hash
 from trading_core.session import NY, clock_ms
@@ -36,9 +37,16 @@ def load_config(path, calibration_path=None):
 
 
 class ShadowStrategy:
-    def __init__(self, store, cfg, calibration=None, now_ms=None):
+    def __init__(self, store, cfg, calibration=None, now_ms=None, publish_intentions=False):
         self.store, self.cfg, self.calibration = store, cfg, calibration
         self.now_ms = now_ms or (lambda: int(time.time()*1000))
+        self.publish_intentions = publish_intentions
+        mode = str(int(publish_intentions))
+        if store.get_meta('publish_intentions',mode) != mode:
+            raise ValueError('Publication mode changed; use a fresh strategy release database')
+        with store.transaction():
+            store.set_meta('publish_intentions',mode)
+            if publish_intentions: store.enable_publication()
         self.accounts = {a['symbol']:a for a in cfg['accounts']}
         self.native = ({s:s for s in self.accounts} if cfg['venue']=='binance' else
                        {'ETHUSDC':'0', 'BNBUSDC':'25', 'HYPEUSDT':'24'})
@@ -50,7 +58,7 @@ class ShadowStrategy:
             activate=self.propose)
 
     def propose(self, evaluated, ready_ms):
-        # Store-only. No broker intention publication until Phase 4 has an owner.
+        # Publication is opt-in; Phase 3 remains store-only.
         if self.reconstructing: return dict(proposal_state='BOOTSTRAP_ONLY')
         signal = paper_activation_signal(evaluated['signal'], ready_ms)
         if not evaluated['selected']: return dict(proposal_state='SELECTOR_REJECTED')
@@ -64,9 +72,12 @@ class ShadowStrategy:
             config_hash=self.store.get_meta('config_hash'), feature_version='phase1-frozen-v1',
             calibration_id=self.store.get_meta('calibration_hash'),
             decision_snapshot_ref=content_hash(evaluated['snapshot']))
-        self.store.db.execute('INSERT INTO proposals VALUES (?,?)',
-                              (intention['intention_id'], canonical_json(intention)))
-        return dict(proposal_state='SHADOW_ONLY', intention_id=intention['intention_id'])
+        with self.store.transaction():
+            self.store.db.execute('INSERT INTO proposals VALUES (?,?)',
+                                  (intention['intention_id'], canonical_json(intention)))
+            if self.publish_intentions: self.store.queue_intention(intention)
+        return dict(proposal_state='QUEUED_PAPER' if self.publish_intentions else 'SHADOW_ONLY',
+                    intention_id=intention['intention_id'])
 
     def boundary(self, symbol, asof, state):
         day = datetime.fromtimestamp(asof/1000,NY).date()
@@ -158,13 +169,19 @@ async def consume(args):
         store.acquire_writer()
         nc = await connect(args.url)
         js = nc.jetstream()
+        publish = getattr(args,'publish_intentions',False)
+        if publish: await js.stream_info('GG_INTENT_V1')
         info = await js.stream_info('GG_MARKET_V1')
         store.bootstrap(args.bootstrap_database, symbols=ACCOUNT_IDS,
             broker_sequence=info.state.last_seq, now_ms=int(time.time()*1000))
-        strategy = ShadowStrategy(store,cfg,calibration)
+        strategy = ShadowStrategy(store,cfg,calibration,publish_intentions=publish)
         strategy.reconstruct_today()
         store.check_retention(info.state.first_seq)
-        durable = f'phase3_{MODEL}_{cfg["venue"]}'
+        prefix = getattr(args,'durable_prefix','phase3')
+        if not re.fullmatch(r'[a-zA-Z0-9_-]+',prefix): raise ValueError('Invalid durable prefix')
+        if store.get_meta('durable_prefix',prefix) != prefix: raise ValueError('Durable prefix changed')
+        with store.transaction(): store.set_meta('durable_prefix',prefix)
+        durable = f'{prefix}_{MODEL}_{cfg["venue"]}'
         # A durable is coupled to this persistent DB; lost/reset DB is not
         # permission to attach to an older durable and silently skip its input.
         try:
@@ -175,6 +192,8 @@ async def consume(args):
             existing = None
         if existing and not store.get_meta('durable_registered'):
             raise ValueError('Existing durable but new database; use explicit reviewed reset')
+        if not existing and store.get_meta('durable_registered'):
+            raise ValueError('Strategy durable lost; explicit recovery review required')
         if existing and existing.ack_floor.stream_seq > int(store.get_meta('broker_sequence')):
             raise ValueError('Database is behind broker acknowledgments; recovery review required')
         config = None if existing else ConsumerConfig(durable_name=durable,ack_policy=AckPolicy.EXPLICIT,
@@ -195,6 +214,7 @@ async def consume(args):
                 event = json.loads(msg.data)
                 store.apply(msg.metadata.sequence.stream,event,int(time.time()*1000),strategy.event)
                 await msg.ack()
+            if publish: await flush_outbox(store,js)
             if time.monotonic()-maintenance >= 60:
                 now_ms=int(time.time()*1000)
                 with store.transaction():
@@ -215,6 +235,8 @@ def main():
     p.add_argument('--config',type=Path)
     p.add_argument('--c1-calibration',type=Path)
     p.add_argument('--code-version')
+    p.add_argument('--publish-intentions',action='store_true')
+    p.add_argument('--durable-prefix',default='phase3')
     p.add_argument('--status',action='store_true')
     p.add_argument('--healthcheck',action='store_true')
     args = p.parse_args()

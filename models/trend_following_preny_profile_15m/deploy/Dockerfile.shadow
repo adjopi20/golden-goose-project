@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && useradd --system --uid 10001 --create-home strategy \
     && mkdir /data && chown strategy:strategy /data
 COPY trading_core /app/trading_core
-COPY live_engine/__init__.py live_engine/state_store.py live_engine/strategy_store.py /app/live_engine/
+COPY live_engine/__init__.py live_engine/state_store.py live_engine/strategy_store.py live_engine/service_health.py /app/live_engine/
 COPY market_data/__init__.py market_data/broker.py market_data/shadow.py /app/market_data/
 COPY models/trend_following_preny_profile_15m/runtime /app/models/trend_following_preny_profile_15m/runtime
 COPY models/trend_following_preny_profile_15m/shadow_consumer.py /app/models/trend_following_preny_profile_15m/
