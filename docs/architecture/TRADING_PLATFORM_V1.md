@@ -2,7 +2,7 @@
 
 Date: 2026-10-04 (Asia/Jakarta)
 
-Status: **FINAL DESIGN V1 — Phase 0 verified; Phase 1 implemented; Phase 2 collector shadow prepared, server gates pending. No server cutover yet.**
+Status: **FINAL DESIGN V1 — Phases 0–3 verified; Phase 4 independent paper-account shadows implemented and locally tested, server gates pending. No account/execution cutover or real orders.**
 
 This document is the implementation reference for the reusable platform. It freezes architectural boundaries and migration requirements, not trading profitability or new strategy rules. Model rules and research findings remain under their respective model folders. Existing running services continue until a replacement passes the migration gates below.
 

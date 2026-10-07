@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "mode": "paper-shadow",
+  "environment": "server-paper",
+  "venue": "lighter",
+  "account_group": "lighter_preny_phase4_v1",
+  "strategy_config_hash": "320b84e748b2cd107f08eb3dbe4b31e535027cef04df2a9e675a0043527ab2f8",
+  "notes": "Independent validation ledger, not migrated capital. Next-public-print fills and 4 bps fee are research proxies; no real orders.",
+  "allocations": [
+    {
+      "id": "tf-preny-eth-v1",
+      "symbol": "ETHUSDC",
+      "contract": "TF-PRENY-ETH-001-lighter-paper-pending-parity",
+      "allowed_risks": [
+        0.0025,
+        0.005
+      ],
+      "execution": {
+        "initial_equity": 1000,
+        "risk_fraction": 0.005,
+        "fee_bps": 4,
+        "max_leverage": 5,
+        "max_entry_delay_ms": 300000,
+        "tp1_r": 1,
+        "tp1_fraction": 0.1
+      },
+      "instrument_id": "0",
+      "currency": "USD-paper",
+      "model_id": "trend_following_preny_profile_15m",
+      "model_version": "trend_following_preny_profile_15m_v1"
+    },
+    {
+      "id": "tf-preny-bnb-v1",
+      "symbol": "BNBUSDC",
+      "contract": "TF-PRENY-BNB-001-lighter-paper-pending-parity",
+      "allowed_risks": [
+        0.0025,
+        0.005
+      ],
+      "execution": {
+        "initial_equity": 1000,
+        "risk_fraction": 0.005,
+        "fee_bps": 4,
+        "max_leverage": 5,
+        "max_entry_delay_ms": 300000,
+        "tp1_r": 2,
+        "tp1_fraction": 0.1
+      },
+      "instrument_id": "25",
+      "currency": "USD-paper",
+      "model_id": "trend_following_preny_profile_15m",
+      "model_version": "trend_following_preny_profile_15m_v1"
+    },
+    {
+      "id": "tf-preny-hype-v1",
+      "symbol": "HYPEUSDT",
+      "contract": "TF-PRENY-HYPE-001-lighter-paper-pending-parity",
+      "allowed_risks": [
+        0.005
+      ],
+      "execution": {
+        "initial_equity": 1000,
+        "risk_fraction": 0.005,
+        "fee_bps": 4,
+        "max_leverage": 5,
+        "max_entry_delay_ms": 300000,
+        "tp1_r": 1,
+        "tp1_fraction": 0.1
+      },
+      "instrument_id": "24",
+      "currency": "USD-paper",
+      "model_id": "trend_following_preny_profile_15m",
+      "model_version": "trend_following_preny_profile_15m_v1"
+    }
+  ]
+}

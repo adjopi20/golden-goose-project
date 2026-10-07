@@ -7,7 +7,7 @@ from dataclasses import asdict, replace
 import json
 import math
 
-from backtest_engine.replay_aggtrades import Config, Portfolio, on_tick, validate_config
+from trading_core.paper_execution import Config, Portfolio, on_tick, validate_config
 from .state_store import encode
 
 

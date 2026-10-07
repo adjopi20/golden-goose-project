@@ -8,7 +8,7 @@ def as_intention(result, *, venue, product, instrument_id, environment, account_
     if result.get('signal') is None or result.get('selected') is not True:
         return None
     signal = result['signal']
-    return make_intention(
+    intention = make_intention(
         venue=venue, product=product, instrument_id=instrument_id,
         environment=environment, account_id=account_id, allocation_id=allocation_id,
         model_id=signal['route'], model_version=signal['strategy'],
@@ -22,3 +22,5 @@ def as_intention(result, *, venue, product, instrument_id, environment, account_
         force_exit_timestamp_ms=signal['force_exit_timestamp_ms'],
         risk_fraction=result['risk_fraction'], initial_stop=signal['stop'],
         entry_reference=signal['entry_reference'], exit_policy=signal['exit_policy'])
+    if signal.get('sample_id'): intention['source_sample_id'] = signal['sample_id']
+    return intention
