@@ -105,3 +105,39 @@ def test_stream_init_adds_only_intentions_and_never_reconfigures_market(monkeypa
     asyncio.run(aw.initialize_intentions('test'))
     assert names==['GG_INTENT_V1'] and created[0].subjects==['intent.v1.>']
     assert created[0].max_bytes==32*1024*1024
+
+
+def test_idle_filtered_consumer_does_not_fail_on_other_venue_expiry(tmp_path):
+    # The Lighter durable sees no matching intention. Binance sends seven
+    # intentions, then its oldest ones expire from the shared stream.
+    s=AccountStore(tmp_path/'lighter.sqlite',config('lighter'),'test')
+    with s.transaction():s.anchor('GG_INTENT_V1',0)
+    class JS:
+        async def stream_info(self,channel):
+            return SimpleNamespace(state=SimpleNamespace(first_seq=1,last_seq=7))
+        async def consumer_info(self,channel,durable):
+            return SimpleNamespace(ack_floor=SimpleNamespace(stream_seq=0),
+                                   num_pending=0,num_ack_pending=0)
+    asyncio.run(aw.verify_venue_drained(JS(),s,'GG_INTENT_V1','lighter-durable'))
+    assert s.checkpoint('GG_INTENT_V1')==0
+    assert s.get_meta('verified_through:GG_INTENT_V1')=='7'
+    s.check_retention('GG_INTENT_V1',8)
+    with pytest.raises(ValueError,match='retention gap'):
+        s.check_retention('GG_INTENT_V1',9)
+    s.close()
+
+
+def test_pending_filtered_message_cannot_advance_venue_watermark(tmp_path):
+    s=AccountStore(tmp_path/'lighter.sqlite',config('lighter'),'test')
+    with s.transaction():s.anchor('GG_INTENT_V1',0)
+    class JS:
+        async def stream_info(self,channel):
+            return SimpleNamespace(state=SimpleNamespace(first_seq=1,last_seq=7))
+        async def consumer_info(self,channel,durable):
+            return SimpleNamespace(ack_floor=SimpleNamespace(stream_seq=0),
+                                   num_pending=1,num_ack_pending=0)
+    asyncio.run(aw.verify_venue_drained(JS(),s,'GG_INTENT_V1','lighter-durable'))
+    assert s.get_meta('verified_through:GG_INTENT_V1')=='0'
+    with pytest.raises(ValueError,match='retention gap'):
+        s.check_retention('GG_INTENT_V1',3)
+    s.close()

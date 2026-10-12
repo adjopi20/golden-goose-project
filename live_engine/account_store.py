@@ -63,7 +63,10 @@ class AccountStore(StateStore):
                         (key,str(value)))
 
     def anchor(self, channel, sequence):
-        self.db.execute('INSERT OR IGNORE INTO checkpoints VALUES (?,?)',(channel,sequence))
+        inserted = self.db.execute('INSERT OR IGNORE INTO checkpoints VALUES (?,?)',(channel,sequence))
+        if inserted.rowcount:
+            # A fresh filtered consumer begins after this stream-wide sequence.
+            self.set_meta('verified_through:'+channel,sequence)
 
     def checkpoint(self, channel):
         row = self.db.execute('SELECT sequence FROM checkpoints WHERE channel=?',(channel,)).fetchone()
@@ -83,12 +86,22 @@ class AccountStore(StateStore):
             handler(payload, now_ms)
             self.db.execute('INSERT INTO receipts VALUES (?,?,?,?,?)',(channel,identity,sequence,digest,now_ms))
             self.db.execute('UPDATE checkpoints SET sequence=? WHERE channel=?',(sequence,channel))
+            self.verify_drained(channel,sequence)
         return True
 
     def check_retention(self, channel, first):
-        cursor = self.checkpoint(channel)
+        # Receipt checkpoints advance only on messages for this venue. A shared
+        # stream can expire messages for another venue while this one is idle.
+        cursor = self.get_meta('verified_through:'+channel,self.checkpoint(channel))
+        cursor = int(cursor) if cursor is not None else None
         if cursor is not None and first > cursor+1:
             raise ValueError('Account execution retention gap; reviewed recovery required')
+
+    def verify_drained(self, channel, through):
+        """Record a broker-verified empty venue queue, never an inferred fill."""
+        prior = self.get_meta('verified_through:'+channel,self.checkpoint(channel))
+        if prior is None: raise ValueError('Unanchored account stream')
+        self.set_meta('verified_through:'+channel,max(int(prior),through))
 
     def post(self, key, allocation, currency, debit, credit, amount):
         amount = Decimal(str(amount))

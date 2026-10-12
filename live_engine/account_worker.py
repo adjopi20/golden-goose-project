@@ -21,6 +21,19 @@ INTENT_STREAM = dict(name='GG_INTENT_V1',subjects=['intent.v1.>'],
 STREAMS = ('GG_INTENT_V1','GG_MARKET_V1','GG_EXEC_V1')
 
 
+async def verify_venue_drained(js, store, channel, durable):
+    # Capture the stream tail before checking the venue-filtered consumer. If
+    # it has no pending/unacknowledged messages, every matching message through
+    # that captured tail has been committed. Messages arriving later stay pending.
+    snapshot = await js.stream_info(channel)
+    store.check_retention(channel,snapshot.state.first_seq)
+    consumer = await js.consumer_info(channel,durable)
+    if consumer.ack_floor.stream_seq > store.checkpoint(channel):
+        raise ValueError('Account DB behind broker acknowledgment')
+    if consumer.num_pending == 0 and consumer.num_ack_pending == 0:
+        with store.transaction(): store.verify_drained(channel,snapshot.state.last_seq)
+
+
 def load_config(path):
     cfg=json.loads(Path(path).read_text(encoding='utf-8-sig'))
     if (cfg.get('schema_version'),cfg.get('mode'),cfg.get('environment')) != (1,'paper-shadow','server-paper'):
@@ -87,9 +100,10 @@ async def consume(args):
                 ack_wait=60,max_ack_pending=100)
             sub=await js.pull_subscribe(subject,durable,stream=channel,config=cc)
             with store.transaction(): store.set_meta('durable:'+channel,1)
-            subscriptions.append((channel,sub))
+            subscriptions.append((channel,durable,sub))
 
-        async def pump(channel, sub):
+        async def pump(channel, durable, sub):
+            last_verified = 0.0
             while True:
                 info=await js.stream_info(channel)
                 store.check_retention(channel,info.state.first_seq)
@@ -100,6 +114,9 @@ async def consume(args):
                     handler=owner.intention if channel=='GG_INTENT_V1' else owner.event
                     store.apply(channel,msg.metadata.sequence.stream,identity,payload,int(time.time()*1000),handler)
                     await msg.ack()  # after fill + ledger + reservation + cursor commit
+                if time.monotonic()-last_verified >= 30:
+                    await verify_venue_drained(js,store,channel,durable)
+                    last_verified = time.monotonic()
                 with store.transaction(): store.set_meta('last_poll:'+channel,int(time.time()*1000))
 
         async def timer():
@@ -110,7 +127,7 @@ async def consume(args):
                     with store.transaction(): store.prune(now)
                     print(canonical_json(owner.status()),flush=True);last_log=now
                 await asyncio.sleep(1)
-        tasks=[asyncio.create_task(pump(channel,sub)) for channel,sub in subscriptions]
+        tasks=[asyncio.create_task(pump(channel,durable,sub)) for channel,durable,sub in subscriptions]
         tasks.append(asyncio.create_task(timer()))
         await asyncio.gather(*tasks)
     finally:
