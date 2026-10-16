@@ -33,8 +33,11 @@ events and still require normal reconnect/coverage handling.
    conflicting-event, identity and accounting errors still propagate.
 4. The reviewed account upgrade makes consistent SQLite backups and changes only
    the release metadata and index. All positions, trades, balances, cursors,
-   durable registrations and allocation rules are preserved. It refuses active
-   positions, pending/open requests, uncertain closes or reservations.
+   durable registrations and allocation rules are preserved. The corrected
+   preflight allows consistent open positions/pending entries and historical
+   uncertain closes. It rejects disagreement between active state, requests and
+   reservations, and unknown source releases. A fingerprint verifies that trading
+   state and coverage/audit metadata are unchanged by the upgrade.
 
 No CPU/RAM limits, model rules, sizing tiers, exit logic or exchange adapters change.
 
@@ -60,19 +63,31 @@ docker compose -f "$phase2" logs --tail=5 shadow-receipts
 Allow the first maintenance cycle (about one minute) and healthcheck to run.
 Collectors, NATS, strategy workers and legacy paper accounts need no restart.
 
-## Install account repair when Phase 4 accounts are flat
+## Install the compatible account repair
 
 ```bash
 cd ~/golden-goose-project
 bash infra/ops/upgrade_phase4_account_health.sh
 ```
 
-If a position is still open, the preflight exits before stopping any service.
-Run again after the existing position closes. The script builds first, stops only
+Open positions can resume through this schema/performance-only update. The script builds first, stops only
 the two Phase 4 strategy/account pairs, checks again, backs up and upgrades the
 existing account databases, starts the accounts, and resumes the existing strategy
-containers after account health passes. It keeps the Lighter recovered v2 volume.
+containers after account health passes. Tests compare pending-entry, open-position,
+partial-exit and historical-uncertain states with an uninterrupted control, including
+subsequent fills. It keeps the Lighter recovered v2 volume.
 It never creates fresh equity or removes a ledger/durable.
+
+The first release (59f0019) required flat accounts and also counted
+`closed_uncertain` as pending. That guard was too restrictive: historical
+uncertainty must remain recorded, but does not prevent adding an index or a
+compatible runtime restart. The correction never clears an execution-gap block.
+Such blocks still require a separate feed/recovery review before new entries.
+
+Corrected upgrade validation: 42 scoped account/broker/upgrade tests passed.
+Pending, open, partial and closed-uncertain states survive upgrade, and subsequent
+fills/journals match uninterrupted control runs. The error path now prints a
+concise refusal rather than a Python traceback.
 
 On failure after services stop, inspect the printed error and backup directory
 before resuming. Do not run the old fresh-ledger recovery script.

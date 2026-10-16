@@ -23,8 +23,8 @@ python3 infra/ops/upgrade_phase4_account_health.py --database "${databases[@]}" 
 "${compose[@]}" config --quiet
 # Both accounts use this same image. Build before pausing consumers.
 "${compose[@]}" build binance-account-shadow
-"${compose[@]}" stop "${strategies[@]}" "${accounts[@]}"
 trap 'result=$?; if [[ $result -ne 0 ]]; then echo "Upgrade stopped. Keep backups and inspect Phase 4 accounts before resuming; no ledger was reset." >&2; fi' EXIT
+"${compose[@]}" stop "${strategies[@]}" "${accounts[@]}"
 backup_dir="/root/golden-goose-phase4-backups/$(date -u +%Y%m%dT%H%M%SZ)-health"
 python3 infra/ops/upgrade_phase4_account_health.py --database "${databases[@]}" --target "$GG_PHASE4_COMMIT" --backup-dir "$backup_dir"
 "${compose[@]}" up -d --no-deps --no-build "${accounts[@]}"
