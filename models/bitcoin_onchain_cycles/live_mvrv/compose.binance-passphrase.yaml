@@ -1,0 +1,12 @@
+# Additional override ONLY for an encrypted PEM + unattended worker.
+services:
+  btc-mvrv-testnet:
+    environment:
+      BINANCE_PRIVATE_KEY_PASSPHRASE_FILE: /run/secrets/binance.passphrase
+    volumes:
+      - type: bind
+        source: ${BINANCE_PRIVATE_KEY_PASSPHRASE_HOST_PATH:?Set the existing passphrase secret-file path locally}
+        target: /run/secrets/binance.passphrase
+        read_only: true
+        bind:
+          create_host_path: false

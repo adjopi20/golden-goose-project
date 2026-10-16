@@ -1,0 +1,13 @@
+# Opt-in override; use together with compose.binance-testnet.yaml.
+services:
+  btc-mvrv-testnet:
+    environment:
+      BINANCE_KEY_TYPE: ed25519
+      BINANCE_PRIVATE_KEY_FILE: /run/secrets/binance_ed25519.pem
+    volumes:
+      - type: bind
+        source: ${BINANCE_PRIVATE_KEY_HOST_PATH:?Set the existing private PEM path locally}
+        target: /run/secrets/binance_ed25519.pem
+        read_only: true
+        bind:
+          create_host_path: false

@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+*.env
+!*.env.example
+*.pem
+*.key
+*.passphrase
+data/
+__pycache__/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

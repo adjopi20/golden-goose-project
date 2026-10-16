@@ -1,0 +1,36 @@
+name: btc-mvrv-dual
+services:
+  btc-mvrv-monitor:
+    build:
+      context: .
+    image: golden-goose/btc-mvrv-dual:v1
+    command: ["run"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      DATABASE: /data/mvrv.sqlite
+      INITIAL_CAPITAL: ${INITIAL_CAPITAL:-1000}
+      MODE: ${MODE:-paper}
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - mvrv_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-m", "live_mvrv.main", "health"]
+      interval: 5m
+      timeout: 20s
+      start_period: 15m
+      retries: 3
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  mvrv_data:
