@@ -105,18 +105,24 @@ async def consume(args):
         async def pump(channel, durable, sub):
             last_verified = 0.0
             while True:
-                info=await js.stream_info(channel)
-                store.check_retention(channel,info.state.first_seq)
-                messages=await fetch_batch(sub)
-                for msg in messages:
-                    payload=json.loads(msg.data)
-                    identity=payload['intention_id'] if channel=='GG_INTENT_V1' else payload['event_id']
-                    handler=owner.intention if channel=='GG_INTENT_V1' else owner.event
-                    store.apply(channel,msg.metadata.sequence.stream,identity,payload,int(time.time()*1000),handler)
-                    await msg.ack()  # after fill + ledger + reservation + cursor commit
-                if time.monotonic()-last_verified >= 30:
-                    await verify_venue_drained(js,store,channel,durable)
-                    last_verified = time.monotonic()
+                try:
+                    info=await js.stream_info(channel)
+                    store.check_retention(channel,info.state.first_seq)
+                    messages=await fetch_batch(sub)
+                    for msg in messages:
+                        payload=json.loads(msg.data)
+                        identity=payload['intention_id'] if channel=='GG_INTENT_V1' else payload['event_id']
+                        handler=owner.intention if channel=='GG_INTENT_V1' else owner.event
+                        store.apply(channel,msg.metadata.sequence.stream,identity,payload,int(time.time()*1000),handler)
+                        await msg.ack()  # after fill + ledger + reservation + cursor commit
+                    if time.monotonic()-last_verified >= 30:
+                        await verify_venue_drained(js,store,channel,durable)
+                        last_verified = time.monotonic()
+                except TimeoutError:
+                    # Keep the durable and ledger; retry without advancing health or skipping retention checks.
+                    print(canonical_json(dict(state='BROKER_TIMEOUT_RETRY',channel=channel,retry_seconds=1)),flush=True)
+                    await asyncio.sleep(1)
+                    continue
                 with store.transaction(): store.set_meta('last_poll:'+channel,int(time.time()*1000))
 
         async def timer():

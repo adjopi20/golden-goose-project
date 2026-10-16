@@ -44,7 +44,8 @@ def test_strategy_publication_optin_atomic_and_bootstrap_suppressed(tmp_path):
 
 
 @pytest.mark.parametrize('registered',[False,True])
-def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,monkeypatch,registered):
+@pytest.mark.parametrize('metadata_timeout',[False,True])
+def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,monkeypatch,registered,metadata_timeout):
     from nats.js.errors import NotFoundError
     from nats.js.api import DeliverPolicy
     path=tmp_path/'account.sqlite';cp=tmp_path/'config.json';cfg=config()
@@ -66,7 +67,13 @@ def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,mon
                 assert db.execute("SELECT sequence FROM checkpoints WHERE channel='GG_INTENT_V1'").fetchone()[0]==1
             acks.append('committed');raise EndTest()
     class JS:
-        async def stream_info(self,name):return SimpleNamespace(state=SimpleNamespace(first_seq=1,last_seq=0))
+        calls=0
+        async def stream_info(self,name):
+            self.calls+=1
+            if metadata_timeout and self.calls==4:
+                from nats.errors import TimeoutError
+                raise TimeoutError()
+            return SimpleNamespace(state=SimpleNamespace(first_seq=1,last_seq=0))
         async def consumer_info(self,name,durable):
             if not registered:raise NotFoundError()
             return SimpleNamespace(ack_floor=SimpleNamespace(stream_seq=0))
@@ -75,9 +82,10 @@ def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,mon
             if registered:assert config is None
             else:assert config.deliver_policy==DeliverPolicy.BY_START_SEQUENCE and config.opt_start_seq==1
             seen.append(stream);return stream
+    js=JS()
     class NC:
         closed=False
-        def jetstream(self):return JS()
+        def jetstream(self):return js
         async def close(self):self.closed=True
     nc=NC()
     async def connect(url):return nc
@@ -89,6 +97,19 @@ def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,mon
     args=SimpleNamespace(database=path,config=cp,code_version='test',url='test')
     with pytest.raises(EndTest):asyncio.run(aw.consume(args))
     assert seen==list(aw.STREAMS) and acks==['committed'] and nc.closed
+
+
+def test_account_receipt_prune_uses_time_index_and_preserves_new_receipts(tmp_path):
+    store=AccountStore(tmp_path/'account.sqlite',config(),'test')
+    now=73*3600000
+    with store.transaction():
+        store.db.executemany('INSERT INTO receipts VALUES (?,?,?,?,?)',[
+            ('GG_EXEC_V1','old',1,'hash',1),('GG_EXEC_V1','new',2,'hash',now)])
+    plan=store.db.execute('EXPLAIN QUERY PLAN DELETE FROM receipts WHERE received_ms<?',(3600000,)).fetchall()
+    assert any('receipts_received_ms' in r[3] for r in plan)
+    with store.transaction():store.prune(now)
+    assert [r[0] for r in store.db.execute('SELECT event_id FROM receipts')]==['new']
+    store.close()
 
 
 def test_stream_init_adds_only_intentions_and_never_reconfigures_market(monkeypatch):

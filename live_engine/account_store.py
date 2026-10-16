@@ -37,6 +37,7 @@ class AccountStore(StateStore):
               CREATE TABLE IF NOT EXISTS receipts(channel TEXT,event_id TEXT,sequence INTEGER,
                 payload_hash TEXT,received_ms INTEGER,PRIMARY KEY(channel,event_id));
               CREATE TABLE IF NOT EXISTS checkpoints(channel TEXT PRIMARY KEY,sequence INTEGER NOT NULL);
+              CREATE INDEX IF NOT EXISTS receipts_received_ms ON receipts(received_ms);
               CREATE TABLE IF NOT EXISTS requests(intention_id TEXT PRIMARY KEY,allocation TEXT,
                 payload TEXT NOT NULL,status TEXT NOT NULL,reason TEXT,received_ms INTEGER);
               CREATE TABLE IF NOT EXISTS reservations(allocation TEXT PRIMARY KEY,intention_id TEXT UNIQUE,

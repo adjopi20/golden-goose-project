@@ -73,6 +73,12 @@ services:
     command: ["--database", "/data/receipts.sqlite"]
     volumes: [shadow_data:/data]
     networks: [broker]
+    healthcheck:
+      test: ["CMD", "python", "-m", "live_engine.service_health", "--database", "/data/receipts.sqlite", "--keys", "last_poll:GG_EXEC_V1", "last_poll:GG_MARKET_V1", "last_maintenance_ms"]
+      interval: 60s
+      timeout: 10s
+      start_period: 3m
+      retries: 3
 
 networks:
   broker: {internal: true}

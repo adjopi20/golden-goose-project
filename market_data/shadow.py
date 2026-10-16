@@ -22,7 +22,13 @@ class ReceiptStore:
           CREATE TABLE IF NOT EXISTS checkpoints(stream TEXT PRIMARY KEY,sequence INTEGER NOT NULL,last_receipt_ms INTEGER NOT NULL);
           CREATE TABLE IF NOT EXISTS warnings(id INTEGER PRIMARY KEY,stream TEXT,reason TEXT,time_ms INTEGER);
           CREATE INDEX IF NOT EXISTS receipts_retention ON receipts(stream,received_ms);
+          CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
         ''')
+
+    def heartbeat(self, key, now_ms):
+        with self.db:
+            self.db.execute('INSERT INTO metadata VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+                            (key,str(now_ms)))
 
     def apply(self, stream, sequence, event, now_ms):
         payload = canonical_json(validate_event(event))
@@ -54,7 +60,8 @@ class ReceiptStore:
     def status(self):
         return dict(real_orders=False,checkpoints=[dict(zip(('stream','sequence','last_receipt_ms'),r)) for r in self.db.execute('SELECT * FROM checkpoints')],
                     receipts=self.db.execute('SELECT COUNT(*) FROM receipts').fetchone()[0],
-                    warnings=self.db.execute('SELECT COUNT(*) FROM warnings').fetchone()[0])
+                    warnings=self.db.execute('SELECT COUNT(*) FROM warnings').fetchone()[0],
+                    heartbeats=dict(self.db.execute('SELECT key,value FROM metadata')))
 
 
 async def fetch_batch(sub):
@@ -80,15 +87,20 @@ async def consume(url, database, consumer_prefix):
                 stream=spec['name'],config=ConsumerConfig(durable_name=durable,ack_policy=AckPolicy.EXPLICIT,
                 deliver_policy=DeliverPolicy.ALL,ack_wait=30,max_ack_pending=200))))
         async def pump(stream, sub):
+            last_heartbeat = 0.0
             while True:
                 messages = await fetch_batch(sub)
                 for msg in messages:
                     store.apply(stream,msg.metadata.sequence.stream,json.loads(msg.data),int(time.time()*1000))
                     await msg.ack()  # only after local transaction commits
+                if time.monotonic()-last_heartbeat >= 30:
+                    store.heartbeat('last_poll:'+stream,int(time.time()*1000))
+                    last_heartbeat = time.monotonic()
         async def maintenance():
             while True:
                 await asyncio.sleep(60)
                 store.prune(int(time.time()*1000))
+                store.heartbeat('last_maintenance_ms',int(time.time()*1000))
                 print(json.dumps(store.status()),flush=True)
         await asyncio.gather(*(pump(stream,sub) for stream,sub in subscriptions),maintenance())
     finally:

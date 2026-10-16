@@ -178,6 +178,19 @@ def test_receipts_idempotent_commit_conflict_and_retention(tmp_path):
     assert receipts.status()['warnings']==1
     receipts.db.close(); s.close()
 
+def test_receipt_health_requires_both_pumps_and_maintenance_without_new_events(tmp_path):
+    from live_engine.service_health import check
+    path=tmp_path/'r.sqlite';store=ReceiptStore(path)
+    keys=['last_poll:GG_EXEC_V1','last_poll:GG_MARKET_V1','last_maintenance_ms']
+    assert not check(path,keys,now_ms=1000)
+    for key in keys:store.heartbeat(key,1000)
+    assert check(path,keys,now_ms=1001)
+    assert store.status()['receipts']==0  # An idle upstream is not a dead consumer.
+    store.heartbeat(keys[0],200000);store.heartbeat(keys[2],200000)
+    assert not check(path,keys,now_ms=200001)
+    assert not check(path,keys,now_ms=999)
+    store.db.close()
+
 
 def test_collector_import_closure_has_no_evaluator_or_execution():
     root=Path(__file__).resolve().parents[1]
