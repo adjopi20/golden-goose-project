@@ -9,6 +9,8 @@ RUN pip install --no-cache-dir nats-py==2.15.0 \
     && mkdir /data && chown account:account /data
 COPY trading_core/__init__.py trading_core/contracts.py trading_core/paper_execution.py /app/trading_core/
 COPY live_engine/__init__.py live_engine/state_store.py live_engine/order_manager.py live_engine/account_store.py live_engine/account_owner.py live_engine/account_worker.py live_engine/service_health.py /app/live_engine/
+COPY live_engine/account_delivery_upgrade.py /app/live_engine/
+COPY infra/ops/upgrade_phase4_account_health.py /app/infra/ops/
 COPY market_data/__init__.py market_data/broker.py market_data/shadow.py /app/market_data/
 COPY models/trend_following_preny_profile_15m/deploy/phase4/*.json /app/config/
 USER account

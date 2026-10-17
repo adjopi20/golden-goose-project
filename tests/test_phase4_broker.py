@@ -47,7 +47,7 @@ def test_strategy_publication_optin_atomic_and_bootstrap_suppressed(tmp_path):
 @pytest.mark.parametrize('metadata_timeout',[False,True])
 def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,monkeypatch,registered,metadata_timeout):
     from nats.js.errors import NotFoundError
-    from nats.js.api import DeliverPolicy
+    from nats.js.api import AckPolicy, DeliverPolicy
     path=tmp_path/'account.sqlite';cp=tmp_path/'config.json';cfg=config()
     cp.write_text(json.dumps(cfg))
     if registered:
@@ -76,11 +76,14 @@ def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,mon
             return SimpleNamespace(state=SimpleNamespace(first_seq=1,last_seq=0))
         async def consumer_info(self,name,durable):
             if not registered:raise NotFoundError()
-            return SimpleNamespace(ack_floor=SimpleNamespace(stream_seq=0))
+            return SimpleNamespace(ack_floor=SimpleNamespace(stream_seq=0),
+                config=SimpleNamespace(max_ack_pending=1,ack_policy=AckPolicy.EXPLICIT))
         async def pull_subscribe(self,subject,durable,stream,config):
             assert 'binance' in subject and 'phase4_' in durable
             if registered:assert config is None
-            else:assert config.deliver_policy==DeliverPolicy.BY_START_SEQUENCE and config.opt_start_seq==1
+            else:
+                assert config.deliver_policy==DeliverPolicy.BY_START_SEQUENCE and config.opt_start_seq==1
+                assert config.max_ack_pending==1
             seen.append(stream);return stream
     js=JS()
     class NC:
@@ -89,7 +92,8 @@ def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,mon
         async def close(self):self.closed=True
     nc=NC()
     async def connect(url):return nc
-    async def fetch(sub):
+    async def fetch(sub,batch):
+        assert batch==1
         if sub=='GG_INTENT_V1':return [Message()]
         await asyncio.sleep(10);return []
     monkeypatch.setattr(aw,'connect',connect);monkeypatch.setattr(aw,'fetch_batch',fetch)
@@ -97,6 +101,39 @@ def test_account_broker_three_cursors_commit_before_ack_and_restart(tmp_path,mon
     args=SimpleNamespace(database=path,config=cp,code_version='test',url='test')
     with pytest.raises(EndTest):asyncio.run(aw.consume(args))
     assert seen==list(aw.STREAMS) and acks==['committed'] and nc.closed
+
+
+@pytest.mark.parametrize('max_pending,ack_policy',[(100,'explicit'),(1,'none')])
+def test_account_refuses_unsafe_existing_consumer(tmp_path,monkeypatch,max_pending,ack_policy):
+    from nats.js.api import AckPolicy
+    path=tmp_path/'account.sqlite'; cp=tmp_path/'config.json';cfg=config()
+    cp.write_text(json.dumps(cfg))
+    store=AccountStore(path,cfg,'test');AccountOwner(store,cfg)
+    for channel in aw.STREAMS:
+        store.anchor(channel,0);store.set_meta('durable:'+channel,1)
+    store.close()
+    class JS:
+        async def stream_info(self,name):
+            return SimpleNamespace(state=SimpleNamespace(first_seq=1,last_seq=0))
+        async def consumer_info(self,name,durable):
+            return SimpleNamespace(ack_floor=SimpleNamespace(stream_seq=0),
+                config=SimpleNamespace(max_ack_pending=max_pending,ack_policy=AckPolicy(ack_policy)))
+        async def pull_subscribe(self,*args,**kwargs):
+            pytest.fail('Unsafe consumer must fail before delivery')
+    class NC:
+        closed=False
+        def jetstream(self):return JS()
+        async def close(self):self.closed=True
+    nc=NC()
+    async def connect(url):return nc
+    monkeypatch.setattr(aw,'connect',connect)
+    with pytest.raises(ValueError,match='reviewed single-inflight migration'):
+        asyncio.run(aw.consume(SimpleNamespace(database=path,config=cp,code_version='test',url='test')))
+    assert nc.closed
+    with sqlite3.connect(path) as db:
+        assert db.execute('SELECT COUNT(*) FROM receipts').fetchone()[0]==0
+        assert db.execute('SELECT COUNT(*) FROM requests').fetchone()[0]==0
+        assert set(r[0] for r in db.execute('SELECT sequence FROM checkpoints'))=={0}
 
 
 def test_account_receipt_prune_uses_time_index_and_preserves_new_receipts(tmp_path):

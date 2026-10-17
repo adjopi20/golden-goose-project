@@ -22,18 +22,18 @@ def state_fingerprint(db):
     for table in STATE_TABLES:
         digest.update(table.encode())
         for row in db.execute(f'SELECT * FROM {table} ORDER BY rowid'):
-            digest.update(json.dumps(row,separators=(',',':')).encode())
+            digest.update(json.dumps(tuple(row),separators=(',',':')).encode())
     # Preserve coverage blocks, receipt watermarks and other audit metadata too.
     for row in db.execute("SELECT key,value FROM metadata WHERE key!='code_version' AND key NOT LIKE 'health_upgrade:%' ORDER BY key"):
-        digest.update(json.dumps(row,separators=(',',':')).encode())
+        digest.update(json.dumps(tuple(row),separators=(',',':')).encode())
     return digest.hexdigest()
 
 
-def inspect(db, target):
+def inspect(db, target, compatible=COMPATIBLE):
     meta=dict(db.execute('SELECT key,value FROM metadata'))
     if (meta.get('schema'),meta.get('owner'),meta.get('environment')) != ('4','paper_account_service','server-paper'):
         raise ValueError('Not a Phase 4 paper-account ledger')
-    if meta.get('code_version') not in COMPATIBLE | {target}:
+    if meta.get('code_version') not in compatible | {target}:
         raise ValueError('Unreviewed source release')
     active={account for account,raw in db.execute('SELECT id,state FROM accounts')
             if (s:=json.loads(raw)).get('position') or s.get('signals')}

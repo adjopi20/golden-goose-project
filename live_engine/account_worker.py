@@ -93,11 +93,14 @@ async def consume(args):
             if registered and not existing: raise ValueError('Account durable lost; explicit recovery review required')
             if existing and existing.ack_floor.stream_seq > store.checkpoint(channel):
                 raise ValueError('Account DB behind broker acknowledgment')
+            if existing and (existing.config.max_ack_pending != 1
+                    or existing.config.ack_policy != AckPolicy.EXPLICIT):
+                raise ValueError('Account consumer requires reviewed single-inflight migration: '+channel)
             prefix={'GG_INTENT_V1':'intent','GG_MARKET_V1':'md','GG_EXEC_V1':'exec'}[channel]
             subject=f'{prefix}.v1.{cfg["venue"]}.futures.>'
             cc=None if existing else ConsumerConfig(durable_name=durable,ack_policy=AckPolicy.EXPLICIT,
                 deliver_policy=DeliverPolicy.BY_START_SEQUENCE,opt_start_seq=store.checkpoint(channel)+1,
-                ack_wait=60,max_ack_pending=100)
+                ack_wait=60,max_ack_pending=1)
             sub=await js.pull_subscribe(subject,durable,stream=channel,config=cc)
             with store.transaction(): store.set_meta('durable:'+channel,1)
             subscriptions.append((channel,durable,sub))
@@ -108,7 +111,9 @@ async def consume(args):
                 try:
                     info=await js.stream_info(channel)
                     store.check_retention(channel,info.state.first_seq)
-                    messages=await fetch_batch(sub)
+                    # An unfinished delivery must block later messages across disconnect/restart.
+                    messages=await fetch_batch(sub,batch=1)
+                    if len(messages)>1: raise ValueError('Multiple in-flight account messages')
                     for msg in messages:
                         payload=json.loads(msg.data)
                         identity=payload['intention_id'] if channel=='GG_INTENT_V1' else payload['event_id']

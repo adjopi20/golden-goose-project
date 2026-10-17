@@ -1,0 +1,8 @@
+# OLD server only: fresh Binance validation epoch; retain the original volume.
+services:
+  binance-account-shadow:
+    command: ["--config", "/app/config/binance.account.recovered.json", "--database", "/data/account.sqlite", "--code-version", "${GG_PHASE4_COMMIT}"]
+    volumes: [binance_account_phase4_v2:/data]
+
+volumes:
+  binance_account_phase4_v2:

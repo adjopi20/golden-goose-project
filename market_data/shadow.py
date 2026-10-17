@@ -64,10 +64,10 @@ class ReceiptStore:
                     heartbeats=dict(self.db.execute('SELECT key,value FROM metadata')))
 
 
-async def fetch_batch(sub):
+async def fetch_batch(sub, batch=100):
     """An empty pull is normal; both asyncio and NATS timeouts inherit this type."""
     try:
-        return await sub.fetch(100,timeout=1)
+        return await sub.fetch(batch,timeout=1)
     except TimeoutError:
         return []
 
