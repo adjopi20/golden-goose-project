@@ -24,6 +24,16 @@ Research/backtests remain in `backtest_engine` and `risk_research`.
 The database is authoritative after restart. Pending triggers survive restart.
 This is local simulated execution recovery, **not exchange reconciliation**.
 
+## Separate real-account preparation (2026-10-17)
+
+`python -m live_engine.futures_preflight --config <pilot.json> ...` performs
+allowlisted production GETs only, using file-mounted Ed25519 credentials. It
+checks Futures account/symbol state and small-capital TP feasibility; it cannot
+submit/cancel orders or convert a paper ledger into live execution. A successful
+preflight still returns `live_ready=false`. The model-specific $145 ETHUSDC
+checkpoint and instructions are in
+`models/trend_following_preny_profile_15m/deploy/ETH_PILOT_READINESS.md`.
+
 ## Interface
 
 `PaperOrderManager.register(...)` binds an account and allowed risk tiers.

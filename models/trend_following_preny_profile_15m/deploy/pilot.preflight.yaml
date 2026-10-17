@@ -1,0 +1,37 @@
+name: golden-goose-eth-pilot-preflight
+services:
+  eth-futures-preflight:
+    build:
+      context: ../../..
+      dockerfile: live_engine/Dockerfile.futures-preflight
+      args:
+        CODE_VERSION: "${GG_PILOT_COMMIT:?Set the exact reviewed commit}"
+    image: golden-goose/futures-preflight:${GG_PILOT_COMMIT}
+    command: ["--config", "/app/config/pilot.json", "--api-key-file", "/run/secrets/api-key.txt", "--private-key-file", "/run/secrets/key.pem", "--passphrase-file", "/run/secrets/passphrase"]
+    restart: "no"
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 128m
+    cpus: 0.25
+    volumes:
+      - type: bind
+        source: "${GG_PRENY_API_KEY_FILE:?Set the server-only API-key file path}"
+        target: /run/secrets/api-key.txt
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${GG_PRENY_PRIVATE_KEY_FILE:?Set the registered private PEM file path}"
+        target: /run/secrets/key.pem
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: "${GG_PRENY_PASSPHRASE_FILE:-/dev/null}"
+        target: /run/secrets/passphrase
+        read_only: true
+        bind: {create_host_path: false}
+    logging:
+      driver: local
+      options: {max-size: "2m", max-file: "2"}

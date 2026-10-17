@@ -1,1 +1,1 @@
-"""Public market data only. No private keys or exchange order submission."""
+"""Public feeds and an isolated read-only Futures preflight; no order submission."""

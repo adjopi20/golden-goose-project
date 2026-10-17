@@ -1,0 +1,12 @@
+**
+!live_engine/
+!live_engine/__init__.py
+!live_engine/futures_preflight.py
+!live_engine/Dockerfile.futures-preflight
+!live_engine/adapters/
+!live_engine/adapters/__init__.py
+!live_engine/adapters/binance_futures_readonly.py
+!models/
+!models/trend_following_preny_profile_15m/
+!models/trend_following_preny_profile_15m/deploy/
+!models/trend_following_preny_profile_15m/deploy/pilot.ethusdc.preflight.json
