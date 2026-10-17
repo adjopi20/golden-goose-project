@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from live_engine.account_delivery_upgrade import SOURCE_RELEASE, upgrade, quiesce
+from live_engine.account_delivery_upgrade import SOURCE_RELEASE, SOURCE_RELEASES, upgrade, quiesce
 from live_engine.account_owner import AccountOwner
 from live_engine.account_store import AccountStore
 from live_engine.account_worker import STREAMS
@@ -41,9 +41,10 @@ class Broker:
 
 
 @pytest.mark.parametrize('stage',['flat','pending','open','partial'])
-def test_upgrade_preserves_state_and_reopens(tmp_path,stage):
+@pytest.mark.parametrize('source',sorted(SOURCE_RELEASES))
+def test_upgrade_preserves_state_and_reopens(tmp_path,stage,source):
     cfg=config();path=tmp_path/'account.sqlite'
-    s=AccountStore(path,cfg,SOURCE_RELEASE);o=AccountOwner(s,cfg);js=Broker(s)
+    s=AccountStore(path,cfg,source);o=AccountOwner(s,cfg);js=Broker(s)
     if stage!='flat':o.intention(intention(),1000)
     ticks=[trade(1,1001,100.),trade(2,1500,111.),trade(3,1501,111.)]
     if stage=='open':o.event(event(ticks[:1]),1001)
@@ -57,7 +58,7 @@ def test_upgrade_preserves_state_and_reopens(tmp_path,stage):
     assert s.get_meta('code_version')=='a'*40
     s.close();s=AccountStore(path,cfg,'a'*40);s.close()
     with sqlite3.connect(tmp_path/'backup.sqlite') as db:
-        assert dict(db.execute('SELECT key,value FROM metadata'))['code_version']==SOURCE_RELEASE
+        assert dict(db.execute('SELECT key,value FROM metadata'))['code_version']==source
 
 
 @pytest.mark.parametrize('fault',['pending_ack','pending_pull','wrong_filter','ack_hole','cursor_hole','blocked','unknown_release'])
@@ -100,19 +101,22 @@ def test_quiesce_pauses_all_streams_before_accepting_drain(tmp_path):
 
 @pytest.mark.parametrize('scenario,allowed',[
     ('fresh_affected_flat',True),('fresh_healthy',False),('fresh_open',False),
-    ('healthy_blocked',False),('healthy_open',True),('fresh_outbox',False)])
+    ('healthy_blocked',False),('healthy_open',True),('fresh_outbox',False),
+    ('fresh_published_history',True)])
 def test_shell_preflight_refuses_unsafe_cutover_without_mutation(tmp_path,scenario,allowed):
     path=tmp_path/'account.sqlite';s=AccountStore(path,config(),SOURCE_RELEASE);o=AccountOwner(s,config())
     fresh=scenario.startswith('fresh')
     if scenario.endswith('open'):
         o.intention(intention(),1000);o.event(event([trade(1,1001,100.)]),1001)
-    if scenario in ('fresh_affected_flat','fresh_open','healthy_blocked','fresh_outbox'):
+    if scenario in ('fresh_affected_flat','fresh_open','healthy_blocked','fresh_outbox','fresh_published_history'):
         s.set_meta('blocked:ETHUSDC',2000)
     before=state_fingerprint(s.db)
     strategy=tmp_path/'strategy.sqlite'
     with sqlite3.connect(strategy) as db:
-        db.execute('CREATE TABLE outbox(payload TEXT)')
-        if scenario=='fresh_outbox':db.execute("INSERT INTO outbox VALUES ('pending')")
+        db.execute('CREATE TABLE outbox(payload TEXT,published INTEGER NOT NULL)')
+        if scenario=='fresh_outbox':db.execute("INSERT INTO outbox VALUES ('pending',0)")
+        if scenario=='fresh_published_history':
+            db.executemany('INSERT INTO outbox VALUES (?,1)',[(f'history-{i}',) for i in range(20)])
     script=(Path(__file__).resolve().parents[1]/'infra/ops/upgrade_phase4_delivery.sh').read_text()
     code=re.search(r"check_state\(\) \{.*?<<'PY'\n(.*?)\nPY",script,re.S)[1]
     result=subprocess.run([sys.executable,'-B','-c',code,str(path),str(strategy),

@@ -15,6 +15,7 @@ from live_engine.account_worker import STREAMS, load_config, status
 from market_data.broker import connect
 
 SOURCE_RELEASE = '15983d70cd0da5dbc903a8de56ff874043204754'
+SOURCE_RELEASES = {SOURCE_RELEASE, '348b6290d1ca6f87abb6b39ad61ad395ad32a276'}
 
 
 async def quiesce(js, group):
@@ -32,7 +33,7 @@ async def quiesce(js, group):
 
 async def audit(store, js, target):
     from nats.js.api import AckPolicy
-    inspect(store.db,target,compatible={SOURCE_RELEASE})
+    inspect(store.db,target,compatible=SOURCE_RELEASES)
     result=status(store.path)
     if result['accounting_checks']['status']!='pass':
         raise ValueError('Accounting checks failed')
@@ -98,7 +99,7 @@ async def main_async(args):
     if not args.database.is_file():raise ValueError('Existing account database required')
     with sqlite3.connect(args.database.resolve().as_uri()+'?mode=ro',uri=True) as db:
         source=dict(db.execute('SELECT key,value FROM metadata')).get('code_version')
-    if source not in {SOURCE_RELEASE,args.target}:raise ValueError('Unreviewed source release')
+    if source not in SOURCE_RELEASES | {args.target}:raise ValueError('Unreviewed source release')
     store=AccountStore(args.database,load_config(args.config),source)
     nc=None
     try:

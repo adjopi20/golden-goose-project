@@ -46,12 +46,12 @@ check_state() {
 import json,pathlib,sqlite3,sys
 from infra.ops.upgrade_phase4_account_health import inspect
 from live_engine.account_worker import status
-from live_engine.account_delivery_upgrade import SOURCE_RELEASE
+from live_engine.account_delivery_upgrade import SOURCE_RELEASES
 account,strategy,fresh,target=sys.argv[1:]
 if status(pathlib.Path(account))['accounting_checks']['status']!='pass':
     raise SystemExit('Accounting audit failed; do not reset or upgrade this ledger')
 with sqlite3.connect(pathlib.Path(account).resolve().as_uri()+'?mode=ro',uri=True) as db:
-    inspect(db,target,compatible={SOURCE_RELEASE})
+    inspect(db,target,compatible=SOURCE_RELEASES)
     meta=dict(db.execute('SELECT key,value FROM metadata'))
     if (meta.get('schema'),meta.get('owner'),meta.get('environment'))!=('4','paper_account_service','server-paper'):
         raise SystemExit('Wrong ledger identity')
@@ -66,7 +66,7 @@ with sqlite3.connect(pathlib.Path(account).resolve().as_uri()+'?mode=ro',uri=Tru
         if not (blocked or uncertain):raise SystemExit('Fresh epoch is only for the affected ledger, not a healthy one')
     elif blocked or uncertain:raise SystemExit('Ledger is uncertain; do not use healthy upgrade')
 with sqlite3.connect(pathlib.Path(strategy).resolve().as_uri()+'?mode=ro',uri=True) as db:
-    if fresh and db.execute('SELECT COUNT(*) FROM outbox').fetchone()[0]:
+    if fresh and db.execute('SELECT COUNT(*) FROM outbox WHERE published=0').fetchone()[0]:
         raise SystemExit('Strategy has unpublished intentions; review before fresh epoch')
 print('Account/strategy preflight passed.')
 PY

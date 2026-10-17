@@ -53,7 +53,7 @@ python -B -m pytest tests/test_account_restart_nats.py -q
 ## Guarded server procedure — not yet executed on a VPS
 
 After pushing the reviewed commit, run from `/root/golden-goose-project` on
-each server. Existing worker releases must be the reviewed `15983d7` release;
+each server. Existing worker releases must be the reviewed `15983d7` or `348b629` release;
 unknown identities are refused. Do not run the next command if one fails.
 
 ```bash
@@ -97,6 +97,11 @@ per allocation. Subsequent valid signals only; no retrospective missed fills.
 The recovered volume/config persists in `phase4.single-inflight-recovery.yaml`;
 include that overlay for future manual Compose operations on the OLD server.
 The upgrade script detects the new group on repeat runs and keeps that volume.
+
+Outbox rows with `published=1` are retained audit history, not pending work.
+The 2026-10-17 preflight fix counts only `published=0`; an old-server read-only
+inspection found 20 published rows and zero unpublished rows. No outbox rows
+were cleared to bypass this check.
 
 Legacy paper workers, collectors, NATS service, shadow receipts, other venue,
 and MVRV services are not restarted. Docker still reports containers in one
