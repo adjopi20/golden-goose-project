@@ -30,7 +30,7 @@ Production throughput on the VPS is not yet measured.
 
 ## Verification
 
-106 tests passed on Windows, covering account accounting, upgrade refusal and
+117 tests passed on Windows, covering account accounting, upgrade refusal and
 state preservation, broker mocks, prior health upgrade, strategy, collector,
 paper bridge, and three integration tests against a disposable local broker:
 
@@ -53,7 +53,7 @@ python -B -m pytest tests/test_account_restart_nats.py -q
 ## Guarded server procedure — not yet executed on a VPS
 
 After pushing the reviewed commit, run from `/root/golden-goose-project` on
-each server. Existing worker releases must be the reviewed `15983d7` or `348b629` release;
+each server. Existing worker releases must be a reviewed `15983d7`, `348b629`, or `a23fd74` release;
 unknown identities are refused. Do not run the next command if one fails.
 
 ```bash
@@ -110,6 +110,32 @@ Compose project as orphans when omitted: never use `--remove-orphans` here.
 Do not resume blindly after a refusal. Capture the error and inspect the
 selected account. The two servers are updated independently, never by resetting
 both histories. Copy backups off the VPS after successful verification.
+
+## 2026-10-17 server-2 update-response discrepancy
+
+The `348b629` procedure stopped on its strict comparison of the immediate
+consumer-update response. Read-only inspection found the Binance worker stopped,
+its source ledger unchanged, no in-flight messages, and a preserved open HYPE
+paper position. The first consumer had already persisted the intended limit.
+
+A separately approved single-step market-consumer update captured both sides:
+the request targeted limit 1, but the update response reported limit 100, omitted
+`pause_until`, and changed `_nats.req.level` from 1 to 0. A separate consumer-info
+read then showed the persisted limit was 1, with the original pause/metadata.
+All ledger checkpoints remained unchanged. Do not treat that response object as
+the final persisted consumer policy.
+
+The corrected helper snapshots the desired policy before sending the update,
+then reads consumer-info and compares ALL fields with that snapshot. It does
+not ignore metadata or policy differences. A remaining difference names the
+channel and fields and still stops the upgrade. Tests cover a stale update
+response with correct persisted state, and a claimed-success response whose
+persisted state remains wrong. The latter must fail without changing the ledger
+release or resuming delivery.
+
+This fixes a guard false alarm; it is separate from the original unfinished-
+batch restart bug. Re-run the normal procedure to finish partial consumer
+updates. Do not manually change the DB code identity or start old workers.
 
 ## Existing consumer migration gates
 

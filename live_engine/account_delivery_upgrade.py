@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 from dataclasses import replace
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
@@ -15,7 +16,8 @@ from live_engine.account_worker import STREAMS, load_config, status
 from market_data.broker import connect
 
 SOURCE_RELEASE = '15983d70cd0da5dbc903a8de56ff874043204754'
-SOURCE_RELEASES = {SOURCE_RELEASE, '348b6290d1ca6f87abb6b39ad61ad395ad32a276'}
+SOURCE_RELEASES = {SOURCE_RELEASE, '348b6290d1ca6f87abb6b39ad61ad395ad32a276',
+    'a23fd747a14662d324b8019231661802156181ab'}
 
 
 async def quiesce(js, group):
@@ -76,9 +78,14 @@ async def upgrade(store, js, target, backup=None):
     before=state_fingerprint(store.db)
     for channel,c in consumers:
         if c.config.max_ack_pending==1:continue
-        updated=await js.add_consumer(channel,config=replace(c.config,max_ack_pending=1))
-        if updated.config.as_dict()!=replace(c.config,max_ack_pending=1).as_dict():
-            raise ValueError('Unexpected broker configuration change; keep worker stopped')
+        desired=replace(c.config,max_ack_pending=1)
+        expected=deepcopy(desired.as_dict())
+        await js.add_consumer(channel,config=desired)
+        # The update response can contain the old config; verify persisted state instead.
+        actual=(await js.consumer_info(channel,c.name)).config.as_dict()
+        changed=sorted(k for k in expected.keys()|actual.keys() if expected.get(k)!=actual.get(k))
+        if changed:
+            raise ValueError('Broker read-back differs on '+channel+': '+','.join(changed)+'; keep worker stopped')
     await audit(store,js,target)
     with store.transaction():
         store.set_meta('code_version',target)

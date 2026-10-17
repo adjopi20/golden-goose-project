@@ -92,6 +92,31 @@ def test_partial_broker_failure_keeps_ledger_and_can_resume(tmp_path):
     s.close()
 
 
+def test_upgrade_uses_persisted_readback_when_update_response_is_stale(tmp_path):
+    s=AccountStore(tmp_path/'a.sqlite',config(),SOURCE_RELEASE);AccountOwner(s,config());js=Broker(s)
+    original=js.add_consumer
+    async def stale_response(channel,config):
+        old=SimpleNamespace(config=replace(js.consumers[channel].config,pause_until=None))
+        await original(channel,config)
+        return old
+    js.add_consumer=stale_response
+    assert asyncio.run(upgrade(s,js,'a'*40,tmp_path/'backup.sqlite'))['status']=='upgraded'
+    assert all(c.config.max_ack_pending==1 for c in js.consumers.values())
+    s.close()
+
+
+def test_upgrade_rejects_readback_even_if_update_response_claims_success(tmp_path):
+    s=AccountStore(tmp_path/'a.sqlite',config(),SOURCE_RELEASE);AccountOwner(s,config());js=Broker(s)
+    async def not_applied(channel,config):return SimpleNamespace(config=config)
+    js.add_consumer=not_applied
+    before=state_fingerprint(s.db)
+    with pytest.raises(ValueError,match='read-back differs.*max_ack_pending'):
+        asyncio.run(upgrade(s,js,'a'*40,tmp_path/'backup.sqlite'))
+    assert state_fingerprint(s.db)==before and s.get_meta('code_version')==SOURCE_RELEASE
+    assert js.resumed==[]
+    s.close()
+
+
 def test_quiesce_pauses_all_streams_before_accepting_drain(tmp_path):
     s=AccountStore(tmp_path/'a.sqlite',config(),SOURCE_RELEASE);AccountOwner(s,config());js=Broker(s)
     asyncio.run(quiesce(js,config()['account_group']))
