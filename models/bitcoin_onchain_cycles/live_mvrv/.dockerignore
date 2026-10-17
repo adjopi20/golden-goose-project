@@ -20,3 +20,4 @@ compose.binance-passphrase.yaml
 compose.binance-probe.yaml
 compose.binance-production.yaml
 deploy-production.sh
+compose.signal-monitor.yaml

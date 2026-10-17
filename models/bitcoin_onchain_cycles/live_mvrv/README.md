@@ -1,5 +1,11 @@
 # BTC MVRV dual-model daily service
 
+**Current deployment (2026-10-17): signal monitor only** on `adjopi20@139.190.102.183` (`golden-goose`), project/service `btc-mvrv-signals`, image `signals-20261017`. This is the operator's selected mode while no trading capital is assigned. It has its own `signals.sqlite` volume, no Binance key/PEM, no accounts/orders/fills, and no invented portfolio. It reuses the frozen MVRV calculation and posts one dated daily Telegram status: BUY_ZONE / SELL_ZONE / WAIT for 0/7 and four-year P5/P95. These zones do not know manual holdings and are NOT executed trades.
+
+Daily refresh starts at/after 08:00 WIB; unpublished/invalid data retries hourly with an error notification, never a fabricated fresh signal. Telegram outbox retries every minute; ambiguous delivery may duplicate a message, not a transaction. Startup fetches complete Coin Metrics history automatically. Source revisions/gaps halt new status acceptance for review. Bootstrap, native Telegram delivery, restart/idempotency and initial online/off-server backup passed; phone receipt still needs the operator's confirmation. All 12 pre-existing container IDs remained unchanged and healthy.
+
+Use `sudo docker exec btc-mvrv-signals-btc-mvrv-signals-1 python -m live_mvrv.signal_monitor report` to inspect this monitor. Compose is `compose.signal-monitor.yaml`; it reads only Telegram values from the root ignored `binance-production.env`. Its CPU/RAM limits are 0.25 / 256 MiB. The production trading worker below is NOT running and its capital placeholder was deliberately not funded. Starting real trading remains a separate explicit decision.
+
 **Production deployment (2026-10-16):** use [PRODUCTION_DEPLOY.md](PRODUCTION_DEPLOY.md) and `bash deploy-production.sh`. The Binance worker has a separate project/env/ledger and defaults to execution **OFF**. The paper/manual-alert commands below are not the production exchange worker.
 
 Active selected runtime: **0/7 + four-year P5/P95**, initial **50:50**, one engine, independent accounts. Read `CONTRACT.md` before starting. Defaults: $1,000 simulated total capital, paper mode, Telegram disabled. No real exchange orders or credentials.
