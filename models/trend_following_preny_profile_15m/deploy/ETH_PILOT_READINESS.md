@@ -11,8 +11,41 @@ Pre-NY Binance/Lighter paper services and MVRV monitor remain unchanged.
   equity (initial price-risk budgets 0.3625 / 0.725 USDC). Not 0.5% position value.
 - Initial POC stop, 10% TP1 at 1R; remainder original stop / next-day 08:59 NY.
 - Notional/equity cap 5, unchanged. No new indicators or entry filters.
-- API key believed Ed25519; verify locally and with authenticated read-only calls.
+- API key confirmed Ed25519 by local key validation and authenticated Futures GETs.
 - Having an execution-enabled API key is not authorization to send an order now.
+
+### Order-style policy approved 2026-10-17
+
+| Function | Approved order style |
+| --- | --- |
+| Entry | MARKET; prioritize participation after the unchanged causal signal |
+| Protective POC stop | STOP_MARKET; do not replace with stop-limit merely to save fees |
+| TP1 | LIMIT reduce-only, 10% at 1R, intended to rest on the book |
+| Next-day 08:59 NY exit | MARKET reduce-only for all remaining attributed quantity |
+
+Maker/taker is determined by each fill, not an account-level switch. A limit
+order that crosses the book can be taker; maker fees/fills are not guaranteed.
+No maker-only GTX requirement or automatic TP-limit-to-market fallback was
+approved here. Record actual fill commissions and maker flags, not a permanent
+zero-fee assumption. Stop trigger-price basis, rounding and reconciliation remain
+implementation/review gates below. This policy approval does not arm execution.
+
+### Read-only account check, 2026-10-17 23:09 WIB
+
+- Production Futures authentication succeeded using existing server-only
+  credentials; original env/PEM permissions/content were not changed.
+- Flat account: zero positions, zero regular orders, zero conditional orders;
+  one-way, single-asset mode. ETHUSDC margin CROSSED, configured leverage 20.
+- Available/wallet USDC = 0. Allocation gate blocked until sufficient USDC is
+  available; no transfer was performed or requested as an immediate prerequisite
+  to completing adapter/recovery work. Exchange leverage was not changed; the
+  model's notional/equity cap remains 5.
+- Account-specific ETHUSDC rates returned maker 0, taker 0.000400 (4 bps), per
+  filled notional. These were rates, not commissions from a real fill, and can
+  change. API TRADE permission has not been proven by an order submission.
+- No order/test order, persistent secret copy, ledger funding, service restart
+  or real-money activation occurred. API-key extraction used an anonymous
+  in-memory file descriptor on the server; no secret was returned to the client.
 
 ## First gate: one-shot read-only preflight
 
@@ -94,8 +127,9 @@ do not repeatedly retry an authentication/rate-limit failure without diagnosis.
 
 ## Fixed remaining gates (not indefinite strategy research)
 
-1. Account/quantity preflight above; explicitly approve the actual execution
-   rounding policy, stop trigger basis and margin/slippage controls.
+1. Account authentication passed; funding still blocked. Confirm actual execution
+   rounding policy, stop trigger basis and margin/slippage controls. Order styles
+   are approved above, but not yet implemented as a real-order lifecycle.
 2. Durable real-order lifecycle: unique IDs, state committed before submission,
    authenticated position/fill reconciliation, confirmed native POC stop,
    partial fills, 10% TP and time exit; funding/fees ledger.
