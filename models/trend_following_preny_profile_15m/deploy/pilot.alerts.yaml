@@ -1,0 +1,48 @@
+# Independent, read-only observer. Never merge this file into executor Compose.
+name: golden-goose-eth-alerts
+services:
+  ops-alerts:
+    build:
+      context: ../../..
+      dockerfile: live_engine/Dockerfile.alerts
+      args: {CODE_VERSION: "${GG_ALERTS_COMMIT:?Set reviewed alert-code commit}"}
+    image: golden-goose/ops-alerts:${GG_ALERTS_COMMIT}
+    command: ["--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite", "--action", "run"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=8m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 96m
+    cpus: 0.1
+    environment:
+      TELEGRAM_ENABLED: "true"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:?Set separate alert bot on server only}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:?Set your verified alert chat on server only}"
+    volumes:
+      - alert_data:/data
+      - observed_executor:/observed/executor:ro
+      - observed_strategy:/observed/strategy:ro
+      - type: bind
+        source: ./pilot.alerts.json
+        target: /app/config/alerts.json
+        read_only: true
+        bind: {create_host_path: false}
+    healthcheck:
+      test: ["CMD", "python", "-m", "live_engine.ops_alerts", "--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite", "--action", "health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 1m
+      retries: 3
+    logging:
+      driver: local
+      options: {max-size: "3m", max-file: "2"}
+volumes:
+  alert_data:
+  observed_executor:
+    external: true
+    name: golden-goose-eth-pilot_executor_data
+  observed_strategy:
+    external: true
+    name: golden-goose-phase2-shadow_binance_strategy_phase4

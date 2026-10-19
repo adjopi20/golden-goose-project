@@ -1,0 +1,12 @@
+FROM python:3.13-slim-bookworm
+ARG CODE_VERSION
+RUN test -n "$CODE_VERSION"
+LABEL org.opencontainers.image.revision=$CODE_VERSION
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+RUN pip install --no-cache-dir requests==2.33.1 \
+    && useradd --system --uid 1000 --create-home watcher \
+    && mkdir /data && chown watcher:watcher /data
+COPY live_engine/__init__.py live_engine/state_store.py live_engine/ops_alerts.py /app/live_engine/
+USER watcher
+ENTRYPOINT ["python", "-m", "live_engine.ops_alerts"]
