@@ -233,7 +233,7 @@ class FuturesExecutor:
                                       ('UNKNOWN' if e.uncertain else 'REJECTED', str(e), cid))
                     self.s.audit('order_submit_error', dict(client_id=cid, role=row['role'],
                                  request_duration_ms=(time.perf_counter_ns()-started)/1000000,
-                                 http_status=e.status, venue_code=e.code, uncertain=e.uncertain,
+                                 http_status=e.status, venue_code=e.code, venue_reason=e.reason, uncertain=e.uncertain,
                                  server_offset_ms=self.v.offset))
             except (ValueError, TypeError, KeyError):
                 with self.s.transaction():

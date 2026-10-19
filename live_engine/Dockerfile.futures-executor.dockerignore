@@ -16,5 +16,8 @@
 !models/
 !models/trend_following_preny_profile_15m/
 !models/trend_following_preny_profile_15m/pilot_worker.py
+!models/trend_following_preny_profile_15m/pilot_order_test.py
+!models/trend_following_preny_profile_15m/pilot_stop_probe.py
+!models/trend_following_preny_profile_15m/pilot_live_smoke.py
 !models/trend_following_preny_profile_15m/deploy/
 !models/trend_following_preny_profile_15m/deploy/pilot.ethusdc.execution.json

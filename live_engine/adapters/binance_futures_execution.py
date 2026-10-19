@@ -14,10 +14,23 @@ ACKNOWLEDGEMENT = 'I_UNDERSTAND_REAL_MONEY'
 PREFIX = 'ggp-'
 
 
+def safe_venue_reason(message, sensitive_values=()):
+    """Keep short venue explanations, never echoed credentials or signed URLs."""
+    if not isinstance(message, str) or not message or len(message) > 1024:
+        return None
+    for value in sensitive_values:
+        if value:
+            message = message.replace(value, '[redacted]')
+    if re.search(r'https?://|www\.|-----BEGIN|api[ _-]?key|secret|signature|authorization|private[ _-]?key|[A-Za-z0-9_+/=-]{48,}', message, re.I):
+        return '[sensitive venue message redacted]'
+    return ' '.join(re.sub(r'[^\x20-\x7e]', ' ', message).split())[:300] or None
+
+
 class VenueError(RuntimeError):
-    def __init__(self, status=None, code=None, *, uncertain=False):
+    def __init__(self, status=None, code=None, *, uncertain=False, reason=None):
         self.status, self.code, self.uncertain = status, code, uncertain
-        super().__init__(f'Binance Futures HTTP {status}, code {code}; sensitive details redacted')
+        self.reason = safe_venue_reason(reason)
+        super().__init__(f'Binance Futures HTTP {status}, code {code}; {self.reason or "no safe venue reason available"}')
 
 
 class FuturesOrders(BinanceFuturesReadOnly):
@@ -60,7 +73,9 @@ class FuturesOrders(BinanceFuturesReadOnly):
         if r.status_code != 200 or (code is not None and code < 0):
             # Only unambiguous venue rejections are safe to classify as not accepted.
             rejected = {-1013, -1100, -1102, -1111, -2019, -2021, -2022, -4003, -4004, -4005}
-            raise VenueError(r.status_code, code, uncertain=method != 'GET' and code not in rejected)
+            reason = safe_venue_reason(payload.get('msg') if isinstance(payload, dict) else None,
+                                       (self._key, fields['signature']))
+            raise VenueError(r.status_code, code, uncertain=method != 'GET' and code not in rejected, reason=reason)
         if not isinstance(payload, (dict, list)):
             raise VenueError(r.status_code, uncertain=method != 'GET')
         return payload

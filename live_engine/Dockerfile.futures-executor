@@ -11,6 +11,9 @@ COPY live_engine/__init__.py live_engine/state_store.py live_engine/futures_pref
 COPY live_engine/adapters/__init__.py live_engine/adapters/binance_futures_readonly.py live_engine/adapters/binance_futures_execution.py /app/live_engine/adapters/
 COPY trading_core/__init__.py trading_core/contracts.py /app/trading_core/
 COPY models/trend_following_preny_profile_15m/pilot_worker.py /app/models/trend_following_preny_profile_15m/
+COPY models/trend_following_preny_profile_15m/pilot_order_test.py /app/models/trend_following_preny_profile_15m/
+COPY models/trend_following_preny_profile_15m/pilot_stop_probe.py /app/models/trend_following_preny_profile_15m/
+COPY models/trend_following_preny_profile_15m/pilot_live_smoke.py /app/models/trend_following_preny_profile_15m/
 COPY models/trend_following_preny_profile_15m/deploy/pilot.ethusdc.execution.json /app/config/pilot.json
 USER pilot
 ENTRYPOINT ["python", "-m", "models.trend_following_preny_profile_15m.pilot_worker"]

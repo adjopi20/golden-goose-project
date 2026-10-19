@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 
 import pytest
 
-from live_engine.adapters.binance_futures_execution import FuturesOrders, VenueError
+from live_engine.adapters.binance_futures_execution import FuturesOrders, VenueError, safe_venue_reason
 from live_engine.futures_execution import FuturesExecutor, millis, order_id, plan_order
 from live_engine.futures_store import FuturesStore
 from models.trend_following_preny_profile_15m.pilot_worker import import_proposals, live_proposal, load_policy
@@ -531,6 +531,52 @@ def test_adapter_signed_post_is_gated_and_never_retried(tmp_path):
         with pytest.raises(ValueError):client.submit('ENTRY',dict(payload,quantity=bad))
     assert len(calls)==2
     with pytest.raises(ValueError):client.cancel('manual-order',symbol='ETHUSDC')
+
+
+@pytest.mark.parametrize('message', [None, {'msg':'bad'}, 'x'*1025,
+    'https://fapi.binance.com/fapi/v1/order?signature=private',
+    'X-MBX-APIKEY: private', '-----BEGIN PRIVATE KEY-----', 'x'*64])
+def test_venue_reason_omits_sensitive_or_malformed_content(message):
+    reason=safe_venue_reason(message)
+    assert reason in (None,'[sensitive venue message redacted]')
+
+
+def test_adapter_keeps_safe_reason_without_changing_uncertainty_or_retry(tmp_path):
+    key,api,pem=credentials(tmp_path)
+    http=FakeHTTP(status=400,payload={'code':-4509,'msg':'GTE can only be used with open positions'})
+    http.request=lambda method,url,**kw:http.get(url,**kw)
+    client=FuturesOrders(api_key_file=api,private_key_file=pem,session=http,
+                        execution_enabled=True,acknowledgement='I_UNDERSTAND_REAL_MONEY')
+    client.offset=0
+    with pytest.raises(VenueError) as exc:client._request('POST','/fapi/v1/algoOrder',{})
+    assert exc.value.reason=='GTE can only be used with open positions'
+    assert exc.value.code==-4509 and exc.value.uncertain and len(http.calls)==1
+    assert exc.value.reason in str(exc.value)
+    http.payload['msg']='Rejected '+client._key
+    with pytest.raises(VenueError) as exc:client.read('/fapi/v1/openOrders')
+    assert exc.value.reason=='Rejected [redacted]' and client._key not in str(exc.value)
+    signature=http.calls[-1][1]['params']['signature']
+    http.payload['msg']='Rejected '+signature
+    with pytest.raises(VenueError) as exc:client.read('/fapi/v1/openOrders')
+    assert signature not in str(exc.value) and 'redacted' in str(exc.value)
+
+
+def test_safe_venue_reason_normalizes_controls_and_limits_length():
+    assert safe_venue_reason('Order\nwould\x1b immediately trigger.')=='Order would immediately trigger.'
+    assert len(safe_venue_reason('word '*100))==300
+    assert safe_venue_reason('Rejected token',('token',))=='Rejected [redacted]'
+
+
+def test_rejection_reason_is_preserved_in_execution_audit(env):
+    s,v,e,clock=env
+    def reject(role,params):
+        raise VenueError(400,-2021,reason='Order would immediately trigger.')
+    v.submit=reject
+    e.offer(intent(),NOW);e.cycle(NOW)
+    event=json.loads(s.db.execute("SELECT payload FROM audit WHERE kind='order_submit_error'").fetchone()[0])
+    assert event['venue_reason']=='Order would immediately trigger.'
+    assert event['uncertain'] is False
+    assert 'immediately trigger' in s.db.execute('SELECT error FROM orders').fetchone()[0]
 
 
 def test_default_release_has_no_credentials_and_two_off_switches():
