@@ -11,8 +11,6 @@ import sqlite3
 import threading
 import time
 
-import requests
-
 from live_engine.state_store import StateStore
 
 
@@ -103,6 +101,7 @@ def credentials(require_chat=True):
 
 
 def telegram_call(http,token,method,parameters):
+    import requests
     if method not in ('sendMessage','getMe','getWebhookInfo','getUpdates'):raise ValueError('Telegram method not allowed')
     try:
         r=http.post('https://api.telegram.org/bot'+token+'/'+method,
@@ -227,6 +226,7 @@ class AlertStore:
 
 
 def health(path,now):
+    if not Path(path).is_file():return False
     with sqlite3.connect(Path(path).resolve().as_uri()+'?mode=ro',uri=True,timeout=2) as db:
         meta=dict(db.execute('SELECT key,value FROM metadata'))
         return meta.get('owner')=='ops_alerts' and 0<=now-int(meta.get('heartbeat_ms',0))<90000 and not meta.get('delivery_error') and not meta.get('watcher_error')
@@ -239,11 +239,15 @@ def main():
     try:
         if a.action=='health':return 0 if health(a.database,int(time.time()*1000)) else 1
         if a.action=='status':
+            if not Path(a.database).is_file():
+                print(json.dumps(dict(status='starting',reason='alert database not created yet; retry shortly')));return 0
             with sqlite3.connect(Path(a.database).resolve().as_uri()+'?mode=ro',uri=True) as db:
                 meta=dict(db.execute('SELECT key,value FROM metadata'))
                 pending=db.execute("SELECT COUNT(*) FROM outbox WHERE status='PENDING'").fetchone()[0]
                 active=db.execute('SELECT target,code FROM conditions WHERE active=1').fetchall()
             print(json.dumps(dict(metadata=meta,pending=pending,active=active)));return 0
+        # Health/status run under the same small CPU quota; never import the HTTP stack there.
+        import requests
         token,chat=credentials(require_chat=a.action!='discover');http=requests.Session();http.trust_env=False
         if a.action=='discover':
             try:print(json.dumps(discover(http,token)));return 0

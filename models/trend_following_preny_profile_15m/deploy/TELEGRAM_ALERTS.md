@@ -135,6 +135,7 @@ Then run ONLY the new watcher:
 
 ```bash
 docker compose --env-file "$tgenv" -f "$alerts" up -d --no-deps --no-build ops-alerts
+sleep 20
 docker compose --env-file "$tgenv" -f "$alerts" ps
 docker compose --env-file "$tgenv" -f "$alerts" logs --tail=30 ops-alerts
 docker compose --env-file "$tgenv" -f "$alerts" exec -T ops-alerts \
@@ -163,3 +164,48 @@ receipt remain operator acceptance steps.
 
 Official transport reference: [Telegram Bot API](https://core.telegram.org/bots/api#sendmessage),
 [rate-limit response parameters](https://core.telegram.org/bots/api#responseparameters).
+
+## 2026-10-19 startup/healthcheck correction
+
+Operator deployed a5a7579 and Telegram accepted TEST message5. Phone receipt still
+requires operator confirmation. Initial status ran before the state DB existed;
+later read-only status showed owner ops_alerts, no internal error, pending0 and
+active[]. Zero restarts and ~30 MiB memory ruled out a crashing/OOM watcher in
+that snapshot. However Docker healthchecks repeatedly exceeded5s under0.1 CPU.
+
+Read-only measurement on that same container found a cold full-module import
+took12.807s while internal health was true. Matched in-memory measurements took
+11.508s before versus2.292s after delaying requests/HTTP imports until actual
+Telegram actions. No running source/container was changed for those measurements.
+Health/status now use only stdlib; regression tests block HTTP imports in fresh
+processes. Status before DB creation explicitly reports starting, not a vague
+OperationalError. Resource quotas, alert thresholds, Telegram transport behavior
+and trading are unchanged. 150 focused tests passed after the correction.
+
+Publish only these three changed files from laptop:
+
+```powershell
+git add -- live_engine/ops_alerts.py tests/test_ops_alerts.py models/trend_following_preny_profile_15m/deploy/TELEGRAM_ALERTS.md
+git diff --cached --stat
+git commit -m "Keep operational healthchecks lightweight under CPU quota"
+git push origin deploy/orb-live-agent
+```
+
+After pull on new VPS, recreate ONLY watcher; do not touch executor/paper services:
+
+```bash
+cd /root/golden-goose-project
+git pull --ff-only origin deploy/orb-live-agent
+export GG_ALERTS_COMMIT=$(git rev-parse HEAD)
+alerts=models/trend_following_preny_profile_15m/deploy/pilot.alerts.yaml
+tgenv=/opt/golden-goose-secrets/telegram-alerts.env
+unset TELEGRAM_ENABLED TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID
+docker compose --env-file "$tgenv" -f "$alerts" build ops-alerts &&
+docker compose --env-file "$tgenv" -f "$alerts" up -d --no-deps --no-build ops-alerts
+```
+
+Wait30–60 seconds, then use the ps/status commands above. Require Docker healthy,
+fresh watcher heartbeat, no watcher_error/delivery_error, and inspect any active
+conditions. Persisted outbox/state remains in the existing alert volume. The
+corrected image has not been deployed by the assistant; post-rebuild Docker health
+is an operator acceptance check, not inferred from the in-memory benchmark.

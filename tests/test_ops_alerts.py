@@ -188,7 +188,7 @@ def test_telegram_request_is_plain_and_disallows_redirects():
 def test_test_action_sends_only_test_without_ledger_access(monkeypatch,capsys):
     monkeypatch.setenv('TELEGRAM_ENABLED','true');monkeypatch.setenv('TELEGRAM_BOT_TOKEN',TOKEN);monkeypatch.setenv('TELEGRAM_CHAT_ID',str(CHAT))
     http=HTTP();http.close=lambda:None
-    monkeypatch.setattr(a.requests,'Session',lambda:http)
+    monkeypatch.setattr(requests,'Session',lambda:http)
     monkeypatch.setattr(a,'AlertStore',lambda *args:pytest.fail('No state DB for TEST'))
     monkeypatch.setattr(a,'load_config',lambda *args:pytest.fail('No target config read for TEST'))
     monkeypatch.setattr('sys.argv',['alerts','--config','unused','--action','test'])
@@ -253,3 +253,34 @@ def test_recurrence_does_not_deliver_old_recovery_or_old_alarm(alerts,ledger):
     assert 'CRITICAL' in text and a.stamp(NOW+2000) in text
     assert alerts.db.execute("SELECT COUNT(*) FROM outbox WHERE status='SUPERSEDED'").fetchone()[0]==2
     assert not alerts.deliver_one(http,TOKEN,CHAT,NOW+4000)
+
+
+@pytest.mark.parametrize('action',['health','status'])
+def test_health_status_do_not_import_http_stack(alerts,action):
+    import subprocess
+    import sys
+    import time
+    alerts.set_meta('heartbeat_ms',int(time.time()*1000))
+    script='''
+import importlib.abc,runpy,sys
+class NoHTTP(importlib.abc.MetaPathFinder):
+    def find_spec(self,fullname,path=None,target=None):
+        if fullname.split('.')[0] in ('requests','urllib3'):
+            raise AssertionError('Health/status must not import HTTP stack')
+sys.meta_path.insert(0,NoHTTP())
+database,action=sys.argv[1:]
+sys.argv=['ops_alerts','--config','unused','--database',database,'--action',action]
+runpy.run_module('live_engine.ops_alerts',run_name='__main__')
+'''
+    root=Path(__file__).resolve().parents[1]
+    result=subprocess.run([sys.executable,'-B','-c',script,str(alerts.path),action],cwd=root,
+                          capture_output=True,text=True,timeout=10)
+    assert result.returncode==0,result.stderr
+
+
+def test_status_before_first_start_is_explicit_and_does_not_create_db(tmp_path,monkeypatch,capsys):
+    path=tmp_path/'not-created-yet.sqlite'
+    monkeypatch.setattr('sys.argv',['alerts','--config','unused','--database',str(path),'--action','status'])
+    assert a.main()==0
+    assert json.loads(capsys.readouterr().out)['status']=='starting'
+    assert not path.exists() and not a.health(path,NOW)
