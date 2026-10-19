@@ -1,0 +1,11 @@
+# Explicit operator activation overlay. Base deployment remains disarmed.
+# Use only on the new VPS, alongside the credential overlay. No keys here.
+services:
+  eth-executor:
+    command: ["--config", "/app/config/pilot.json", "--database", "/data/execution-200.sqlite", "--source-strategy-db", "/strategy/strategy.sqlite", "--private-key-file", "/run/secrets/key.pem", "--action", "run", "--acknowledge-real-money", "${GG_ETH_PILOT_ACTIVATION:?Set explicit real-money acknowledgement}"]
+    volumes:
+      - type: bind
+        source: "${GG_ETH_PILOT_POLICY:-./pilot.ethusdc.execution.live.json}"
+        target: /app/config/pilot.json
+        read_only: true
+        bind: {create_host_path: false}
