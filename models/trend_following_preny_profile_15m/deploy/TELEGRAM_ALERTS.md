@@ -209,3 +209,34 @@ fresh watcher heartbeat, no watcher_error/delivery_error, and inspect any active
 conditions. Persisted outbox/state remains in the existing alert volume. The
 corrected image has not been deployed by the assistant; post-rebuild Docker health
 is an operator acceptance check, not inferred from the in-memory benchmark.
+
+## 2026-10-19 follow-up: complete cold CLI budget
+
+After deploying 4f35300, internal status remained healthy with no pending or active
+alerts and zero restarts, but Docker healthchecks still intermittently timed out.
+Three complete cold CLI checks on the running 0.1-CPU container succeeded in
+5.786s, 5.998s and 9.697s (including docker exec overhead). The earlier in-memory
+module benchmark did not include the whole Python startup and CLI path.
+
+Allow 15s for the checker to finish instead of 5s. CPU remains 0.1, and internal
+health still requires a heartbeat less than 90s old with no watcher/delivery error.
+This is a Compose-only runtime adjustment, not a trading or Telegram logic change.
+The deployment regression test locks both timeout and CPU quota.
+
+Publish only pilot.alerts.yaml, tests/test_ops_alerts.py and this document. After
+pulling the change, reuse the already-built 4f35300 image; no rebuild is needed:
+
+```bash
+cd /root/golden-goose-project
+git pull --ff-only origin deploy/orb-live-agent
+export GG_ALERTS_COMMIT=4f35300e6fcfb8d7b1a9f5f3c5129122600bcff8
+alerts=models/trend_following_preny_profile_15m/deploy/pilot.alerts.yaml
+tgenv=/opt/golden-goose-secrets/telegram-alerts.env
+unset TELEGRAM_ENABLED TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID
+docker compose --env-file "$tgenv" -f "$alerts" config --quiet &&
+docker compose --env-file "$tgenv" -f "$alerts" up -d --no-deps --no-build ops-alerts
+```
+
+Check ps/status after 60-90 seconds. Only the watcher is recreated; its persisted
+outbox and all trading services remain unchanged. Do not call the healthcheck
+stable until post-change checks succeed. Confirm the TEST on your phone separately.

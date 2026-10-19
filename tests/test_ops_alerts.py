@@ -211,6 +211,7 @@ def test_deploy_is_readonly_observer_no_order_keys_or_socket():
     compose=(root/'models/trend_following_preny_profile_15m/deploy/pilot.alerts.yaml').read_text()
     assert '/observed/executor:ro' in compose and '/observed/strategy:ro' in compose
     assert 'BINANCE_API_KEY' not in compose and 'docker.sock' not in compose and 'key.pem' not in compose
+    assert 'timeout: 15s' in compose and 'cpus: 0.1' in compose
     context=(root/'live_engine/Dockerfile.alerts.dockerignore').read_text()
     assert 'adapters' not in context and 'bitcoin_onchain' not in context
 

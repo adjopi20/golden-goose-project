@@ -32,7 +32,8 @@ services:
     healthcheck:
       test: ["CMD", "python", "-m", "live_engine.ops_alerts", "--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite", "--action", "health"]
       interval: 30s
-      timeout: 5s
+      # Cold Python CLI measured ~6-10s at 0.1 CPU; heartbeat freshness remains 90s.
+      timeout: 15s
       start_period: 1m
       retries: 3
     logging:
