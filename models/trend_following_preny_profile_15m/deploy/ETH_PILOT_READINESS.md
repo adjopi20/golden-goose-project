@@ -3,6 +3,12 @@
 Checkpoint 2026-10-17. **Preparation only, NOT live activation.** The existing
 Pre-NY Binance/Lighter paper services and MVRV monitor remain unchanged.
 
+**Implementation update, 2026-10-19:** The separate real-capable executor and
+causal proposal bridge now exist, default DISARMED, with offline lifecycle tests.
+The historical "not implemented" statements below describe the October 17
+preflight checkpoint. Current scope, operational defaults and remaining native
+validation gates are recorded in [ETH_PILOT_EXECUTOR.md](ETH_PILOT_EXECUTOR.md).
+
 ## Decisions approved
 
 - Pilot: one ETHUSDC model on 139.190.102.183. Other server stays paper.

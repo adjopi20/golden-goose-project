@@ -30,8 +30,9 @@ class BinanceFuturesReadOnly:
                '/fapi/v1/openOrders', '/fapi/v1/openAlgoOrders',
                '/fapi/v1/symbolConfig', '/fapi/v1/commissionRate'}
 
-    def __init__(self, *, api_key_file=None, private_key_file=None, passphrase_file=None, session=None):
+    def __init__(self, *, api_key_file=None, private_key_file=None, passphrase_file=None, session=None, api_key=None):
         self.api_key_file = api_key_file
+        self._provided_key = api_key
         self.private_key_file = private_key_file
         self.passphrase_file = passphrase_file
         self.http = session if session is not None else requests.Session()
@@ -46,7 +47,8 @@ class BinanceFuturesReadOnly:
         if self._signer is not None:
             return
         try:
-            key = secret_bytes(self.api_key_file, 1024).decode('utf-8-sig').strip()
+            key = (self._provided_key.strip() if self._provided_key is not None else
+                   secret_bytes(self.api_key_file, 1024).decode('utf-8-sig').strip())
         except UnicodeError:
             raise PreflightError('API key file must contain the API key as plain text') from None
         if not re.fullmatch(r'[A-Za-z0-9]{16,512}', key):

@@ -1,0 +1,35 @@
+# Standalone project on NEW server only. The shipped config is DISARMED.
+name: golden-goose-eth-pilot
+services:
+  eth-executor:
+    build:
+      context: ../../..
+      dockerfile: live_engine/Dockerfile.futures-executor
+      args: {CODE_VERSION: "${GG_PILOT_COMMIT:?Set the reviewed commit}"}
+    image: golden-goose/futures-executor:${GG_PILOT_COMMIT}
+    command: ["--config", "/app/config/pilot.json", "--database", "/data/execution.sqlite", "--source-strategy-db", "/strategy/strategy.sqlite", "--private-key-file", "/run/secrets/key.pem", "--action", "run"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    cpus: 0.25
+    volumes:
+      - executor_data:/data
+      - strategy_source:/strategy:ro
+    healthcheck:
+      test: ["CMD", "python", "-m", "models.trend_following_preny_profile_15m.pilot_worker", "--config", "/app/config/pilot.json", "--database", "/data/execution.sqlite", "--action", "health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 1m
+      retries: 3
+    logging:
+      driver: local
+      options: {max-size: "5m", max-file: "2"}
+volumes:
+  executor_data:
+  strategy_source:
+    external: true
+    name: golden-goose-phase2-shadow_binance_strategy_phase4

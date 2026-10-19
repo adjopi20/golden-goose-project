@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "symbol": "ETHUSDC",
+  "allocation_id": "tf-preny-eth-pilot-v1",
+  "initial_equity": "145",
+  "contract": "TF-PRENY-ETH-001",
+  "source_config_hash": "80eddfd8c661c80eb3d03a81532ec70abf20e3637b9116c043b054fb78c047ee",
+  "source_code_version": "e2917f054494682b4e5ba703631089263d03156e",
+  "stop_trigger": "CONTRACT_PRICE",
+  "tp1_r": "1",
+  "tp1_fraction": "0.1",
+  "max_notional_multiple": "5",
+  "poll_seconds": 2,
+  "execution_enabled": false,
+  "accept_new_entries": false
+}

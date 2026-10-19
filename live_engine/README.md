@@ -1,6 +1,21 @@
-# Paper-runtime foundation v0.1
+# Reusable runtime: separate paper and real-execution paths
 
-This is reusable **paper-only** infrastructure. It cannot send exchange orders
+## Default-disarmed Futures pilot, 2026-10-19
+
+`futures_execution.py`, `futures_store.py`, and
+`adapters/binance_futures_execution.py` implement a separate durable USD-M order
+lifecycle. They do not convert paper balances/fills into real ones. The existing
+paper manager/runtime below remain paper-only. `futures_preflight.py` and its
+read-only adapter remain incapable of submitting orders.
+
+The model-specific causal signal bridge, OFF-by-default policy, deployment and
+remaining native-validation gates are in
+`models/trend_following_preny_profile_15m/deploy/ETH_PILOT_EXECUTOR.md`.
+Offline tests are not proof of exchange acceptance or authorization to activate.
+
+## Paper-runtime foundation v0.1 (original scope)
+
+This path is reusable **paper-only** infrastructure. It cannot send exchange orders
 or reconcile real positions. `adapters/binance.py` now collects public data;
 `market_data.py` prepares compact candles and profile buckets. The model-specific
 worker and operating instructions live under

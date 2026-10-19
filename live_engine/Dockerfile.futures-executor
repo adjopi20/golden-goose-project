@@ -1,0 +1,16 @@
+FROM python:3.13-slim-bookworm
+ARG CODE_VERSION
+RUN test -n "$CODE_VERSION"
+LABEL org.opencontainers.image.revision=$CODE_VERSION
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+RUN pip install --no-cache-dir requests==2.33.1 cryptography==50.0.2 tzdata==2026.1 \
+    && useradd --system --uid 1000 --create-home pilot \
+    && mkdir /data && chown pilot:pilot /data
+COPY live_engine/__init__.py live_engine/state_store.py live_engine/futures_preflight.py live_engine/futures_store.py live_engine/futures_execution.py /app/live_engine/
+COPY live_engine/adapters/__init__.py live_engine/adapters/binance_futures_readonly.py live_engine/adapters/binance_futures_execution.py /app/live_engine/adapters/
+COPY trading_core/__init__.py trading_core/contracts.py /app/trading_core/
+COPY models/trend_following_preny_profile_15m/pilot_worker.py /app/models/trend_following_preny_profile_15m/
+COPY models/trend_following_preny_profile_15m/deploy/pilot.ethusdc.execution.json /app/config/pilot.json
+USER pilot
+ENTRYPOINT ["python", "-m", "models.trend_following_preny_profile_15m.pilot_worker"]

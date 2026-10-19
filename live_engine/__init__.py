@@ -1,1 +1,1 @@
-"""Reusable paper-runtime foundation. No exchange order submission."""
+"""Reusable trading infrastructure. Paper and explicitly gated real execution are separate."""

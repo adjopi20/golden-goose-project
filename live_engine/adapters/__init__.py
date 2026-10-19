@@ -1,1 +1,1 @@
-"""Public feeds and an isolated read-only Futures preflight; no order submission."""
+"""Public feeds, read-only preflight, and a separate default-disarmed Futures order adapter."""

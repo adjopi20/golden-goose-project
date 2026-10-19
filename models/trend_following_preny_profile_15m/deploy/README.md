@@ -1,5 +1,10 @@
 # Paper deployment preparation — foundation only
 
+**2026-10-19:** A separate, default-DISARMED ETHUSDC native-order executor is now
+implemented. See [ETH_PILOT_EXECUTOR.md](ETH_PILOT_EXECUTOR.md). This does not arm
+or replace any existing paper service; the historical foundation notes below
+describe the paper path, not the new executor's capabilities.
+
 **2026-10-02 update:** Binance collector/evaluator is running on the VPS. A
 separate Lighter public trade collector/evaluator is available for deployment;
 its historical delta references and paper fill parity have not yet been
