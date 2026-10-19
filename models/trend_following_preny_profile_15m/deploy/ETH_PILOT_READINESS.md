@@ -1,4 +1,11 @@
-# ETHUSDC pilot — $145, Binance USD-M, server baru
+# ETHUSDC pilot — $200, Binance USD-M, server baru
+
+**Allocation update, 2026-10-19:** Operator raised the pilot allocation to
+**200 USDC**, not the entire reported wallet of about 202 USDC. Current preflight
+and execution configs enforce 200; price-risk tiers remain 0.25%/0.5%, initially
+0.50/1.00 USDC before costs. The $145 numbers below are historical October 17
+evidence, not the current allocation. Never silently reallocate an existing
+funded execution journal. See [ETH_PILOT_EXECUTOR.md](ETH_PILOT_EXECUTOR.md).
 
 Checkpoint 2026-10-17. **Preparation only, NOT live activation.** The existing
 Pre-NY Binance/Lighter paper services and MVRV monitor remain unchanged.

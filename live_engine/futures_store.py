@@ -3,6 +3,7 @@ from decimal import Decimal
 import json
 from pathlib import Path
 import sqlite3
+import time
 
 from live_engine.state_store import StateStore
 from trading_core.contracts import canonical_json, content_hash
@@ -52,7 +53,8 @@ class FuturesStore(StateStore):
         self.db.execute('INSERT INTO metadata VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', (key, str(value)))
 
     def audit(self, kind, payload):
-        self.db.execute('INSERT INTO audit(kind,payload) VALUES (?,?)', (kind, canonical_json(payload)))
+        stamped = dict(payload, local_recorded_at_ms=int(time.time() * 1000))
+        self.db.execute('INSERT INTO audit(kind,payload) VALUES (?,?)', (kind, canonical_json(stamped)))
 
     def equity(self, initial):
         result = Decimal(str(initial))

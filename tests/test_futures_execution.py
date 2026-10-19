@@ -50,7 +50,7 @@ class Crash(BaseException):
 class FakeVenue:
     def __init__(self, armed=True):
         self.armed, self._key, self.offset = armed, 'test-api-key', 0
-        self.wallet = D('145')
+        self.wallet = D('200')
         self.position = D(0)
         self.entry_price = D(0)
         self.orders, self.fills, self.funding = {}, [], []
@@ -112,7 +112,7 @@ class FakeVenue:
         self.wallet += pnl-fee
         self.fills.append(dict(symbol='ETHUSDC', id=len(self.fills)+1, orderId=r['orderId'], side=r['side'],
                                qty=str(qty), price=str(price), realizedPnl=str(pnl), commission=str(fee),
-                               commissionAsset='USDC', maker=maker))
+                               commissionAsset='USDC', maker=maker, time=self.clock))
 
     def submit(self, role, p):
         assert self.armed
@@ -188,16 +188,16 @@ def enter(env):
 def test_real_lifecycle_partial_tp_stop_and_equity(env):
     s,v,e,clock = enter(env)
     assert [r for r,_ in v.posts] == ['ENTRY', 'STOP', 'TP1']
-    assert v.position == D('.07')
+    assert v.position == D('.10')
     assert [x['state'] for x in s.db.execute('SELECT state FROM sessions')] == ['OPEN']
     tp = next(cid for cid,r in v.orders.items() if r.get('type') == 'LIMIT')
     v.fill(tp, maker=True)
     e.cycle(NOW+1000)
-    assert v.position == D('.063')
+    assert v.position == D('.09')
     v.stop_out()
     e.cycle(NOW+2000)
     assert s.active() is None and v.position == 0
-    assert s.equity('145') == v.wallet
+    assert s.equity('200') == v.wallet
     assert s.db.execute('SELECT COUNT(*) FROM fills').fetchone()[0] == 3
     e.cycle(NOW+3000)
     assert len(v.posts) == 3 and e.offer(intent(), NOW+4000) == 'duplicate'
@@ -256,7 +256,7 @@ def test_tp_cancel_race_uses_remaining_venue_quantity(env):
     v.on_cancel = lambda cid: v.fill(tp, maker=True)
     clock[0] = intent()['force_exit_timestamp_ms']
     e.cycle(clock[0]); e.cycle(clock[0]+1)
-    assert D(v.posts[-1][1]['quantity']) == D('.063')
+    assert D(v.posts[-1][1]['quantity']) == D('.09')
     assert v.position == 0 and s.active() is None
 
 
@@ -277,15 +277,15 @@ def test_funding_and_duplicate_records_not_double_counted(env):
     v.wallet -= D('.01')
     e.accounting(NOW+1000); e.accounting(NOW+2000)
     assert s.db.execute('SELECT COUNT(*) FROM funding').fetchone()[0] == 1
-    assert s.equity('145') == v.wallet
+    assert s.equity('200') == v.wallet
 
 
 def test_wallet_deposit_does_not_change_allocated_equity(env):
     s,v,e,clock = enter(env)
-    old = s.equity('145'); v.wallet += 10
+    old = s.equity('200'); v.wallet += 10
     with pytest.raises(ValueError,match='Wallet'):
         e.accounting(NOW+1000)
-    assert s.equity('145') == old
+    assert s.equity('200') == old
 
 
 def test_missing_fill_history_does_not_delay_stop_and_prevents_false_close(env):
@@ -325,7 +325,7 @@ def test_expiry_before_network_send_and_small_geometry(env):
     e.cycle(clock[0])
     assert not v.posts
     with pytest.raises(ValueError,match='budget'):
-        plan_order(intent(initial_stop=100.),v.spec,v.get('/fapi/v1/ticker/bookTicker'),equity='145',available='145',leverage=5,max_notional='100000')
+        plan_order(intent(initial_stop=100.),v.spec,v.get('/fapi/v1/ticker/bookTicker'),equity='200',available='200',leverage=5,max_notional='100000')
 
 
 def test_source_health_loss_skips_pending_not_open_exit(env):
@@ -482,7 +482,7 @@ def test_tp_status_endpoint_failure_does_not_block_time_exit(env):
 def test_partial_close_reconciles_residual_without_reentry(env):
     s,v,e,clock=enter(env)
     v.close_fraction=D('.5');clock[0]=intent()['force_exit_timestamp_ms']
-    e.cycle(clock[0]);assert v.position==D('.035')
+    e.cycle(clock[0]);assert v.position==D('.05')
     v.close_fraction=D(1)
     e.cycle(clock[0]+1);e.cycle(clock[0]+2)
     assert v.position==0 and s.active() is None
@@ -539,6 +539,7 @@ def test_default_release_has_no_credentials_and_two_off_switches():
     compose=(ROOT/'models/trend_following_preny_profile_15m/deploy/pilot.executor.yaml').read_text()
     assert 'BINANCE_API_KEY' not in compose and 'BINANCE_PRIVATE_KEY_HOST_PATH' not in compose
     assert '--acknowledge-real-money' not in compose
+    assert compose.count('/data/execution-200.sqlite')==2  # Worker and healthcheck must inspect the same new journal.
 
 
 def test_cli_validate_and_online_backup_do_not_create_orders(env,tmp_path):
@@ -560,7 +561,7 @@ def test_short_lifecycle_uses_buy_exits_and_lower_tp(env):
     tp=next(cid for cid,r in v.orders.items() if r.get('type')=='LIMIT')
     v.fill(tp,maker=True);v.stop_out('1010');e.cycle(NOW+1000)
     assert v.position==0 and s.active() is None
-    assert s.equity('145')==v.wallet
+    assert s.equity('200')==v.wallet
 
 
 def test_dynamic_half_risk_and_rounding_never_exceed_budget(env):
@@ -568,7 +569,7 @@ def test_dynamic_half_risk_and_rounding_never_exceed_budget(env):
     e.offer(intent(risk_fraction=.0025,initial_stop=989.995),NOW);e.cycle(NOW)
     plan=json.loads(s.active()['plan'])
     assert D(plan['stop'])==D('989.99')
-    assert D(plan['actual_initial_price_risk'])<=D('.3625')
+    assert D(plan['actual_initial_price_risk'])<=D('.5')
     assert D(plan['tp1_quantity'])==D(plan['quantity'])/10
 
 
@@ -576,7 +577,7 @@ def test_taker_tp_commission_uses_fill_not_zero_maker_assumption(env):
     s,v,e,clock=enter(env)
     tp=next(cid for cid,r in v.orders.items() if r.get('type')=='LIMIT')
     v.fill(tp,maker=False);v.stop_out();e.cycle(NOW+1000)
-    assert s.equity('145')==v.wallet
+    assert s.equity('200')==v.wallet
     assert all(D(r[0])>0 for r in s.db.execute('SELECT commission FROM fills'))
 
 
@@ -616,3 +617,54 @@ def test_unknown_unfilled_entry_is_cancelled_after_deadline_not_reposted(env):
     with pytest.raises(Crash):e.cycle(NOW)
     e.cycle(NOW+300001)
     assert v.cancels and len(v.posts)==1 and v.position==0
+
+
+def test_200_allocation_budget_is_one_or_half_usdc_and_never_forces_minimum(env):
+    s,v,e,clock=env
+    assert e.c['initial_equity']=='200'
+    for tier,budget in ((.005,'1'),(.0025,'.5')):
+        p=plan_order(intent(risk_fraction=tier),v.spec,v.get('/fapi/v1/ticker/bookTicker'),
+                     equity='200',available='202',leverage=5,max_notional='100000')
+        assert D(p['risk_budget'])==D(budget)
+        assert D(p['planned_price_risk'])<=D(budget)
+    v.available=D('199.99')
+    e.offer(intent(),NOW)
+    with pytest.raises(ValueError,match='Insufficient USDC'):e.cycle(NOW)
+    assert not v.posts
+
+
+def test_existing_145_journal_cannot_be_silently_reallocated(tmp_path):
+    old=FuturesStore(tmp_path/'previous.sqlite',dict(policy(),initial_equity='145'))
+    old.close()
+    with pytest.raises(ValueError,match='identity'):
+        FuturesStore(tmp_path/'previous.sqlite',policy())
+
+
+def test_diagnostics_capture_timing_quote_and_fills_without_poll_duplication(env,monkeypatch):
+    ticks=iter(range(0,1000000000,1000000))
+    monkeypatch.setattr('live_engine.futures_execution.time.perf_counter_ns',lambda:next(ticks))
+    s,v,e,clock=enter(env)
+    events=[(r['kind'],json.loads(r['payload'])) for r in s.db.execute('SELECT * FROM audit ORDER BY id')]
+    received=next(p for k,p in events if k=='intention_received')
+    assert received['signal_timestamp_ms']==NOW and received['local_recorded_at_ms']==NOW
+    entry=next(p for k,p in events if k=='order_observed' and p['role']=='ENTRY')
+    assert entry['observation_source']=='submit' and entry['request_duration_ms']==1.0
+    assert entry['server_offset_ms']==0
+    assert any(k=='order_send_started' and p['role']=='STOP' for k,p in events)
+    fill=next(p for k,p in events if k=='fill_first_observed')
+    assert fill['native_fill_time_ms']==NOW
+    plan=json.loads(s.active()['plan'])
+    assert plan['entry_quote']['ask']=='1000' and plan['entry_quote']['native_time_ms']==NOW
+    before=len(events)
+    e.cycle(NOW+1000)
+    assert s.db.execute('SELECT COUNT(*) FROM audit').fetchone()[0]==before
+    assert v._key not in ''.join(r[0] for r in s.db.execute('SELECT payload FROM audit'))
+
+
+def test_submit_error_has_duration_not_raw_request_or_credentials(env):
+    s,v,e,clock=env;v.fail['ENTRY']='rejected'
+    e.offer(intent(),NOW);e.cycle(NOW)
+    event=json.loads(s.db.execute("SELECT payload FROM audit WHERE kind='order_submit_error'").fetchone()[0])
+    assert event['http_status']==400 and event['venue_code']==-2021
+    assert event['request_duration_ms']>=0 and event['uncertain'] is False
+    assert v._key not in canonical_json(event)

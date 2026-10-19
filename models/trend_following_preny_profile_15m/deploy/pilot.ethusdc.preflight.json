@@ -4,7 +4,7 @@
   "symbol": "ETHUSDC",
   "margin_asset": "USDC",
   "contract": "TF-PRENY-ETH-001",
-  "allocated_equity": "145",
+  "allocated_equity": "200",
   "allowed_risk_fractions": ["0.0025", "0.005"],
   "tp1_r": "1",
   "tp1_fraction": "0.1",

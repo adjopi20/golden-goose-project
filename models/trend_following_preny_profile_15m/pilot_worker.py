@@ -24,7 +24,7 @@ from trading_core.contracts import canonical_json, content_hash, make_intention,
 def load_policy(path):
     c = json.loads(Path(path).read_text(encoding='utf-8-sig'))
     fixed = dict(schema_version=1, symbol='ETHUSDC', allocation_id='tf-preny-eth-pilot-v1',
-                 initial_equity='145', contract='TF-PRENY-ETH-001', source_config_hash='80eddfd8c661c80eb3d03a81532ec70abf20e3637b9116c043b054fb78c047ee',
+                 initial_equity='200', contract='TF-PRENY-ETH-001', source_config_hash='80eddfd8c661c80eb3d03a81532ec70abf20e3637b9116c043b054fb78c047ee',
                  source_code_version='e2917f054494682b4e5ba703631089263d03156e',
                  stop_trigger='CONTRACT_PRICE', tp1_r='1', tp1_fraction='0.1',
                  max_notional_multiple='5', poll_seconds=2)
@@ -131,7 +131,8 @@ def main():
             print(canonical_json(dict(metadata=meta,
                                       order_intention_count=db.execute('SELECT COUNT(*) FROM orders').fetchone()[0],
                                       native_acknowledged_orders=db.execute('SELECT COUNT(*) FROM orders WHERE response IS NOT NULL').fetchone()[0],
-                                      actual_fill_count=db.execute('SELECT COUNT(*) FROM fills').fetchone()[0])))
+                                      actual_fill_count=db.execute('SELECT COUNT(*) FROM fills').fetchone()[0],
+                                      diagnostic_event_count=db.execute('SELECT COUNT(*) FROM audit').fetchone()[0])))
         return
     if args.action == 'backup':
         if not args.backup_to or args.backup_to.resolve() == args.database.resolve():

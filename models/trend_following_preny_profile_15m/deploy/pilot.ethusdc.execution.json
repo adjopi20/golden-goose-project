@@ -2,7 +2,7 @@
   "schema_version": 1,
   "symbol": "ETHUSDC",
   "allocation_id": "tf-preny-eth-pilot-v1",
-  "initial_equity": "145",
+  "initial_equity": "200",
   "contract": "TF-PRENY-ETH-001",
   "source_config_hash": "80eddfd8c661c80eb3d03a81532ec70abf20e3637b9116c043b054fb78c047ee",
   "source_code_version": "e2917f054494682b4e5ba703631089263d03156e",

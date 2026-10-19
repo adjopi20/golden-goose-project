@@ -35,7 +35,7 @@ class FakeClient:
         self.data = {
             '/fapi/v1/exchangeInfo': {'symbols': [specification()]},
             '/fapi/v1/accountConfig': {'canTrade': True, 'dualSidePosition': False, 'multiAssetsMargin': False},
-            '/fapi/v3/account': {'assets': [dict(asset='USDC', availableBalance='145', walletBalance='145')]},
+            '/fapi/v3/account': {'assets': [dict(asset='USDC', availableBalance='200', walletBalance='200')]},
             '/fapi/v3/positionRisk': [], '/fapi/v1/openOrders': [], '/fapi/v1/openAlgoOrders': [],
             '/fapi/v1/symbolConfig': [dict(symbol='ETHUSDC', leverage=3, marginType='CROSSED')],
             '/fapi/v1/commissionRate': dict(symbol='ETHUSDC', makerCommissionRate='0.0002', takerCommissionRate='0.0004'),
@@ -96,11 +96,22 @@ def test_readonly_pass_is_never_live_ready(monkeypatch):
     assert client.calls[-1][0] == '/fapi/v1/ticker/bookTicker'
 
 
+def test_pilot_allocation_is_200_not_wallet_size(monkeypatch):
+    monkeypatch.setattr('live_engine.futures_preflight.time.time', lambda: NOW)
+    client = FakeClient()
+    client.data['/fapi/v3/account']['assets'][0].update(availableBalance='202', walletBalance='202')
+    r = preflight(client, load_config(CONFIG))
+    assert r['allocated_equity']=='200'
+    assert [Decimal(x['price_risk_budget']) for x in r['minimum_geometry']['risk_bounds']]==[Decimal('.5'),Decimal('1')]
+    client.data['/fapi/v3/account']['assets'][0]['availableBalance']='145'
+    assert 'insufficient_available_USDC_for_200_allocation' in preflight(client,load_config(CONFIG))['blockers']
+
+
 @pytest.mark.parametrize('endpoint,change,reason', [
     ('/fapi/v1/accountConfig', lambda r: r.update(canTrade=False), 'account_canTrade_not_true'),
     ('/fapi/v1/accountConfig', lambda r: r.update(dualSidePosition=True), 'hedge_mode_or_unknown_requires_review'),
     ('/fapi/v1/accountConfig', lambda r: r.pop('multiAssetsMargin'), 'multi_asset_margin_or_unknown_requires_review'),
-    ('/fapi/v3/account', lambda r: r['assets'][0].update(availableBalance='0'), 'insufficient_available_USDC_for_145_allocation'),
+    ('/fapi/v3/account', lambda r: r['assets'][0].update(availableBalance='0'), 'insufficient_available_USDC_for_200_allocation'),
     ('/fapi/v3/positionRisk', lambda r: r.append(dict(symbol='BTCUSDT', positionAmt='-.01')), 'account_not_flat_or_has_open_orders'),
     ('/fapi/v1/openOrders', lambda r: r.append(dict(symbol='ETHUSDC')), 'account_not_flat_or_has_open_orders'),
     ('/fapi/v1/openAlgoOrders', lambda r: r.append(dict(symbol='ETHUSDC')), 'account_not_flat_or_has_open_orders'),

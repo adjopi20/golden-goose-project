@@ -105,9 +105,9 @@ def load_config(path):
     expected = dict(schema_version=1, symbol='ETHUSDC', margin_asset='USDC',
                     contract='TF-PRENY-ETH-001', tp1_r='1', tp1_fraction='0.1',
                     allowed_risk_fractions=['0.0025', '0.005'], max_notional_multiple='5',
-                    allocated_equity='145', mode='read-only-preflight')
+                    allocated_equity='200', mode='read-only-preflight')
     if c != expected:
-        raise PreflightError('Pilot configuration differs from the approved ETHUSDC/145 contract; review first')
+        raise PreflightError('Pilot configuration differs from the approved ETHUSDC/200 contract; review first')
     return c
 
 
@@ -148,7 +148,7 @@ def preflight(client, config, *, public_only=False):
         if active or orders or algos:
             blockers.append('account_not_flat_or_has_open_orders')
         if available < positive(c['allocated_equity']):
-            blockers.append('insufficient_available_USDC_for_145_allocation')
+            blockers.append('insufficient_available_USDC_for_200_allocation')
         leverage = settings.get('leverage')
         if type(leverage) is not int or leverage <= 0 or settings.get('marginType') not in ('CROSSED', 'ISOLATED'):
             raise PreflightError('Unknown leverage or margin mode')

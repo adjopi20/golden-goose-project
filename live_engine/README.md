@@ -45,7 +45,7 @@ This is local simulated execution recovery, **not exchange reconciliation**.
 allowlisted production GETs only, using file-mounted Ed25519 credentials. It
 checks Futures account/symbol state and small-capital TP feasibility; it cannot
 submit/cancel orders or convert a paper ledger into live execution. A successful
-preflight still returns `live_ready=false`. The model-specific $145 ETHUSDC
+preflight still returns `live_ready=false`. The model-specific $200 ETHUSDC
 checkpoint and instructions are in
 `models/trend_following_preny_profile_15m/deploy/ETH_PILOT_READINESS.md`.
 

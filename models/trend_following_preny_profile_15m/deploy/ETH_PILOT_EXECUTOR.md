@@ -5,6 +5,18 @@ DISARMED. No real/test order, account-setting change, transfer, server deploymen
 or service restart was performed for this change.** This checkpoint does not
 declare the system production-ready or authorize the first live transaction.
 
+Allocation was increased by the operator from 145 to **200 USDC** on October 19.
+The reported wallet is about 202 USDC; that does not change the model allocation
+to 202. Native account balance is not assumed verified from that report.
+Changing allocation changes the journal's frozen identity. If a 145-USDC journal
+was already initialized, the 200 config must refuse it; do not delete/rewrite the
+DB or silently migrate a funded ledger. Inspect its orders/fills/initialization
+state first, and preserve the old artifact. No automatic migration is supplied.
+After confirming the original journal is DISARMED with no orders/fills and no
+initial wallet, this allocation uses `/data/execution-200.sqlite` in the same
+persistent volume. The original `/data/execution.sqlite` and its backups remain
+untouched. Worker, healthcheck, status and backup must all use the 200 filename.
+
 ## Unchanged model and independent execution owner
 
 Existing frozen Binance strategy DB (read-only)
@@ -29,8 +41,8 @@ reconciliation and time exit do not depend on the evaluator remaining healthy.
 
 | Component | Behavior |
 | --- | --- |
-| Allocation | 145 USDC, independent execution DB; only ETHUSDC |
-| Price-risk | 0.25% or 0.5% of this allocation's equity, as causal EMA200 tier dictates |
+| Allocation | 200 USDC, independent execution DB; only ETHUSDC |
+| Price-risk | 0.25% or 0.5% of this allocation's equity: initially 0.50/1.00 USDC before costs |
 | Entry | MARKET, first selected candidate, within existing eligibility/5-minute expiry and noon NY limit |
 | Initial stop | Frozen POC, native STOP_MARKET, entire remaining position |
 | TP1 | 10% at 1R from actual average entry; ordinary GTC LIMIT, reduce-only |
@@ -80,6 +92,42 @@ Two operational details are **implemented defaults to review before activation**
   risk-management mutations. Server failure still prevents timely time exit;
   native stop is protection, not a guarantee of a deadline fill.
 
+## Diagnostic data: same journal, no additional market subscription
+
+The `audit` table now timestamps events in local UTC epoch milliseconds. It
+records intention receipt (with signal/feature/eligibility times), order
+preparation, durable send start, first acknowledgement or status/quantity change,
+and first observation of each native fill. Submit failures record sanitized HTTP
+status/venue code and duration. Unchanged successful polls and duplicate fills
+do not add diagnostic events. No API key, PEM, signature or signed request URL is
+stored in these events.
+
+Submit/query durations use a monotonic clock, measured around the client call
+(including signing/HTTP/parsing), and cannot be interpreted as pure network RTT
+or Binance matching-engine latency. Query durations are retained only when an
+order's observed state/quantity changes, not as an all-requests network monitor.
+No automatic latency-based sizing/entry rule has been added.
+
+The frozen plan retains the executable bid/ask reference, quote's exchange time,
+local observation time and clock offset estimate. Native response/fill times,
+actual entry versus reference slippage, actual commissions/maker flags, realized
+PnL and funding remain available in the same journal. Together these support
+auditing signal-to-dispatch delay, dispatch-to-response duration, approximate
+stop-confirmation delay, spread, price slippage and delayed fill detection.
+
+Clock offsets must be considered when comparing venue and local times. Fill time
+is the exchange's field; "first observed" is our REST poll receipt, which may be
+later (the loop waits two seconds between cycles, plus request time). A late
+observation is not proof that Binance filled late. The BBO snapshot is not full
+depth history, so it cannot separate every cause of impact/adverse selection.
+These observations can identify a suspected bottleneck, not prove that latency
+caused worse execution without further evidence.
+
+Harvest via the consistent online-backup command below. One SQLite artifact
+contains sessions, plans, orders, fills, funding and diagnostic events; no raw
+trade archive or order-book subscription is added. Do not upload credential
+files together with the backup.
+
 ## Initial rollout: DISARMED, no credentials
 
 Run on the **new server only**, after this exact reviewed change is committed,
@@ -101,7 +149,7 @@ docker compose -f "$pilot" ps
 docker compose -f "$pilot" logs --tail=30 eth-executor
 docker compose -f "$pilot" exec eth-executor \
   python -m models.trend_following_preny_profile_15m.pilot_worker \
-  --config /app/config/pilot.json --database /data/execution.sqlite --action status
+  --config /app/config/pilot.json --database /data/execution-200.sqlite --action status
 ```
 
 Expected: `execution_enabled:false`, `accept_new_entries:false`, metadata
@@ -121,7 +169,7 @@ Online backup, without stopping the owner (choose a NEW filename each time):
 ```bash
 docker compose -f "$pilot" exec eth-executor \
   python -m models.trend_following_preny_profile_15m.pilot_worker \
-  --config /app/config/pilot.json --database /data/execution.sqlite \
+  --config /app/config/pilot.json --database /data/execution-200.sqlite \
   --action backup --backup-to /data/execution-backup-YYYYMMDD-HHMM.sqlite
 ```
 
@@ -136,8 +184,8 @@ rejection/unknown status, partials, actual-fee accounting, funding, restart at
 multiple durable boundaries, no duplicate entry, TP/stop/deadline races, source
 bootstrap, no paper-ledger conversion, writer lock and online backup.
 
-Local verification: **62 executor/preflight tests passed**. Expanded regression:
-**147 passed, 3 skipped, 1 pre-existing failure**. The failure is
+Local verification: **67 executor/preflight tests passed**. Expanded regression:
+**152 passed, 3 skipped, 1 pre-existing failure**. The failure is
 `test_pure_runtime_and_core_have_no_io_dependencies`, because existing
 `runtime/observer.py` imports `live_engine.state_store.encode`; the same import is
 in base commit `636bede`, and no evaluator/observer code was changed. The three

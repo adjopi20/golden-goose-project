@@ -94,7 +94,9 @@ class FuturesExecutor:
         with self.s.transaction():
             self.s.db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',
                               (p['session_id'], p['intention_id'], canonical_json(p), None, state, reason))
-            self.s.audit('intention_received', dict(id=p['intention_id'], state=state, reason=reason))
+            self.s.audit('intention_received', dict(id=p['intention_id'], state=state, reason=reason,
+                         feature_as_of_ms=p['feature_as_of_ms'], signal_timestamp_ms=p['signal_timestamp_ms'],
+                         eligible_timestamp_ms=p['eligible_timestamp_ms'], poll_started_at_ms=now_ms))
         return state
 
     def position(self):
@@ -159,6 +161,7 @@ class FuturesExecutor:
             with self.s.transaction():
                 self.s.db.execute('INSERT INTO orders(client_id,session_id,role,params,state) VALUES (?,?,?,?,?)',
                                   (cid, session, role, canonical_json(params), 'PREPARED'))
+                self.s.audit('order_prepared', dict(client_id=cid, session=session, role=role))
         return cid
 
     def _validate_response(self, r, row):
@@ -188,7 +191,7 @@ class FuturesExecutor:
             if number(r['executedQty']) > number(p['quantity']): raise ValueError('Overfilled order')
         return state
 
-    def _accept(self, row, response):
+    def _accept(self, row, response, *, source='query', request_duration_ms=None):
         state = self._validate_response(response, row)
         with self.s.transaction():
             prior = json.loads(row['response']) if row['response'] else None
@@ -196,6 +199,14 @@ class FuturesExecutor:
                 raise ValueError('Native cumulative execution moved backward')
             self.s.db.execute('UPDATE orders SET state=?,response=?,error=NULL WHERE client_id=?',
                               (state, canonical_json(response), row['client_id']))
+            changed = not prior or state != row['state'] or any(
+                response.get(k) != prior.get(k) for k in ('executedQty', 'actualOrderId'))
+            if source == 'submit' or changed:
+                self.s.audit('order_observed', dict(client_id=row['client_id'], role=row['role'], state=state,
+                             observation_source=source, request_duration_ms=request_duration_ms,
+                             server_offset_ms=self.v.offset,
+                             native_times={k: response[k] for k in ('time', 'updateTime', 'createTime', 'triggerTime', 'workingTime') if k in response},
+                             executed_quantity=response.get('executedQty')))
 
     def drive(self, cid):
         row = self.s.db.execute('SELECT * FROM orders WHERE client_id=?', (cid,)).fetchone()
@@ -208,23 +219,35 @@ class FuturesExecutor:
                         self.s.db.execute("UPDATE orders SET state='REJECTED',error='entry_expired_before_send' WHERE client_id=?", (cid,))
                     return self.s.db.execute('SELECT * FROM orders WHERE client_id=?', (cid,)).fetchone()
             # A crash after this commit is UNKNOWN, even if the HTTP call never began.
-            with self.s.transaction(): self.s.db.execute("UPDATE orders SET state='SENDING' WHERE client_id=?", (cid,))
+            with self.s.transaction():
+                self.s.db.execute("UPDATE orders SET state='SENDING' WHERE client_id=?", (cid,))
+                self.s.audit('order_send_started', dict(client_id=cid, role=row['role'], server_offset_ms=self.v.offset))
+            started = time.perf_counter_ns()
             try:
                 response = self.v.submit(row['role'], json.loads(row['params']))
-                self._accept(row, response)
+                duration = (time.perf_counter_ns() - started) / 1000000
+                self._accept(row, response, source='submit', request_duration_ms=duration)
             except VenueError as e:
                 with self.s.transaction():
                     self.s.db.execute('UPDATE orders SET state=?,error=? WHERE client_id=?',
                                       ('UNKNOWN' if e.uncertain else 'REJECTED', str(e), cid))
+                    self.s.audit('order_submit_error', dict(client_id=cid, role=row['role'],
+                                 request_duration_ms=(time.perf_counter_ns()-started)/1000000,
+                                 http_status=e.status, venue_code=e.code, uncertain=e.uncertain,
+                                 server_offset_ms=self.v.offset))
             except (ValueError, TypeError, KeyError):
                 with self.s.transaction():
                     self.s.db.execute("UPDATE orders SET state='UNKNOWN',error='invalid_submit_response' WHERE client_id=?", (cid,))
+                    self.s.audit('order_submit_error', dict(client_id=cid, role=row['role'],
+                                 request_duration_ms=(time.perf_counter_ns()-started)/1000000,
+                                 uncertain=True, error='invalid_submit_response', server_offset_ms=self.v.offset))
         else:
             # Query, never re-POST SENDING/UNKNOWN/ACKed orders.
             try:
+                started = time.perf_counter_ns()
                 r = self.v.query(cid, stop=row['role'] == 'STOP', symbol=self.symbol)
                 if r is not None:
-                    self._accept(row, r)
+                    self._accept(row, r, request_duration_ms=(time.perf_counter_ns()-started)/1000000)
                 elif row['state'] not in TERMINAL:
                     with self.s.transaction():
                         self.s.db.execute("UPDATE orders SET state='UNKNOWN',error='native_order_not_found' WHERE client_id=?", (cid,))
@@ -274,9 +297,12 @@ class FuturesExecutor:
             with self.s.transaction():
                 old = self.s.db.execute('SELECT payload FROM fills WHERE id=?', (identity,)).fetchone()
                 if old and old[0] != encoded: raise ValueError('Conflicting fill redelivery')
-                self.s.db.execute('INSERT OR IGNORE INTO fills VALUES (?,?,?,?,?,?,?,?,?,?)',
+                inserted = self.s.db.execute('INSERT OR IGNORE INTO fills VALUES (?,?,?,?,?,?,?,?,?,?)',
                                   (identity, str(oid), row['session_id'], str(qty), str(price), str(pnl), str(fee),
                                    t['commissionAsset'], int(t['maker']), encoded))
+                if inserted.rowcount:
+                    self.s.audit('fill_first_observed', dict(fill_id=identity, client_id=row['client_id'],
+                                 role=row['role'], native_fill_time_ms=t.get('time'), server_offset_ms=self.v.offset))
 
     def accounting(self, now_ms):
         if self.s.meta('initial_wallet') is None: return
@@ -396,6 +422,8 @@ class FuturesExecutor:
             quote = self.quote(now_ms)
             plan = plan_order(p, spec, quote, equity=self.s.equity(self.c['initial_equity']), available=available,
                               leverage=settings['leverage'], max_notional=settings['maxNotionalValue'])
+            plan['entry_quote'] = dict(bid=quote['bidPrice'], ask=quote['askPrice'], native_time_ms=quote['time'],
+                                      local_observed_at_ms=int(time.time()*1000), server_offset_ms=self.v.offset)
             with self.s.transaction():
                 self.s.db.execute("UPDATE sessions SET plan=?,state='ENTRY_PENDING' WHERE session=?", (canonical_json(plan), session['session']))
                 cid = self._market(session, 'ENTRY', number(plan['quantity']))
