@@ -14,6 +14,18 @@ from live_mvrv.storage import connect, get_meta
 NOW = '2015-01-03T03:00:00+00:00'
 
 
+@pytest.mark.parametrize('last', [None, '2015-01-01', '2015-01-02'])
+@pytest.mark.parametrize('clock,after_open', [('01:00:00', False), ('02:59:59', False),
+                                          ('03:00:00', True), ('04:00:00', True)])
+def test_refresh_waits_until_10_wib_even_on_startup(tmp_path, last, clock, after_open):
+    c = connect(tmp_path / 'signals.sqlite')
+    if last:
+        with c: monitor.set_meta(c, 'last_data_date', last)
+    now = monitor.data.utc('2015-01-03T' + clock + '+00:00')
+    assert monitor.refresh_due(c, now) == (after_open and last != '2015-01-02')
+    c.close()
+
+
 def raw(end='2015-01-02'):
     dates = pd.date_range(monitor.data.ORIGIN, end)
     i = np.arange(len(dates))

@@ -118,6 +118,12 @@ def checked_cycle(c, now=None):
         raise
 
 
+def refresh_due(c, now):
+    # Coin Metrics prior-day inputs often arrive after 08:00 WIB.
+    expected = (now.date() - timedelta(days=1)).isoformat()
+    return now.hour >= 3 and get_meta(c, 'last_data_date') != expected
+
+
 def healthy(c, now=None):
     now = data.utc(now)
     beat, day = get_meta(c, 'heartbeat'), get_meta(c, 'last_data_date')
@@ -157,8 +163,7 @@ def main():
             next_attempt = 0
             while not stopped.is_set():
                 now = data.utc()
-                expected = (now.date() - timedelta(days=1)).isoformat()
-                if (now.hour >= 1 or not get_meta(c, 'last_data_date')) and get_meta(c, 'last_data_date') != expected and time.monotonic() >= next_attempt:
+                if refresh_due(c, now) and time.monotonic() >= next_attempt:
                     next_attempt = time.monotonic() + 3600
                     try:
                         checked_cycle(c, now)
