@@ -1,0 +1,317 @@
+{
+  "ledger_checks": [
+    {
+      "family": "accumulation",
+      "strategy": "static_dca",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 8.36521962810366e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "buy_hold_contributions",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 5.00961050420301e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "paper_mvrv_3",
+      "equity_error": 7.450580596923828e-09,
+      "cash_error": 5.493987487170671e-09
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_threshold_only",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 2.7772273369919276e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_base25",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 4.2439296521479264e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_base40",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 4.3502268454176374e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_base60",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 5.852314188814489e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_base25_expiry730",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 4.2439296521479264e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_once_threshold_only",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 1.4131273928796872e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_once_base25",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 3.9099745663406793e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_once_base40",
+      "equity_error": 6.984919309616089e-10,
+      "cash_error": 5.457820861920482e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_once_base60",
+      "equity_error": 6.984919309616089e-10,
+      "cash_error": 3.391846803424414e-10
+    },
+    {
+      "family": "accumulation",
+      "strategy": "acc_once_base25_deep",
+      "equity_error": 4.656612873077393e-10,
+      "cash_error": 3.015543370565865e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "static_dca",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 8.36521962810366e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "buy_hold_contributions",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 5.00961050420301e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "frozen_acc_once_base25_deep",
+      "equity_error": 4.656612873077393e-10,
+      "cash_error": 3.015543370565865e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_share_f10_b35",
+      "equity_error": 6.984919309616089e-10,
+      "cash_error": 4.829132649319945e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_share_f10_b50",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 6.03108674113173e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_unit20_f10_b35",
+      "equity_error": 2.3283064365386963e-10,
+      "cash_error": 1.4557599570252933e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_unit12_f10_b50",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 4.742730652651517e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_unit40_f05_b20",
+      "equity_error": 1.1641532182693481e-10,
+      "cash_error": 7.131006896088365e-11
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_share_f25_b35",
+      "equity_error": 9.313225746154785e-10,
+      "cash_error": 4.0890313357522245e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_share_f40_b35",
+      "equity_error": 4.656612873077393e-10,
+      "cash_error": 2.3575807972520124e-10
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_share_f60_b35",
+      "equity_error": 3.4924596548080444e-10,
+      "cash_error": 3.8065195440140087e-10
+    },
+    {
+      "family": "oos_accumulation",
+      "strategy": "frozen_acc_once_base25_deep",
+      "equity_error": 1.0913936421275139e-11,
+      "cash_error": 7.787548383930698e-12
+    },
+    {
+      "family": "oos_accumulation",
+      "strategy": "static_dca",
+      "equity_error": 1.0913936421275139e-11,
+      "cash_error": 8.853362487570848e-12
+    },
+    {
+      "family": "oos_accumulation",
+      "strategy": "buy_hold_contributions",
+      "equity_error": 9.094947017729282e-12,
+      "cash_error": 6.0254023992456496e-12
+    },
+    {
+      "family": "oos_accumulation",
+      "strategy": "paper_mvrv_3",
+      "equity_error": 1.0913936421275139e-11,
+      "cash_error": 8.853362487570848e-12
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "buy_hold",
+      "equity_error": 2.3283064365386963e-10,
+      "cash_error": 0.0
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "paper_mvrv_3",
+      "equity_error": 7.450580596923828e-09,
+      "cash_error": 0.0
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_05_paper_exit",
+      "equity_error": 7.275957614183426e-12,
+      "cash_error": 0.0
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_10_paper_exit",
+      "equity_error": 2.3283064365386963e-10,
+      "cash_error": 0.0
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_15_paper_exit",
+      "equity_error": 7.450580596923828e-09,
+      "cash_error": 1.862645149230957e-09
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_20_paper_exit",
+      "equity_error": 7.450580596923828e-09,
+      "cash_error": 0.0
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_05_mvrv_rollover_50",
+      "equity_error": 1.8189894035458565e-11,
+      "cash_error": 3.637978807091713e-12
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_10_mvrv_rollover_50",
+      "equity_error": 1.7462298274040222e-10,
+      "cash_error": 2.9103830456733704e-11
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_15_mvrv_rollover_50",
+      "equity_error": 7.450580596923828e-09,
+      "cash_error": 3.725290298461914e-09
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_20_mvrv_rollover_50",
+      "equity_error": 7.450580596923828e-09,
+      "cash_error": 3.725290298461914e-09
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_05_combined_rollover_75",
+      "equity_error": 1.4551915228366852e-11,
+      "cash_error": 0.0
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_10_combined_rollover_75",
+      "equity_error": 5.820766091346741e-11,
+      "cash_error": 2.9103830456733704e-11
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_15_combined_rollover_75",
+      "equity_error": 1.4901161193847656e-08,
+      "cash_error": 2.7939677238464355e-09
+    },
+    {
+      "family": "cvdd_entry",
+      "strategy": "cvdd_20_combined_rollover_75",
+      "equity_error": 1.4901161193847656e-08,
+      "cash_error": 7.450580596923828e-09
+    }
+  ],
+  "changed_ending_values": [
+    {
+      "family": "accumulation",
+      "strategy": "acc_base25_expiry730",
+      "old_wealth": 2608500.588524136,
+      "new_wealth": 2533095.2816915293,
+      "change": -75405.3068326069
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_share_f60_b35",
+      "old_wealth": 847040.4501530338,
+      "new_wealth": 847034.3227980422,
+      "change": -6.127354991622269
+    },
+    {
+      "family": "ladder",
+      "strategy": "ladder_share_f40_b35",
+      "old_wealth": 1229780.2861117674,
+      "new_wealth": 1229778.674871997,
+      "change": -1.6112397704273462
+    }
+  ],
+  "forward_365_days": [
+    {
+      "bucket": "Z < -0.20 (tier 3 zone)",
+      "eligible_days": 308,
+      "median_return": 1.202388035265599,
+      "median_max_drawdown": -0.3195240838290868
+    },
+    {
+      "bucket": "-0.20 <= Z < 0.00 (tier 2 zone)",
+      "eligible_days": 315,
+      "median_return": 0.5733216105639152,
+      "median_max_drawdown": -0.3195240838290868
+    },
+    {
+      "bucket": "0.00 <= Z < 0.50 (tier 1 zone)",
+      "eligible_days": 572,
+      "median_return": 0.8252940287671637,
+      "median_max_drawdown": -0.3548617174130818
+    },
+    {
+      "bucket": "0.50 <= Z < 2.00 (neutral)",
+      "eligible_days": 1756,
+      "median_return": 0.9840988366435782,
+      "median_max_drawdown": -0.5213764375494964
+    },
+    {
+      "bucket": "2.00 <= Z < 5.00 (elevated)",
+      "eligible_days": 680,
+      "median_return": 0.1762591486041245,
+      "median_max_drawdown": -0.6714132956781457
+    },
+    {
+      "bucket": "Z >= 5.00 (no-buy)",
+      "eligible_days": 149,
+      "median_return": -0.22502960129002003,
+      "median_max_drawdown": -0.5308320869786175
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "requested_start": "2022-01-01",
+  "requested_end": "2026-10-05",
+  "timezone": "America/New_York",
+  "orb_start_previous_day": "09:30",
+  "orb_end_observation_start": "01:00",
+  "observation_end": "17:00",
+  "profile_bins": 50,
+  "value_area_fraction": 0.70,
+  "counter_move_range_fraction": 0.25,
+  "max_internal_gap_seconds": 300,
+  "max_boundary_gap_seconds": 60,
+  "venue_product": "local aggregate-trade archive; exchange/product provenance unverified",
+  "assets": {
+    "BTCUSDC": "storage/btcusdc/BTCUSDC-aggTrades-2024-01-05_to_2026-08-31.parquet",
+    "HYPEUSDT": "storage/hypeusdt/HYPEUSDT-aggTrades-2025-05-31_to_2026-08-31.parquet",
+    "XRPUSDT": "storage/xrpusdt/parquet/XRPUSDT-aggTrades-2020-01_to_2026-06.parquet"
+  }
+}

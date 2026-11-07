@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "mode": "paper",
+  "venue": "binance",
+  "symbol": "HYPEUSDT",
+  "account_id": "hype_burst_16h_b_3m12m_rm_e_48h_paper_v01",
+  "execution": {
+    "initial_equity": 1000.0,
+    "risk_fraction": 0.01,
+    "fee_bps": 4.0,
+    "max_leverage": 5.0,
+    "max_entry_delay_ms": 60000,
+    "tp1_r": 1.0,
+    "tp1_fraction": 0.1
+  },
+  "max_event_age_ms": 10000
+}

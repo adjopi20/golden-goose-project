@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "environment": "server-paper",
+  "venue": "binance",
+  "product": "futures",
+  "symbols": ["ETHUSDC", "BNBUSDC", "HYPEUSDT"],
+  "nats_url": "nats://nats:4222",
+  "max_outbox_bytes": 33554432
+}

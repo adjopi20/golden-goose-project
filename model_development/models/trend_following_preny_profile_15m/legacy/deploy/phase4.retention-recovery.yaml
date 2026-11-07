@@ -1,0 +1,9 @@
+# Reviewed recovery: fresh Lighter account ledger and durable identity.
+# Keep the old lighter_account_phase4 volume for audit.
+services:
+  lighter-account-shadow:
+    command: ["--config", "/app/config/lighter.account.recovered.json", "--database", "/data/account.sqlite", "--code-version", "${GG_PHASE4_COMMIT}"]
+    volumes: [lighter_account_phase4_v2:/data]
+
+volumes:
+  lighter_account_phase4_v2:

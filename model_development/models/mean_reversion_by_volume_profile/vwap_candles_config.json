@@ -1,0 +1,8 @@
+{
+  "BTCUSDC": [
+    "tmp/cache/btcusdc/btcusdc_pre_ny_submodels_full_24h_orderflow_2024-01-05_to_2026-07-31/candles_1m.parquet",
+    "tmp/cache/btcusdc/btcusdc_pre_ny_oos_2026-08-01_to_2026-08-31/candles_1m.parquet"
+  ],
+  "HYPEUSDT": ["tmp/cache/hypeusdt/hype_daily_profile_2025-05-31_to_2026-08-31/candles_1m.parquet"],
+  "XRPUSDT": ["tmp/cache/xrpusdt/xrp_pre_ny_submodels_full_24h_orderflow_2020-01-06_to_2026-06-30/candles_1m.parquet"]
+}

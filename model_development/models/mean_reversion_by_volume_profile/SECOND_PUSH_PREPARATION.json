@@ -1,0 +1,25 @@
+﻿{
+    "status":  "verified",
+    "recorded":  "2026-10-24",
+    "tests_passed":  19,
+    "combinations":  40,
+    "historical_run_executed":  false,
+    "files":  [
+                  {
+                      "path":  "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_volume_profile\\observe_second_push.py",
+                      "sha256":  "a2ff53d9f7d8f0d55412425d6f17a96e4693fcae81e1327ffebf6a69970af1d1"
+                  },
+                  {
+                      "path":  "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_volume_profile\\test_second_push.py",
+                      "sha256":  "4b0bb5992e0bb678e4f10c67fd2d7c0eb8e9657db4182a7785b11e45333e3419"
+                  },
+                  {
+                      "path":  "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_volume_profile\\second_push_config.json",
+                      "sha256":  "2411f0b043ed507a1912f278879aeb116a172ce323c81d28239d6d9fb1750657"
+                  },
+                  {
+                      "path":  "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_volume_profile\\SECOND_PUSH_DESIGN.md",
+                      "sha256":  "9120c115c0095ebe66b5b58ebdfb9588448fd97cf2a452aaf5c7b0cccb342cfd"
+                  }
+              ]
+}

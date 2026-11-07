@@ -1,0 +1,25 @@
+{
+  "source_model": {
+    "path": "models/mean_reversion_by_vwap/monthly_sd_reversion.py",
+    "sha256": "bfdb2d0b302f85c30c2c341c7b544e688e8a0bb99a4c4fdf7fa29e77e89a201f"
+  },
+  "shared_sources": {
+    "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\indicator\\vwap.py": "71d8495c5a5b282fa2e7222bd19c087b35305bb4f20cf247b5778021da22eb56",
+    "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\trading_core\\candles.py": "32f97443ecf63649feda6c1e32da22fa9d2387416055bbad92bb3e50234cc969"
+  },
+  "preserved_legacy_sources": {
+    "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_vwap\\monthly_sd_reversion.py": "bfdb2d0b302f85c30c2c341c7b544e688e8a0bb99a4c4fdf7fa29e77e89a201f",
+    "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_vwap\\batch_weekly.json": "b2a6cc06f9960f4ed016034d5453d08d1945d19d3ad86781bfb0aabe41bf923a",
+    "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\indicator\\vwap.py": "3e179c13ba8de292ac4d5947c9ea7269754afce75525cf924130b9501629649c"
+  },
+  "behavior": "Import/home relocation only; all decisions/calculations and configuration defaults preserved",
+  "legacy_resume": "Old model and external core remain frozen for existing exact-hash resumes; no path/hash bypass",
+  "previous_orchestrator_sha256": {
+    "observe.py": "3a469c9e076e461c468ccfb27e5f837da4215e9e74fc459a6b27b54d968fb727",
+    "observe_batch.py": "bdf499550107cbf7079b2887769325ca23e174b8cb5f401716a7ef7ca90af227"
+  },
+  "cvd_source": {
+    "path": "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\indicator\\cvd.py",
+    "sha256": "172839c60dfbd01c917811c6268cdf1f3bb324ad0fcef40d45e718f74c2bebfa"
+  }
+}

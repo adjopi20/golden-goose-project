@@ -1,0 +1,32 @@
+FROM python:3.13-slim-bookworm
+ARG CODE_VERSION
+RUN test -n "$CODE_VERSION"
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 GG_CODE_VERSION=$CODE_VERSION
+LABEL org.opencontainers.image.revision=$CODE_VERSION
+WORKDIR /app
+COPY model_development/models/trend_following_preny_profile_15m/legacy/deploy/requirements-shadow.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && useradd --system --uid 10001 --create-home strategy \
+    && mkdir /data && chown strategy:strategy /data
+COPY paper_trading/__init__.py /app/paper_trading/
+COPY utils/engine/adapters/paper_execution.py /app/utils/engine/adapters/paper_execution.py
+COPY utils/__init__.py /app/utils/
+COPY utils/market_session.py /app/utils/
+COPY indicator/__init__.py /app/indicator/
+COPY indicator/legacy_preny.py /app/indicator/
+COPY indicator/value_area.py /app/indicator/
+COPY utils/engine/contracts.py /app/utils/engine/contracts.py
+COPY utils/engine/__init__.py /app/utils/engine/__init__.py
+COPY utils/engine/state/base.py /app/utils/engine/state/base.py
+COPY utils/engine/state/strategy.py /app/utils/engine/state/strategy.py
+COPY utils/engine/monitoring/service_health.py /app/utils/engine/monitoring/service_health.py
+COPY utils/engine/collectors/market_data/__init__.py /app/utils/engine/collectors/market_data/__init__.py
+COPY utils/engine/collectors/market_data/broker.py /app/utils/engine/collectors/market_data/broker.py
+COPY utils/engine/collectors/market_data/shadow.py /app/utils/engine/collectors/market_data/shadow.py
+COPY model_development/models/trend_following_preny_profile_15m/legacy/runtime /app/model_development/models/trend_following_preny_profile_15m/legacy/runtime
+COPY model_development/models/trend_following_preny_profile_15m/legacy/shadow_consumer.py /app/model_development/models/trend_following_preny_profile_15m/legacy/
+COPY model_development/models/trend_following_preny_profile_15m/legacy/deploy/binance.paper.yaml /app/config/
+COPY model_development/models/trend_following_preny_profile_15m/legacy/deploy/lighter.paper.yaml /app/config/
+COPY model_development/models/trend_following_preny_profile_15m/legacy/deploy/hype.binance.c1_2026-10.json /app/config/
+USER strategy
+ENTRYPOINT ["python", "-m", "model_development.models.trend_following_preny_profile_15m.legacy.shadow_consumer"]

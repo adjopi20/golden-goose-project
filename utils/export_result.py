@@ -2,7 +2,7 @@
 Export confirmed setup events and impulse group summaries from an event-study parquet.
 
 Usage:
-    python export_result.py --input research/1535.parquet --output research/analysis_outputs/confirmed_setups_impulse_groups.xlsx
+    python export_result.py --input storage/1535.parquet --output reports/analysis_outputs/confirmed_setups_impulse_groups.xlsx
 
 This script exports every confirmed setup row from the input parquet.
 Outcome columns are kept visible for review in Excel, but they are not used to:

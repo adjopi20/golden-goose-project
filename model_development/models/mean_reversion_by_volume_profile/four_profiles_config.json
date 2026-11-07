@@ -1,0 +1,11 @@
+{
+  "profile_bins": 50,
+  "max_internal_gap_seconds": 300,
+  "max_boundary_gap_seconds": 60,
+  "venue_product": "local aggregate-trade archive; exchange/product provenance unverified",
+  "assets": {
+    "BTCUSDC": "storage/btcusdc/BTCUSDC-aggTrades-2024-01-05_to_2026-08-31.parquet",
+    "HYPEUSDT": "storage/hypeusdt/HYPEUSDT-aggTrades-2025-05-31_to_2026-08-31.parquet",
+    "XRPUSDT": "storage/xrpusdt/parquet/XRPUSDT-aggTrades-2020-01_to_2026-06.parquet"
+  }
+}

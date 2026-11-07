@@ -1,0 +1,35 @@
+name: btc-mvrv-signals
+services:
+  btc-mvrv-signals:
+    build:
+      context: .
+    image: golden-goose/btc-mvrv-dual:signals-20261017
+    entrypoint: ["python", "-m", "live_mvrv.signal_monitor"]
+    command: ["run"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    cpus: 0.25
+    environment:
+      DATABASE: /data/signals.sqlite
+      TELEGRAM_ENABLED: "true"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set the existing bot token locally}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?Set the numeric recipient locally}
+    volumes: ["signal_data:/data"]
+    healthcheck:
+      test: ["CMD", "python", "-m", "live_mvrv.signal_monitor", "health"]
+      interval: 1m
+      timeout: 20s
+      start_period: 15m
+      retries: 3
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  signal_data:

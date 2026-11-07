@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "unit_tests": 8,
+  "original_v31_accounts_reconciled": 14,
+  "independent_cash_accounting_rows": 23100,
+  "original_source_unchanged": true,
+  "paths_per_policy": 5000,
+  "mean_calendar_blocks": [
+    30,
+    7
+  ],
+  "kelly_bootstrap_draws": 1000,
+  "permutation_count": 1000,
+  "terminal_permutation_invariant": true,
+  "historical_equity_uses_actual_closes": true,
+  "charts_visually_inspected": true,
+  "code_sha256": "2a0b073228f3f472f8e9a77657fc342095c33ffc7e6bc41430c7f18b88db4c3e",
+  "test_sha256": "73a2746ff13d1bd9f412cba752ccc5e38a3af53592c8c44ed38423b9e50a97ea"
+}

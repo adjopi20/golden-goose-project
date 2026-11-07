@@ -1,0 +1,9 @@
+{
+  "contract": "btc-mvrv-dual-v1",
+  "history_origin": "2010-07-18",
+  "fee_bps": 10,
+  "models": [
+    {"id": "fixed_0_7", "weight": "0.5", "entry": 0, "exit": 7},
+    {"id": "percentile_4y_p5_p95", "weight": "0.5", "window": 1460, "low": 0.05, "high": 0.95}
+  ]
+}

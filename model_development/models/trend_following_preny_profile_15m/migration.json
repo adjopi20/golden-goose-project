@@ -1,0 +1,27 @@
+{
+  "origins": {
+    "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\indicator\\_common.py": "96e92d3794202a8a87c1190d59e1c6b4d8ee4be687ecdad83a541b139aef0cca",
+    "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\indicator\\moving_average.py": "8c241fe87f82639e2aec5123f3f798a261e52ee6cc0c3e4e68780b3915168b3a",
+    "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\indicator\\atr.py": "005c82293b0ac7113de0ee90facc9a69b8fd67521652dd5bd297c2def50543a7",
+    "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\indicator\\adx.py": "91bdfa1a7ca789a435fb03617b56d8df4d84b63dc6bc8c364014eb4dbdea629d",
+    "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\indicator\\order_flow.py": "a53cbf0e4ccaa34419036050000c85394029816bac504fc48981b11941d33ad3",
+    "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\work\\binance_futures_executor\\indicator\\trend.py": "5f2d123f9d29e826fb52066e4108809f47dec7ebfae7fc665eef1406f14c5d0b",
+    "models/trend_following_preny_profile_15m/runtime/baseline.py": "eb6512c626b4988362f13573163f90f3a8696fc013564dded154f11762e1f25c",
+    "models/trend_following_preny_profile_15m/runtime/effort_result.py": "5e2857480610e84a956af00ea6e99e00bbd5cbf257207b5dfce0cd4659a99bb5",
+    "models/trend_following_preny_profile_15m/runtime/gates.py": "11d83d33d7b4b5cd604c2ce6ba417202d37a5a6b71e9dc988791bff54db49e9c",
+    "models/trend_following_preny_profile_15m/runtime/selectors.py": "50be85db81c3e8d97191ff4c480aff9cdf8358352908e2704ff7463b396a0f76",
+    "models/trend_following_preny_profile_15m/runtime/evaluator.py": "c5ef56c42f8fc69956059b88b3b366237aa6b83e0adf0a5dfe6116e4b15913aa",
+    "models/trend_following_preny_profile_15m/evaluate_plugs.py": "7715c98cff134f01b0ba15905489f8fa6324892303c2a6f01b8c037c41c2d525",
+    "models/trend_following_preny_profile_15m/strategy.py": "93707589de041cc664f459ccb73b6ada09d5292f285b99e7c1588c109aa7c844"
+  },
+  "legacy": "Frozen original sources retained for historical callers; no import redirects",
+  "scope": "One maintained family decision script; HYPE C1 prepared backtest only; no added Phase 1/ETH/BNB runner support",
+  "verification": {
+    "migration_tests": 3,
+    "model_tests": 5,
+    "indicator_tests": 42,
+    "warning_policy": "-W error",
+    "market_run": false,
+    "live_source_files_unchanged": 57
+  }
+}

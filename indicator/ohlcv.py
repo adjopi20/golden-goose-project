@@ -110,10 +110,22 @@ def aggregate_trades_to_ohlcv(
         sorted_df = trades_df.sort_values(["timestamp", "raw_index"], kind="mergesort")
     else:
         sorted_df = trades_df.sort_values(["timestamp"], kind="mergesort")
-    parsed_trades = [_row_to_parsed_trade(row) for _, row in sorted_df.iterrows()]
-
     candles_state: dict[datetime, dict[str, Any]] = {}
-    for trade in parsed_trades:
+    for row in sorted_df.itertuples(index=False):
+        timestamp_value = row.timestamp
+        if isinstance(timestamp_value, pd.Timestamp):
+            timestamp_ms = int(
+                (timestamp_value.tz_convert("UTC") if timestamp_value.tzinfo is not None else timestamp_value).value
+                // 1_000_000
+            )
+        else:
+            timestamp_ms = int(timestamp_value)
+        trade = ParsedTrade(
+            timestamp_ms=timestamp_ms,
+            price=float(row.price),
+            qty=float(row.qty),
+            aggressive_side="sell" if bool(row.is_buyer_maker) else "buy",
+        )
         bucket_dt = get_bucket_start(trade.timestamp_ms, timeframe)
         if bucket_dt not in candles_state:
             candles_state[bucket_dt] = {

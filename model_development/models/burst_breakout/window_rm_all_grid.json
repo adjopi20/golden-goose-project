@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "model": {
+    "mode": [
+      "profile_burst"
+    ],
+    "flow_entry_confirmation": [
+      true
+    ],
+    "flow_interpretation": [
+      "static"
+    ],
+    "entry_gate": [
+      false
+    ],
+    "one_entry_per_utc_day": [
+      true
+    ],
+    "start_date": [
+      "2025-10-01"
+    ],
+    "end_date": [
+      "2026-10-31"
+    ],
+    "setup_variant": [
+      "a",
+      "b"
+    ],
+    "lookback_hours": [
+      12,
+      16,
+      24
+    ],
+    "flow_timeframes": [
+      "1m_5m",
+      "3m_12m",
+      "5m_10m"
+    ]
+  },
+  "model_cases": [
+    {
+      "risk_management": "rm-a",
+      "risk_exit_hours": 24
+    },
+    {
+      "risk_management": "rm-b",
+      "risk_exit_hours": 48
+    },
+    {
+      "risk_management": "rm-c",
+      "risk_exit_hours": 48
+    },
+    {
+      "risk_management": "rm-d",
+      "risk_exit_hours": 24
+    },
+    {
+      "risk_management": "rm-d",
+      "risk_exit_hours": 48
+    },
+    {
+      "risk_management": "rm-e",
+      "risk_exit_hours": 24
+    },
+    {
+      "risk_management": "rm-e",
+      "risk_exit_hours": 48
+    }
+  ],
+  "assets": {
+    "BTCUSDC": {
+      "venue": "binance",
+      "product": "linear_quote_margined",
+      "quantity_unit": "BTC",
+      "pnl_unit": "USDC"
+    },
+    "HYPEUSDT": {
+      "venue": "binance",
+      "product": "linear_quote_margined",
+      "quantity_unit": "HYPE",
+      "pnl_unit": "USDT"
+    }
+  }
+}

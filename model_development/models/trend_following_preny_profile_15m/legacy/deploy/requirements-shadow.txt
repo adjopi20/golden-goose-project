@@ -1,0 +1,4 @@
+numpy==2.4.4
+pandas==3.0.2
+tzdata==2026.1
+nats-py==2.15.0

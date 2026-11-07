@@ -1,0 +1,26 @@
+{
+  "schema": "operational_model_package_v1",
+  "model": "btc_mvrv",
+  "submodels": [
+    "fixed_0_7",
+    "percentile_4y_p5_p95"
+  ],
+  "mode": "signal_monitor",
+  "orders_enabled": false,
+  "capital_required": false,
+  "strategy_sha256": "a7fba1a441a449b89272be354f6ac7aa197bb27bc3499c2a9ea719f37b715646",
+  "engine_release": {
+    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
+    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+  },
+  "dependencies": {
+    "utils/model_registry.py": "bb0ce739c0d9268890f9b81575006c2a1c4a571100a0e89847535e518bdca750",
+    "utils/engine/state/mvrv.py": "d0879c3aa25467faede47d460329d683bcb7cd530fa483bfe7df61ab476ee98d",
+    "utils/engine/monitoring/mvrv_notify.py": "77cc7f45a5083ae729eee79ba45580a935de0ad5f11042b2f2d3e270e1855111"
+  },
+  "model_files": {
+    "model_config.json": "5fa782e11cfe806e1cb4bcf5d5e457e34569131421a9fd1744676659f0f5b804"
+  },
+  "status": "packaged_not_activated",
+  "account_state": "Dedicated signal database only; rejects funded/trading database; no copied paper state"
+}

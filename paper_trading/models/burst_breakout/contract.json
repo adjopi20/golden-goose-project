@@ -1,0 +1,43 @@
+{
+  "schema": "operational_model_package_v1",
+  "model": "burst_breakout",
+  "symbol": "HYPEUSDT",
+  "venue": "binance",
+  "strategy_sha256": "f83983052207dd175d533b4ef53430d01a7f36f3a063f1868fe7eaf3cd86190c",
+  "engine_release": {
+    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
+    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+  },
+  "dependencies": {
+    "utils/model_registry.py": "bb0ce739c0d9268890f9b81575006c2a1c4a571100a0e89847535e518bdca750",
+    "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075"
+  },
+  "model_files": {
+    "model_config.json": "c8bdafc29f2ea1787de151668c48c6522031dee7706640536970246c66904cd9"
+  },
+  "contract": "BURST-HYPE-16H-B-3M12M-RME48-PAPER-001",
+  "execution": "Shared legacy_next_native_print_paper; not the ETH Futures contract",
+  "status": "paper_infrastructure_prepared_not_running",
+  "orders_started": false,
+  "account_state": "External fresh paper-only DB; never copy into live",
+  "runtime_configuration": "paper_trading/config/burst_hype_16h_b_3m12m_rm_e_48h.json",
+  "source_run": "model_development/models/burst_breakout/runs/window_rm_all_v01/HYPEUSDT_7280841129f3dfbd",
+  "research_strategy_sha256": "217542ee7dccd0b9ecf4c6d2a44d7a0728bd645c43acb5a7b7dd34dea2f533cc",
+  "model_config": {
+    "entry_gate": false,
+    "flow_entry_confirmation": true,
+    "flow_interpretation": "static",
+    "flow_timeframes": "3m_12m",
+    "lookback_hours": 16,
+    "mode": "profile_burst",
+    "one_entry_per_utc_day": true,
+    "risk_exit_hours": 48,
+    "risk_management": "rm-e",
+    "setup_variant": "b"
+  },
+  "readiness_limits": [
+    "Native stream warmup required; no OHLC approximation of price profile",
+    "No exchange-order lifecycle binding, rounding, orderbook fills, funding or liquidation simulation",
+    "No broker, Telegram or live execution activation"
+  ]
+}

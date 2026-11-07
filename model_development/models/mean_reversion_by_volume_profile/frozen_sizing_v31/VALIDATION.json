@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "unit_and_integration_tests": 10,
+  "synthetic_days_per_pair": 340,
+  "synthetic_rows_per_pair": 489600,
+  "real_windows": 12,
+  "real_window_rows": 3645940,
+  "full_real_history_backtest_executed": false,
+  "code_sha256": "86a1d8f5accb3b2d53d7cc0dfccfcda94d3d2ac5786cad808b9eed1cd76c26bf",
+  "tests_sha256": "b5c8dc8b0be69849addd8ee499009d9ff410c060559c82d175f147e2ecbf426a",
+  "local_log": "C:\\Users\\adjop\\OneDrive\\Documents\\ChatGPT\\GOLDEN GOOSE PROJECT\\mean_reversion_volume_profile_stage\\frozen_sizing_v31_validation.log",
+  "log_sha256": "ca0de57daa5fb98dd4c4b46b0e838527492a79f447be531ae0bc8dae633350a0"
+}

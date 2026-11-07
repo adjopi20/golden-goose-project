@@ -1,0 +1,160 @@
+{
+  "date": "2026-11-01",
+  "status": "local_source_inventory_not_frozen_release",
+  "server_checked": false,
+  "coverage": "Named local source trees, not a complete transitive external dependency lock",
+  "models": {
+    "pre_ny_eth": {
+      "identity": "ETHUSDC",
+      "status": "local_consolidation_parity_checked_operational_migration_pending",
+      "source_sha256": {
+        "models/trend_following_preny_profile_15m/runtime/__init__.py": "21584cf3497f61322c2230cbe0df9266708821243f9349f544fd6554de2536ba",
+        "models/trend_following_preny_profile_15m/runtime/baseline.py": "eb6512c626b4988362f13573163f90f3a8696fc013564dded154f11762e1f25c",
+        "models/trend_following_preny_profile_15m/runtime/effort_result.py": "5e2857480610e84a956af00ea6e99e00bbd5cbf257207b5dfce0cd4659a99bb5",
+        "models/trend_following_preny_profile_15m/runtime/evaluator.py": "c5ef56c42f8fc69956059b88b3b366237aa6b83e0adf0a5dfe6116e4b15913aa",
+        "models/trend_following_preny_profile_15m/runtime/gates.py": "11d83d33d7b4b5cd604c2ce6ba417202d37a5a6b71e9dc988791bff54db49e9c",
+        "models/trend_following_preny_profile_15m/runtime/intention.py": "15a60e7d093f762f392491f64f37128e189cddc8f083afe05829d2a09838b880",
+        "models/trend_following_preny_profile_15m/runtime/observer.py": "f3bcb502ad958bb4eea241efbdc4786bbcf8ada38afe86208b7fad46d145069b",
+        "models/trend_following_preny_profile_15m/runtime/preparation.py": "25b25a5997d07d542799e189c9b5cf8741678c9e280bd03aaeb7adb9ccced93f",
+        "models/trend_following_preny_profile_15m/runtime/selectors.py": "50be85db81c3e8d97191ff4c480aff9cdf8358352908e2704ff7463b396a0f76",
+        "trading_core/__init__.py": "c3e9c00139812e9c1cd5247c09a0a0d013e5960719426784a43a471c1015a277",
+        "trading_core/contracts.py": "657e13f0650f308e8d3594a8d8bf7cce62664dbe8cbae0173697bdaabfc45b13",
+        "trading_core/indicators.py": "e0836dec3fd7998bfe4bc1ebf6eb6bd219fd08bf55a41aa106c152b09234f96f",
+        "trading_core/paper_execution.py": "1f0015b7f328959172cfb473fa402f647d2aca44c8f970de4764ca6c1db4d168",
+        "trading_core/profiles.py": "5e00e12088ecbe4cd79909b26d98591a4c83eb4a1ef8f347455ebe7ab201d7c2",
+        "trading_core/session.py": "f78942079c55460ecdc84fe8eebac3e259c785b9db7b645b1116be008be3e27a"
+      },
+      "candidate_script": "live_trading/live_model/pre_ny_eth.py"
+    },
+    "pre_ny_bnb": {
+      "identity": "BNBUSDC",
+      "status": "local_consolidation_parity_checked_operational_migration_pending",
+      "source_sha256": {
+        "models/trend_following_preny_profile_15m/runtime/__init__.py": "21584cf3497f61322c2230cbe0df9266708821243f9349f544fd6554de2536ba",
+        "models/trend_following_preny_profile_15m/runtime/baseline.py": "eb6512c626b4988362f13573163f90f3a8696fc013564dded154f11762e1f25c",
+        "models/trend_following_preny_profile_15m/runtime/effort_result.py": "5e2857480610e84a956af00ea6e99e00bbd5cbf257207b5dfce0cd4659a99bb5",
+        "models/trend_following_preny_profile_15m/runtime/evaluator.py": "c5ef56c42f8fc69956059b88b3b366237aa6b83e0adf0a5dfe6116e4b15913aa",
+        "models/trend_following_preny_profile_15m/runtime/gates.py": "11d83d33d7b4b5cd604c2ce6ba417202d37a5a6b71e9dc988791bff54db49e9c",
+        "models/trend_following_preny_profile_15m/runtime/intention.py": "15a60e7d093f762f392491f64f37128e189cddc8f083afe05829d2a09838b880",
+        "models/trend_following_preny_profile_15m/runtime/observer.py": "f3bcb502ad958bb4eea241efbdc4786bbcf8ada38afe86208b7fad46d145069b",
+        "models/trend_following_preny_profile_15m/runtime/preparation.py": "25b25a5997d07d542799e189c9b5cf8741678c9e280bd03aaeb7adb9ccced93f",
+        "models/trend_following_preny_profile_15m/runtime/selectors.py": "50be85db81c3e8d97191ff4c480aff9cdf8358352908e2704ff7463b396a0f76",
+        "trading_core/__init__.py": "c3e9c00139812e9c1cd5247c09a0a0d013e5960719426784a43a471c1015a277",
+        "trading_core/contracts.py": "657e13f0650f308e8d3594a8d8bf7cce62664dbe8cbae0173697bdaabfc45b13",
+        "trading_core/indicators.py": "e0836dec3fd7998bfe4bc1ebf6eb6bd219fd08bf55a41aa106c152b09234f96f",
+        "trading_core/paper_execution.py": "1f0015b7f328959172cfb473fa402f647d2aca44c8f970de4764ca6c1db4d168",
+        "trading_core/profiles.py": "5e00e12088ecbe4cd79909b26d98591a4c83eb4a1ef8f347455ebe7ab201d7c2",
+        "trading_core/session.py": "f78942079c55460ecdc84fe8eebac3e259c785b9db7b645b1116be008be3e27a"
+      },
+      "candidate_script": "live_trading/live_model/pre_ny_bnb.py"
+    },
+    "pre_ny_hype": {
+      "identity": "HYPEUSDT",
+      "status": "local_consolidation_parity_checked_operational_migration_pending",
+      "source_sha256": {
+        "models/trend_following_preny_profile_15m/runtime/__init__.py": "21584cf3497f61322c2230cbe0df9266708821243f9349f544fd6554de2536ba",
+        "models/trend_following_preny_profile_15m/runtime/baseline.py": "eb6512c626b4988362f13573163f90f3a8696fc013564dded154f11762e1f25c",
+        "models/trend_following_preny_profile_15m/runtime/effort_result.py": "5e2857480610e84a956af00ea6e99e00bbd5cbf257207b5dfce0cd4659a99bb5",
+        "models/trend_following_preny_profile_15m/runtime/evaluator.py": "c5ef56c42f8fc69956059b88b3b366237aa6b83e0adf0a5dfe6116e4b15913aa",
+        "models/trend_following_preny_profile_15m/runtime/gates.py": "11d83d33d7b4b5cd604c2ce6ba417202d37a5a6b71e9dc988791bff54db49e9c",
+        "models/trend_following_preny_profile_15m/runtime/intention.py": "15a60e7d093f762f392491f64f37128e189cddc8f083afe05829d2a09838b880",
+        "models/trend_following_preny_profile_15m/runtime/observer.py": "f3bcb502ad958bb4eea241efbdc4786bbcf8ada38afe86208b7fad46d145069b",
+        "models/trend_following_preny_profile_15m/runtime/preparation.py": "25b25a5997d07d542799e189c9b5cf8741678c9e280bd03aaeb7adb9ccced93f",
+        "models/trend_following_preny_profile_15m/runtime/selectors.py": "50be85db81c3e8d97191ff4c480aff9cdf8358352908e2704ff7463b396a0f76",
+        "trading_core/__init__.py": "c3e9c00139812e9c1cd5247c09a0a0d013e5960719426784a43a471c1015a277",
+        "trading_core/contracts.py": "657e13f0650f308e8d3594a8d8bf7cce62664dbe8cbae0173697bdaabfc45b13",
+        "trading_core/indicators.py": "e0836dec3fd7998bfe4bc1ebf6eb6bd219fd08bf55a41aa106c152b09234f96f",
+        "trading_core/paper_execution.py": "1f0015b7f328959172cfb473fa402f647d2aca44c8f970de4764ca6c1db4d168",
+        "trading_core/profiles.py": "5e00e12088ecbe4cd79909b26d98591a4c83eb4a1ef8f347455ebe7ab201d7c2",
+        "trading_core/session.py": "f78942079c55460ecdc84fe8eebac3e259c785b9db7b645b1116be008be3e27a"
+      },
+      "candidate_script": "live_trading/live_model/pre_ny_hype.py"
+    },
+    "btc_mvrv_0_7": {
+      "identity": "fixed_0_7",
+      "status": "local_consolidation_parity_checked_operational_migration_pending",
+      "source_sha256": {
+        "models/bitcoin_onchain_cycles/live_mvrv/__init__.py": "5a09d5daed0bc7cbe90117ddf92080c7b9e87b18ae3db7d74dd6cf1c5c519592",
+        "models/bitcoin_onchain_cycles/live_mvrv/binance_execution.py": "4e51814ace94a520a148ab29579e7ce0cc08dcfbf94185e0fcbc3eee2180fbc4",
+        "models/bitcoin_onchain_cycles/live_mvrv/binance_main.py": "f9eb0a90573e48bb23f93f79719f56fbd1a46b5b309f818dca94c3c9ef7b80b0",
+        "models/bitcoin_onchain_cycles/live_mvrv/binance_probe.py": "cfaf6eb5c1a95d0b0d755d9e19664d4e606f0e13f2871998058565a4a8346afc",
+        "models/bitcoin_onchain_cycles/live_mvrv/binance_spot.py": "7eda7bc22ad9acc2d1a1941e9d018651615b6351159ac683ddea0d484ddd87db",
+        "models/bitcoin_onchain_cycles/live_mvrv/data.py": "5a3ee12626a0e10ad6151820041792327bf7721b8034399ae7dcdeaba467914e",
+        "models/bitcoin_onchain_cycles/live_mvrv/engine.py": "14761069c4a1055982e5cd8347725a98cba98ca2fde0cfec15659d4e1f0b576b",
+        "models/bitcoin_onchain_cycles/live_mvrv/main.py": "737cd1aca98d66dd671a60e52f35b3a9965b84bc77bafbd3dc81f5b5e913150d",
+        "models/bitcoin_onchain_cycles/live_mvrv/notify.py": "77cc7f45a5083ae729eee79ba45580a935de0ad5f11042b2f2d3e270e1855111",
+        "models/bitcoin_onchain_cycles/live_mvrv/replay.py": "2777222c6d042e6076ed156758ef2768ce760a015d0594843b85db6adb6adc99",
+        "models/bitcoin_onchain_cycles/live_mvrv/report.py": "01acbde2fa3f48f79e973e02909c9b581d287cb55d9180c6f2ffc3c3cff57f35",
+        "models/bitcoin_onchain_cycles/live_mvrv/signal_monitor.py": "b0ccba10fb99817d245f9c8837beaacab6355040bb8a5d006e976f592f6d03de",
+        "models/bitcoin_onchain_cycles/live_mvrv/storage.py": "d0879c3aa25467faede47d460329d683bcb7cd530fa483bfe7df61ab476ee98d"
+      },
+      "candidate_script": "live_trading/live_model/btc_mvrv_0_7.py"
+    },
+    "btc_mvrv_p5_p95": {
+      "identity": "percentile_4y_p5_p95",
+      "status": "local_consolidation_parity_checked_operational_migration_pending",
+      "source_sha256": {
+        "models/bitcoin_onchain_cycles/live_mvrv/__init__.py": "5a09d5daed0bc7cbe90117ddf92080c7b9e87b18ae3db7d74dd6cf1c5c519592",
+        "models/bitcoin_onchain_cycles/live_mvrv/binance_execution.py": "4e51814ace94a520a148ab29579e7ce0cc08dcfbf94185e0fcbc3eee2180fbc4",
+        "models/bitcoin_onchain_cycles/live_mvrv/binance_main.py": "f9eb0a90573e48bb23f93f79719f56fbd1a46b5b309f818dca94c3c9ef7b80b0",
+        "models/bitcoin_onchain_cycles/live_mvrv/binance_probe.py": "cfaf6eb5c1a95d0b0d755d9e19664d4e606f0e13f2871998058565a4a8346afc",
+        "models/bitcoin_onchain_cycles/live_mvrv/binance_spot.py": "7eda7bc22ad9acc2d1a1941e9d018651615b6351159ac683ddea0d484ddd87db",
+        "models/bitcoin_onchain_cycles/live_mvrv/data.py": "5a3ee12626a0e10ad6151820041792327bf7721b8034399ae7dcdeaba467914e",
+        "models/bitcoin_onchain_cycles/live_mvrv/engine.py": "14761069c4a1055982e5cd8347725a98cba98ca2fde0cfec15659d4e1f0b576b",
+        "models/bitcoin_onchain_cycles/live_mvrv/main.py": "737cd1aca98d66dd671a60e52f35b3a9965b84bc77bafbd3dc81f5b5e913150d",
+        "models/bitcoin_onchain_cycles/live_mvrv/notify.py": "77cc7f45a5083ae729eee79ba45580a935de0ad5f11042b2f2d3e270e1855111",
+        "models/bitcoin_onchain_cycles/live_mvrv/replay.py": "2777222c6d042e6076ed156758ef2768ce760a015d0594843b85db6adb6adc99",
+        "models/bitcoin_onchain_cycles/live_mvrv/report.py": "01acbde2fa3f48f79e973e02909c9b581d287cb55d9180c6f2ffc3c3cff57f35",
+        "models/bitcoin_onchain_cycles/live_mvrv/signal_monitor.py": "b0ccba10fb99817d245f9c8837beaacab6355040bb8a5d006e976f592f6d03de",
+        "models/bitcoin_onchain_cycles/live_mvrv/storage.py": "d0879c3aa25467faede47d460329d683bcb7cd530fa483bfe7df61ab476ee98d"
+      },
+      "candidate_script": "live_trading/live_model/btc_mvrv_p5_p95.py"
+    },
+    "volume_profile_reversion": {
+      "identity": "LTCUSDC paper_v33",
+      "status": "local_consolidation_parity_checked_operational_migration_pending",
+      "source_sha256": {
+        "models/mean_reversion_by_volume_profile/paper_v33/worker.py": "34958e6db02a60c1185496e7c2dd1ef1bce8dc9402f36fdec6d2e1d8180fbe91",
+        "indicator/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "indicator/deep_trade.py": "2dcf175f66a6cde8e8cd83386458d3fcff196097799921eaefc25f3ec588608d",
+        "indicator/ohlcv.py": "514a61d4246ab36b8d90f4506fa536a8679843df067bfd23bad97bafac59a2bb",
+        "indicator/trend.py": "74ecc6cf07f93a6ff671893dc733ef1ab0e0e5b887a272896a633b89d5bcb8ad",
+        "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
+        "indicator/vwap.py": "3e179c13ba8de292ac4d5947c9ea7269754afce75525cf924130b9501629649c",
+        "live_engine/__init__.py": "a45d1d3a2d8a128d1bab8a95e77ea823a1b745978695cdbf762504a55602ac0c",
+        "live_engine/account_delivery_upgrade.py": "99e5c2c23b6797c69a7b2e3cac366ffbf0f2a894960f5af12301c75b26673119",
+        "live_engine/account_owner.py": "a042757bf40c9c80234e05db41f7d6dbad4abbbece42429c55493eeb4265f570",
+        "live_engine/account_store.py": "64f637be3aa73573ef4a46638af288b367151c1e56d415f83c896ad2e92cd344",
+        "live_engine/account_worker.py": "fb57f2444cdac38b8e0833865f307ce330f5b4fb4cee2fe3e81758b9d07e3d31",
+        "live_engine/adapters/__init__.py": "b36f15b9b36fe6eb6743e23ca850fd9dd33541164b2b2d159bbb734cf215201c",
+        "live_engine/adapters/binance.py": "9f2ddfc04de0081fe94b34c95f1d3a4c115eb98b1e5eb46bfcaef66ed3002a8a",
+        "live_engine/adapters/binance_futures_execution.py": "0fe27a0507618f3430a3dd6d005a26d6c865c4a943f13791298f24261cfac834",
+        "live_engine/adapters/binance_futures_readonly.py": "bb395f1114002dcacec59871f452e39ceda733685856f324e8d617ff28795814",
+        "live_engine/adapters/lighter.py": "101cdadf689bdc1930fb3453d8b4d5d852c2d55cf9c14c18ae7a0276081b2f02",
+        "live_engine/adapters/lighter_public.py": "14576316ce9d45e50ad3637a890b01f521a38eefac030b245756f5f602bbbf8a",
+        "live_engine/futures_execution.py": "1ccb9b5bab9d80df8532c1f88123f772651dffc6fb11416c231a511d87e2d074",
+        "live_engine/futures_preflight.py": "ecd89ef2a5853c9770b276325460e230336d7540afb8041a1a349c067cb7dae8",
+        "live_engine/futures_store.py": "eed66583063a13eaa2f408ea904f6bb4d8ea30283cd08ef7d1f5c3301b00be41",
+        "live_engine/healthcheck.py": "87f57fe4ced6540b115a9cc9ce2bb6f46433f43a6e52a7b10276898b02c820d1",
+        "live_engine/market_data.py": "e2199f7e8d4a5d4e378df73213a3566921131c6aa838df4640c721ea498cde8e",
+        "live_engine/ops_alerts.py": "c4620561a14c64c76d37cb2390bba42824d055c7d81ff80e506e5b12c6147f5b",
+        "live_engine/order_manager.py": "18eb751ac2007b81f1cf8730bda7ac2be1e3b65c8f441c4b99d2fa5f1124205f",
+        "live_engine/runtime.py": "c642d91b22a425a16b7b41b0f1886c285c07b673ed38369d7cd26aafd6203b70",
+        "live_engine/service_health.py": "f25324eda60a4859665e21c7754d492f2b23e75bdf5741a4c71992f5350d21d4",
+        "live_engine/state_store.py": "62ed223748b9291a759a32c5d06d6a44d39e9c3e9e7b6a670dfbaa88f1fbd811",
+        "live_engine/strategy_store.py": "70437e25aadf81b43e7fc90046e49a325924334646b921806d04dae576d6659e",
+        "trading_core/__init__.py": "c3e9c00139812e9c1cd5247c09a0a0d013e5960719426784a43a471c1015a277",
+        "trading_core/contracts.py": "657e13f0650f308e8d3594a8d8bf7cce62664dbe8cbae0173697bdaabfc45b13",
+        "trading_core/indicators.py": "e0836dec3fd7998bfe4bc1ebf6eb6bd219fd08bf55a41aa106c152b09234f96f",
+        "trading_core/paper_execution.py": "1f0015b7f328959172cfb473fa402f647d2aca44c8f970de4764ca6c1db4d168",
+        "trading_core/profiles.py": "5e00e12088ecbe4cd79909b26d98591a4c83eb4a1ef8f347455ebe7ab201d7c2",
+        "trading_core/session.py": "f78942079c55460ecdc84fe8eebac3e259c785b9db7b645b1116be008be3e27a"
+      },
+      "candidate_script": "live_trading/live_model/volume_profile_reversion.py"
+    }
+  },
+  "candidate_release": {
+    "path": "live_trading/live_model/release.json",
+    "status": "offline_parity_verified_not_activated"
+  }
+}

@@ -1,0 +1,16 @@
+FROM python:3.13-slim-bookworm
+ARG CODE_VERSION
+RUN test -n "$CODE_VERSION"
+LABEL org.opencontainers.image.revision=$CODE_VERSION
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+RUN pip install --no-cache-dir requests==2.33.1 cryptography==50.0.2 \
+    && useradd --system --uid 10001 --create-home preflight
+COPY utils/__init__.py /app/utils/__init__.py
+COPY utils/engine/__init__.py /app/utils/engine/__init__.py
+COPY utils/engine/execution/futures_preflight.py /app/utils/engine/execution/futures_preflight.py
+COPY utils/engine/adapters/__init__.py /app/utils/engine/adapters/__init__.py
+COPY utils/engine/adapters/binance_futures_readonly.py /app/utils/engine/adapters/binance_futures_readonly.py
+COPY model_development/models/trend_following_preny_profile_15m/legacy/deploy/pilot.ethusdc.preflight.json /app/config/pilot.json
+USER preflight
+ENTRYPOINT ["python", "-m", "utils.engine.execution.futures_preflight"]

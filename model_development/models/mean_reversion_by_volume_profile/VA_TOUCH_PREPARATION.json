@@ -1,0 +1,24 @@
+﻿{
+    "status":  "verified",
+    "recorded":  "2026-10-23",
+    "tests_passed":  10,
+    "historical_run_executed":  false,
+    "files":  [
+                  {
+                      "path":  "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_volume_profile\\previous_value_area_reversal.py",
+                      "sha256":  "c5917f27b09e27bb215caf3145251c4eb76396e0dc6e3aacac1e23e668d6e133"
+                  },
+                  {
+                      "path":  "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_volume_profile\\previous_value_area_config.json",
+                      "sha256":  "a848081c2623ce608bb04c4d943710700dfb172b079aa3cc5bcff394bac7cedf"
+                  },
+                  {
+                      "path":  "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_volume_profile\\test_previous_value_area_reversal.py",
+                      "sha256":  "b9531a4a1679bbbf73bad2e02da7cd66b0198a544743a357720e77aa1ad83586"
+                  },
+                  {
+                      "path":  "C:\\Users\\adjop\\OneDrive\\Documents\\golden-goose-project\\models\\mean_reversion_by_volume_profile\\VA_TOUCH_DESIGN.md",
+                      "sha256":  "b1c4691af7fc2cd70973d56edaa9e9c6cb5416017f4a8f61d8bddc6dfa9aea12"
+                  }
+              ]
+}

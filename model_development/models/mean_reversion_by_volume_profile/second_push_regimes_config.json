@@ -1,0 +1,13 @@
+{
+  "BTCUSDC": [
+    {"path": "tmp/cache/market_regime/btcusdc_candles_through_2026-08-31/candles_1m.parquet"}
+  ],
+  "ETHUSDC": [
+    {"path": "tmp/cache/ethusdc/ethusdc_pre_ny_submodels_full_24h_orderflow_2024-01-05_to_2026-07-31/candles_1m.parquet", "before": "2026-08-01T00:00:00Z"},
+    {"path": "tmp/cache/ethusdc/eth_preny_selected_exit_2026-08/candles_1m.parquet", "from": "2026-08-01T00:00:00Z"}
+  ],
+  "XRPUSDT": [
+    {"path": "tmp/cache/xrpusdt/xrp_pre_ny_submodels_full_24h_orderflow_2020-01-06_to_2026-06-30/candles_1m.parquet"}
+  ],
+  "LTCUSDC": []
+}

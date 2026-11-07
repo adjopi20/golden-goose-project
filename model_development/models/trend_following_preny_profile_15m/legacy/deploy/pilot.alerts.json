@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "monitor_id": "new-vps-eth-pilot",
+  "poll_seconds": 15,
+  "reminder_seconds": 1800,
+  "targets": [
+    {
+      "id": "eth-executor",
+      "label": "Binance ETHUSDC executor",
+      "kind": "futures_executor",
+      "path": "/observed/executor/execution-200.sqlite",
+      "expected_metadata": {"owner": "binance_futures_pilot", "schema": "1", "environment": "production", "config_hash": "8c43f1a2130646faf403013c0ea7f127677631a646a44553b6c63a23e1d152db"},
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 60
+    },
+    {
+      "id": "eth-source",
+      "label": "Binance PreNY signal producer",
+      "kind": "heartbeat",
+      "path": "/observed/strategy/strategy.sqlite",
+      "expected_metadata": {"owner": "preny_strategy_shadow", "schema": "3", "config_hash": "80eddfd8c661c80eb3d03a81532ec70abf20e3637b9116c043b054fb78c047ee", "code_version": "e2917f054494682b4e5ba703631089263d03156e"},
+      "heartbeat_key": "last_poll_ms",
+      "max_age_seconds": 180
+    }
+  ]
+}

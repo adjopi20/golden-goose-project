@@ -1,0 +1,22 @@
+{
+  "schema": "operational_model_package_v1",
+  "model": "volume_profile_reversion",
+  "symbol": "LTCUSDC",
+  "venue": "binance",
+  "strategy_sha256": "cdfbb8568c92a65739e0983bb488adc1e8890017b282b17498d1b51bdea109a7",
+  "engine_release": {
+    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
+    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+  },
+  "dependencies": {
+    "utils/model_registry.py": "bb0ce739c0d9268890f9b81575006c2a1c4a571100a0e89847535e518bdca750"
+  },
+  "orders_started": false,
+  "account_state": "External; never copy paper balances, positions, pending orders or consumer checkpoints on promotion",
+  "runtime_configuration": "External; package import does not construct services",
+  "contract": "LTCUSDC paper_v33",
+  "research_reference": "LTCUSDC frozen_sizing_v31 baseline_intersection",
+  "status": "legacy_paper_packaged_not_activated",
+  "limitation": "V33 preserves existing paper rules and 2.5% risk. V31 profit evidence does not validate V33; no silent strategy/sizing conversion.",
+  "execution": "Model / PocPaperManager with shared next-print paper manager; no live adapter"
+}

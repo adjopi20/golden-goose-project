@@ -1,0 +1,31 @@
+services:
+  btc-mvrv-probe:
+    image: golden-goose/btc-mvrv-dual:binance-testnet-v1
+    entrypoint: ["python", "-m", "live_mvrv.binance_probe"]
+    command: ["report", "--confirm-virtual-testnet"]
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=32m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      BINANCE_ENV: testnet
+      BINANCE_KEY_TYPE: ed25519
+      BINANCE_API_KEY: ${BINANCE_API_KEY:-}
+      BINANCE_PRIVATE_KEY_FILE: /run/secrets/binance_ed25519.pem
+      BINANCE_TESTNET_EXECUTION_ENABLED: ${BINANCE_TESTNET_EXECUTION_ENABLED:-false}
+      TELEGRAM_ENABLED: "false"
+    volumes:
+      - probe_data:/data
+      - strategy_data:/strategy
+      - type: bind
+        source: ${BINANCE_PRIVATE_KEY_HOST_PATH:?Set private key host path locally}
+        target: /run/secrets/binance_ed25519.pem
+        read_only: true
+        bind:
+          create_host_path: false
+volumes:
+  probe_data:
+  strategy_data:
+    external: true
+    name: ${MVRV_STRATEGY_VOLUME:?Set existing Testnet strategy volume explicitly}

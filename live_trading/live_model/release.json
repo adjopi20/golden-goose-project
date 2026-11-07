@@ -1,0 +1,18 @@
+{
+  "schema": "live_model_packages_v1",
+  "date": "2026-11-03",
+  "status": "packaged_not_activated",
+  "models": {
+    "pre_ny_eth": "live_trading/live_model/pre_ny_eth",
+    "btc_mvrv_fixed": "live_trading/live_model/btc_mvrv",
+    "btc_mvrv_p5_p95": "live_trading/live_model/btc_mvrv"
+  },
+  "files": {
+    "live_trading/live_model/__init__.py": "a9410b6923336c59bc968c72ff49a320aef80d8ca59ab8af0d791057b82bfc66",
+    "live_trading/live_model/btc_mvrv/contract.json": "b64f91152821e2835e45e673a0a61bd99f63002f12d0fca9eb6b3f5c1f41d39b",
+    "live_trading/live_model/btc_mvrv/model_config.json": "5fa782e11cfe806e1cb4bcf5d5e457e34569131421a9fd1744676659f0f5b804",
+    "live_trading/live_model/btc_mvrv/strategy.py": "a7fba1a441a449b89272be354f6ac7aa197bb27bc3499c2a9ea719f37b715646",
+    "live_trading/live_model/pre_ny_eth/contract.json": "e014ab01b157dc2d4d37f96ef667a4d6552230988e6b1dd281ca1ea3b2e3037b",
+    "live_trading/live_model/pre_ny_eth/strategy.py": "23d0f99cfc8c518583e783d6df3d4ab6a18c4b462e7ab28d7b0e09b8cff9b9ef"
+  }
+}

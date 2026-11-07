@@ -1,0 +1,3 @@
+# Package and engine manifests verify the original Python and JSON bytes.
+*.py -text
+*.json -text

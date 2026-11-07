@@ -1,22 +1,44 @@
-# ignore file
-# file.txt
-
-# ignore folder
-/data/
-__pycache__/
-/_archive/
-reports/
-/storage/
-_tmp_binance_historical/
+# Local tooling and generated output
 .venv/
+__pycache__/
 .pytest_cache/
-
-# ignore extension
+.pytest_tmp*/
+.tmp*/
+.codex/
+/_archive/
+tmp/
+cache/
+browser_cache/
+reports/
+results/
+runs/
+chart_exports/
+data/
+storage/
 *.log
 *.csv
-*xlsx
+*.csv.gz
 *.parquet
 *.jsonl
+*.xlsx
+*.png
 *.jpg
 *.html
-*ipynb
+*.ipynb
+
+# Credentials and account state
+.env
+.env.*
+*.env
+!*.env.example
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.sqlite3
+*.sqlite3-*

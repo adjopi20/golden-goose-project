@@ -1,0 +1,12 @@
+{
+  "entry_gate": false,
+  "flow_entry_confirmation": true,
+  "flow_interpretation": "static",
+  "flow_timeframes": "3m_12m",
+  "lookback_hours": 16,
+  "mode": "profile_burst",
+  "one_entry_per_utc_day": true,
+  "risk_exit_hours": 48,
+  "risk_management": "rm-e",
+  "setup_variant": "b"
+}

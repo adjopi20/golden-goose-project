@@ -1,0 +1,15 @@
+{
+  "date_local": "2026-10-25",
+  "timezone": "Asia/Jakarta",
+  "mode": "offline_tests_only",
+  "model_unit_tests": {"passed": 16, "failed": 0},
+  "shared_engine_regressions": {"passed": 12, "deselected": 26, "failed": 0},
+  "shared_regression_selection": "tests/test_live_engine_paper.py tests/test_account_phase4.py -k 'paper or exact_ast'",
+  "shared_execution_source_modified": false,
+  "public_network_verified_on_vps": false,
+  "docker_image_built": false,
+  "vps_deployed": false,
+  "paper_worker_started": false,
+  "git_committed_or_pushed": false,
+  "note": "SQLite tests required execution outside the Windows sandbox. Shared pytest tests passed using a new temporary directory after the default pytest temp directory was inaccessible. Docker build and VPS feed validation are operator steps."
+}
