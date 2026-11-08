@@ -10,9 +10,9 @@
   "notional_equity_cap": 5,
   "dependencies": {
     "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
-    "live_trading/burst_runtime.py": "8a771ce73131cd900815676e75e79ac442ba0c19a1b076bd6b8ec8d60eeacbdc",
+    "live_trading/burst_runtime.py": "8c070872745818cc7e44fdf515af88b235c47c8cb521cafe84d8ec08ff8736e6",
     "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
-    "utils/engine/execution/burst_futures.py": "d58bb6c11a31975cb7575edde54dc74565f2fd5bdf188747f6890abd488a65a4",
+    "utils/engine/execution/burst_futures.py": "9ab41f18644a0ea8abad0d7354b4752f905b14e4bd8c90b864269790a4d79438",
     "utils/engine/adapters/burst_market.py": "ac4a6ee933f63be704fe510b6cdf95d50210dd2438dae4d87befd5628efda1c4"
   },
   "symbol": "UNIUSDC",

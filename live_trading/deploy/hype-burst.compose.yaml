@@ -1,5 +1,4 @@
-services:
-  hype-burst-live:
+x-burst: &burst
     image: ${HYPE_BURST_IMAGE:?set the verified image tag}
     restart: unless-stopped
     stop_grace_period: 30s
@@ -12,11 +11,30 @@ services:
     volumes:
       - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
       - ${HYPE_BURST_SECRETS:?set the external Ed25519 secret directory}:/run/hype-secrets:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+x-health: &health
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 90s
+
+services:
+  hype-burst-live:
+    <<: *burst
     command:
+      - --live-symbol
+      - HYPEUSDT
       - --database
       - /data/hype.sqlite
       - --allocation-usdt
-      - ${HYPE_BURST_ALLOCATION_USDT:?set the approved allocation}
+      - ${HYPE_BURST_ALLOCATION_USDT:?set the approved USDT allocation}
+      - --allocation-usdc
+      - ${BURST_LIVE_ALLOCATION_USDC:?set the approved USDC allocation}
       - --api-key-file
       - /run/hype-secrets/api-key
       - --private-key-file
@@ -25,13 +43,60 @@ services:
       - /run/hype-secrets/passphrase
       - --armed
     healthcheck:
+      <<: *health
       test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/hype.sqlite", "--keys", "worker_heartbeat_ms"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 90s
-    logging:
-      driver: json-file
-      options:
-        max-size: "20m"
-        max-file: "5"
+
+  inj-burst-live:
+    <<: *burst
+    networks: [default, market]
+    command:
+      - --live-symbol
+      - INJUSDT
+      - --database
+      - /data/injusdt.sqlite
+      - --allocation-usdt
+      - ${HYPE_BURST_ALLOCATION_USDT:?set the approved USDT allocation}
+      - --allocation-usdc
+      - ${BURST_LIVE_ALLOCATION_USDC:?set the approved USDC allocation}
+      - --api-key-file
+      - /run/hype-secrets/api-key
+      - --private-key-file
+      - /run/hype-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/hype-secrets/passphrase
+      - --market-nats-url
+      - nats://nats:4222
+      - --armed
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/injusdt.sqlite", "--keys", "worker_heartbeat_ms"]
+
+  uni-burst-live:
+    <<: *burst
+    networks: [default, market]
+    command:
+      - --live-symbol
+      - UNIUSDC
+      - --database
+      - /data/uniusdc.sqlite
+      - --allocation-usdt
+      - ${HYPE_BURST_ALLOCATION_USDT:?set the approved USDT allocation}
+      - --allocation-usdc
+      - ${BURST_LIVE_ALLOCATION_USDC:?set the approved USDC allocation}
+      - --api-key-file
+      - /run/hype-secrets/api-key
+      - --private-key-file
+      - /run/hype-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/hype-secrets/passphrase
+      - --market-nats-url
+      - nats://nats:4222
+      - --armed
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/uniusdc.sqlite", "--keys", "worker_heartbeat_ms"]
+
+networks:
+  market:
+    external: true
+    name: golden-goose-live-market_broker

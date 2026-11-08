@@ -20,7 +20,9 @@ from live_trading.burst_signals import (
 from utils.engine.adapters.binance_execution import FuturesOrders, VenueError
 from utils.engine.adapters.binance_futures_readonly import PreflightError
 from utils.engine.adapters.binance_public import BinancePublic, UnrecoverableGap
-from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, SharedBurstAccount, DAY
+from utils.engine.execution.burst_futures import (
+    BurstFuturesExecutor, BurstFuturesStore, CoordinatedBurstAccount, EntryAdmissionBusy, SharedBurstAccount, DAY,
+)
 from utils.model_registry import verify_model
 
 MINUTE = 60_000
@@ -350,7 +352,9 @@ def main(argv=None):
     parser.add_argument("--allocation-usdt", type=Decimal)
     parser.add_argument("--allocation-usdc", type=Decimal)
     parser.add_argument("--portfolio", action="store_true")
-    parser.add_argument("--shadow-symbol", choices=[Hype.SYMBOL, Inj.SYMBOL, Uni.SYMBOL])
+    symbols = parser.add_mutually_exclusive_group()
+    symbols.add_argument("--shadow-symbol", choices=[Hype.SYMBOL, Inj.SYMBOL, Uni.SYMBOL])
+    symbols.add_argument("--live-symbol", choices=[Hype.SYMBOL, Inj.SYMBOL, Uni.SYMBOL])
     parser.add_argument("--market-nats-url")
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--api-key-file", type=Path)
@@ -366,24 +370,40 @@ def main(argv=None):
         return 0
     if args.allocation_usdt is None or not args.allocation_usdt.is_finite() or args.allocation_usdt <= 0:
         parser.error("Allocation must be finite and positive")
-    if args.portfolio and (args.allocation_usdc is None or not args.allocation_usdc.is_finite()
-                           or args.allocation_usdc <= 0):
-        parser.error("Portfolio mode requires an approved positive USDC allocation")
-    if args.allocation_usdc is not None and not args.portfolio:
-        parser.error("USDC allocation requires portfolio mode")
+    if (args.portfolio or args.live_symbol) and (
+        args.allocation_usdc is None or not args.allocation_usdc.is_finite() or args.allocation_usdc <= 0
+    ):
+        parser.error("Coordinated execution requires an approved positive USDC allocation")
+    if args.allocation_usdc is not None and not (args.portfolio or args.live_symbol):
+        parser.error("USDC allocation requires coordinated execution")
     if args.duration is not None and (args.armed or args.duration <= 0):
         parser.error("Duration is only supported for a positive disarmed smoke test")
-    if bool(args.shadow_symbol) != bool(args.market_nats_url) or (
-        args.shadow_symbol and (args.armed or args.preflight or args.portfolio or args.api_key_file
-                                or args.private_key_file or args.passphrase_file)
+    if args.shadow_symbol and (
+        not args.market_nats_url or args.armed or args.preflight or args.portfolio or args.api_key_file
+        or args.private_key_file or args.passphrase_file
     ):
         parser.error("JetStream shadow requires one symbol and a broker URL without live credentials")
+    if args.live_symbol and (args.portfolio or not (args.armed or args.preflight)):
+        parser.error("A coordinated worker runs exactly one live symbol or its read-only exchange preflight")
+    if args.market_nats_url and not (args.shadow_symbol or args.live_symbol):
+        parser.error("A broker URL requires a single-symbol worker")
     if (args.armed or args.preflight) and not all((args.api_key_file, args.private_key_file)):
         parser.error("Live preflight and execution require external Ed25519 secret mounts")
     specs = {}
     packages = {p.SYMBOL: p for p in (Hype, Inj, Uni)}
-    selected = list(packages.values()) if args.portfolio else [packages[args.shadow_symbol or Hype.SYMBOL]]
+    selected = list(packages.values()) if args.portfolio else [packages[args.shadow_symbol or args.live_symbol or Hype.SYMBOL]]
+    journals = {}
+    if args.live_symbol:
+        if args.database.name != packages[args.live_symbol].DATABASE:
+            parser.error("A coordinated worker requires its canonical journal filename")
+        for package in packages.values():
+            allocation = args.allocation_usdt if package.MARGIN_ASSET == "USDT" else args.allocation_usdc
+            journals[package.SYMBOL] = (args.database.with_name(package.DATABASE), package.execution_config(allocation, args.armed))
     for package in selected:
+        if args.live_symbol:
+            database, config = journals[package.SYMBOL]
+            specs[package.SYMBOL] = (database, config, package)
+            continue
         allocation = args.allocation_usdt if not args.portfolio or package.MARGIN_ASSET == "USDT" else args.allocation_usdc
         config = package.execution_config(allocation, args.armed)
         if args.shadow_symbol:
@@ -409,7 +429,11 @@ def main(argv=None):
                 store.acquire_writer()
                 if not args.portfolio and store.meta("shared_burst_account") is not None:
                     raise ValueError("journal_requires_shared_account_mode")
+                if not args.live_symbol and store.meta("coordinated_account") is not None:
+                    raise ValueError("journal_requires_coordinated_account_mode")
                 executor = BurstFuturesExecutor(store, venue, config)
+                if args.live_symbol:
+                    CoordinatedBurstAccount(executor, journals)
                 models[symbol] = package(store, executor)
             if args.preflight or args.armed:
                 venue.sync_time()
@@ -422,6 +446,13 @@ def main(argv=None):
                     if model.store.active():
                         if args.preflight:
                             raise ValueError("preflight_requires_flat_ledger")
+                    elif args.live_symbol:
+                        try:
+                            with model.executor.shared_account.admission():
+                                model.executor.entry_guard(now)
+                        except EntryAdmissionBusy:
+                            if args.preflight or model.store.meta("coordinated_account") is None:
+                                raise
                     elif not args.portfolio or args.preflight:
                         model.executor.entry_guard(now)
             for symbol, (_, config, _) in specs.items():
@@ -429,9 +460,9 @@ def main(argv=None):
                                       initial_equity=config["initial_equity"], stop_risk_fraction=.01)), flush=True)
             if not args.preflight:
                 market = public
-                if args.shadow_symbol:
+                if args.market_nats_url:
                     from utils.engine.adapters.burst_market import BurstMarketInput
-                    market = BurstMarketInput(args.market_nats_url, models[args.shadow_symbol])
+                    market = BurstMarketInput(args.market_nats_url, next(iter(models.values())))
                 run_stream(models, venue, market, duration=args.duration)
             if args.duration is not None:
                 for symbol, model in models.items():

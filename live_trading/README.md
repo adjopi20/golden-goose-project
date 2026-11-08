@@ -53,10 +53,9 @@ A first start needs 25 completed hours of native trade history.
 
 Build the exact reviewed Git commit with
 `docker build -f utils/engine/deploy/Dockerfile.burst-live --build-arg CODE_VERSION=<commit> -t <image> .`.
-The Compose file `live_trading/deploy/hype-burst.compose.yaml` starts only HYPE
-on its existing journal, including when the image also contains other strategy
-packages. Set its
-image, allocation, state directory, secret directory and arming environment
+The Compose file `live_trading/deploy/hype-burst.compose.yaml` defines one
+worker per symbol. Name the service to start or replace it independently.
+Set the image, allocations, shared state directory, secret directory and arming environment
 outside the checkout. The read-only secret directory holds `api-key`,
 `ed25519.pem` and `passphrase` (empty for an unencrypted key).
 Use `--preflight` without `--armed` to validate the dedicated account without
@@ -70,8 +69,8 @@ closure, commissions, funding and net realized P&L. Export it read-only with
 feed recovery and heartbeat events. Public-feed disruptions block stale
 entries. Venue-native protection remains during reconnects.
 
-The separate `--portfolio` runner mode loads three individually verified packages, each with
-its own strategy script and contract under `live_trading/live_model/`:
+The live workers load individually verified packages with their own strategy
+script and contract under `live_trading/live_model/`.
 
 | Package | Symbol | Profile and flow | Exit policy |
 | --- | --- | --- | --- |
@@ -84,18 +83,27 @@ Futures execution. Each loads independently of the other strategies and
 stores its own feed cursor, setup state, orders, fills and P&L. The Docker
 entry point is `python -m live_trading.burst_runtime`.
 
-Run the first portfolio preflight while the account is flat and the previous
-HYPE worker has released the journal. The three symbols require isolated margin
-with auto-add off in one-way, single-asset USD-M mode. Set
-`UNI_BURST_ALLOCATION_USDC` in the external Compose environment. The approved
-HYPE allocation becomes the starting USDT pool. Realized HYPE and INJ P&L,
-commission and funding change the same sizing pool, with 1% stop risk per entry
-and up to one position per symbol. UNI sizes from its USDC pool.
+Run the coordinated preflight on disposable journal copies while the account
+is flat. The symbols require isolated margin with auto-add off in one-way,
+single-asset USD-M mode. Set `BURST_LIVE_ALLOCATION_USDC` in the external
+Compose environment. The approved HYPE allocation becomes the starting USDT
+pool. Realized HYPE and INJ P&L, commission and funding change the same sizing
+pool, with 1% stop risk per entry and up to one position per symbol. UNI sizes
+from its USDC pool.
+
+All three workers mount the same server-local journal directory. A short SQLite
+write lock per collateral serializes the balance check, sizing and committed
+entry reservation. Each worker is the sole writer of its own journal. A pending
+entry keeps its reservation across a crash or uncertain response. The same pool
+can admit a second position after reconciliation, subject to available margin.
+The lock is outside the stop and exit path. Start the coordinated HYPE worker
+before arming the others. INJ and UNI consume the private shared market feed and
+warm up on native prints. HYPE initially keeps its direct feed and existing
+profile. Run the legacy `--portfolio` mode only with its own journals.
 
 INJ places a reduce-only 10% limit at +1R and trails the stop to breakeven at
 the 1R print. Quantity must fit the venue lot and the risk budget. Keep and
 export each journal separately via `--report`: `hype.sqlite`, `injusdt.sqlite`,
-and `uniusdc.sqlite`. The first successful portfolio preflight binds the journals
-and API identity to the pools. Use disposable copies of the journals for a
-preflight rehearsal. Returning to the standalone image after portfolio fills
-requires account and journal reconciliation.
+and `uniusdc.sqlite`. The first successful coordinated preflight binds each
+journal to the API identity. Returning to the standalone image after coordinated
+fills requires account and journal reconciliation.

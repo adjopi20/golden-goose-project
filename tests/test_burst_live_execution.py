@@ -1,4 +1,5 @@
 from decimal import Decimal
+import hashlib
 import json
 from pathlib import Path
 
@@ -9,9 +10,11 @@ from live_trading.live_model.burst_hype.strategy import Strategy as HypeBurst
 from live_trading.live_model.burst_uni.strategy import Strategy as UniBurst
 from utils.engine.adapters.burst_market import BurstMarketInput, trade_batch
 from utils.engine.contracts import make_event
-from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, SharedBurstAccount, HOLD_MS
+from utils.engine.execution.burst_futures import (
+    BurstFuturesExecutor, BurstFuturesStore, CoordinatedBurstAccount, SharedBurstAccount, HOLD_MS,
+)
 from utils.engine.monitoring.alerts import inspect_target, load_config
-from test_futures_execution import FakeVenue, NOW
+from test_futures_execution import Crash, FakeVenue, NOW
 
 CONTRACT = HypeBurst.CONTRACT
 
@@ -214,7 +217,8 @@ class PortfolioVenue:
                 assets.append(dict(asset=asset, walletBalance=str(wallet), availableBalance=str(wallet)))
             return {"assets": assets}
         if path in ("/fapi/v3/positionRisk", "/fapi/v1/openOrders", "/fapi/v1/openAlgoOrders"):
-            return [row for symbol, lane in self.lanes.items() for row in self._replace(lane.read(path), symbol)]
+            return [row for symbol, lane in self.lanes.items() if kw.get("symbol", symbol) == symbol
+                    for row in self._replace(lane.read(path), symbol)]
         symbol = kw.get("symbol", "HYPEUSDT")
         result = self._replace(self.lanes[symbol].read(path, **kw), symbol)
         if path == "/fapi/v1/symbolConfig":
@@ -279,6 +283,53 @@ def test_insufficient_usdc_leaves_account_unbound(portfolio):
         pools.initialize(NOW)
     assert pools.state() is None
     assert not any(lane.posts for lane in venue.lanes.values())
+
+
+def test_coordinated_entry_reconciles_crash_and_keeps_other_collateral_independent(portfolio):
+    _, models, venue, _ = portfolio
+    hype, inj, uni = models.values()
+    journals = {symbol: (model.s.path, model.c) for symbol, model in models.items()}
+    for model in models.values():
+        CoordinatedBurstAccount(model, journals)
+    # New journals are enrolled by preflight before any strategy is armed.
+    key_hash = hashlib.sha256(venue._key.encode()).hexdigest()
+    for model in (hype, uni, inj):
+        with model.s.transaction():
+            model.s.set_meta("key_hash", key_hash)
+            model.s.set_meta("worker_symbol", model.symbol)
+    for model in models.values():
+        with model.shared_account.admission():
+            model.entry_guard(NOW)
+        model.offer(dict(sample_id=model.symbol, direction="long", initial_stop=990,
+                         eligible_timestamp_ms=NOW, expires_timestamp_ms=NOW+59_999), NOW)
+    with hype.shared_account.admission():
+        inj.cycle(NOW)
+        assert inj.s.active()["state"] == "PENDING"
+        uni.cycle(NOW)
+        assert uni.s.active()["state"] == "OPEN"
+
+    lane = venue.lanes[hype.symbol]
+    lane.fail["ENTRY"] = "after_crash"
+    with pytest.raises(Crash):
+        hype.cycle(NOW)
+    assert hype.s.active()["state"] == "ENTRY_PENDING"
+    assert hype.s.db.execute("SELECT state FROM orders WHERE role='ENTRY'").fetchone()[0] == "SENDING"
+    inj.cycle(NOW)
+    assert not venue.lanes[inj.symbol].posts
+    reopened = BurstFuturesStore(hype.s.path, hype.c)
+    try:
+        resumed = BurstFuturesExecutor(reopened, venue, hype.c)
+        CoordinatedBurstAccount(resumed, journals)
+        resumed.cycle(NOW, new_entries_ok=False)
+        assert reopened.active()["state"] == "OPEN"
+        assert [role for role, _ in lane.posts] == ["ENTRY", "STOP"]
+        inj.cycle(NOW)
+        assert inj.s.active()["state"] == "OPEN"
+        plan = json.loads(inj.s.active()["plan"])
+        assert Decimal(plan["risk_budget"]) == (Decimal("100") + reopened.equity(0)) / 100
+        assert len([role for role, _ in venue.lanes[inj.symbol].posts if role == "ENTRY"]) == 1
+    finally:
+        reopened.close()
 
 
 def test_bad_symbol_feed_does_not_stop_sibling_or_send_exit(portfolio, monkeypatch):
