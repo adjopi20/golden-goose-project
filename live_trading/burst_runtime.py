@@ -350,6 +350,8 @@ def main(argv=None):
     parser.add_argument("--allocation-usdt", type=Decimal)
     parser.add_argument("--allocation-usdc", type=Decimal)
     parser.add_argument("--portfolio", action="store_true")
+    parser.add_argument("--shadow-symbol", choices=[Hype.SYMBOL, Inj.SYMBOL, Uni.SYMBOL])
+    parser.add_argument("--market-nats-url")
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--api-key-file", type=Path)
     parser.add_argument("--private-key-file", type=Path)
@@ -371,13 +373,22 @@ def main(argv=None):
         parser.error("USDC allocation requires portfolio mode")
     if args.duration is not None and (args.armed or args.duration <= 0):
         parser.error("Duration is only supported for a positive disarmed smoke test")
+    if bool(args.shadow_symbol) != bool(args.market_nats_url) or (
+        args.shadow_symbol and (args.armed or args.preflight or args.portfolio or args.api_key_file
+                                or args.private_key_file or args.passphrase_file)
+    ):
+        parser.error("JetStream shadow requires one symbol and a broker URL without live credentials")
     if (args.armed or args.preflight) and not all((args.api_key_file, args.private_key_file)):
         parser.error("Live preflight and execution require external Ed25519 secret mounts")
     specs = {}
-    for package in (Hype, Inj, Uni) if args.portfolio else (Hype,):
-        allocation = args.allocation_usdt if package.MARGIN_ASSET == "USDT" else args.allocation_usdc
+    packages = {p.SYMBOL: p for p in (Hype, Inj, Uni)}
+    selected = list(packages.values()) if args.portfolio else [packages[args.shadow_symbol or Hype.SYMBOL]]
+    for package in selected:
+        allocation = args.allocation_usdt if not args.portfolio or package.MARGIN_ASSET == "USDT" else args.allocation_usdc
         config = package.execution_config(allocation, args.armed)
-        database = args.database if package is Hype else args.database.with_name(package.DATABASE)
+        if args.shadow_symbol:
+            config["allocation_id"] = "shadow:" + config["allocation_id"]
+        database = args.database if package is Hype or args.shadow_symbol else args.database.with_name(package.DATABASE)
         specs[package.SYMBOL] = (database, config, package)
     venue = FuturesOrders(execution_enabled=args.armed,
                           acknowledgement=os.getenv("BINANCE_PRODUCTION_ACK", ""),
@@ -388,10 +399,10 @@ def main(argv=None):
     public = BinancePublic()
     try:
         with ExitStack() as stores:
-            markets = public.validate_markets(list(specs))
+            markets = None if args.shadow_symbol else public.validate_markets(list(specs))
             models = {}
             for symbol, (database, config, package) in specs.items():
-                if markets[symbol]["marginAsset"] != config.get("margin_asset", "USDT"):
+                if markets is not None and markets[symbol]["marginAsset"] != config.get("margin_asset", "USDT"):
                     raise ValueError(f"unexpected_{symbol}_collateral")
                 store = BurstFuturesStore(database, config)
                 stores.callback(store.close)
@@ -417,7 +428,11 @@ def main(argv=None):
                 print(json.dumps(dict(event="startup", symbol=symbol, contract=config["contract"], armed=venue.armed,
                                       initial_equity=config["initial_equity"], stop_risk_fraction=.01)), flush=True)
             if not args.preflight:
-                run_stream(models, venue, public, duration=args.duration)
+                market = public
+                if args.shadow_symbol:
+                    from utils.engine.adapters.burst_market import BurstMarketInput
+                    market = BurstMarketInput(args.market_nats_url, models[args.shadow_symbol])
+                run_stream(models, venue, market, duration=args.duration)
             if args.duration is not None:
                 for symbol, model in models.items():
                     cursor = model.get("public_cursor")

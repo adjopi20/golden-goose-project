@@ -5,7 +5,7 @@ LABEL org.opencontainers.image.revision=$CODE_VERSION
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY utils/engine/deploy/requirements-paper.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt cryptography==50.0.2 \
+RUN pip install --no-cache-dir -r /app/requirements.txt cryptography==50.0.2 nats-py==2.15.0 \
     && useradd --system --uid 1000 --create-home burst \
     && mkdir /data && chown burst:burst /data
 COPY --chown=burst:burst utils/ /app/utils/

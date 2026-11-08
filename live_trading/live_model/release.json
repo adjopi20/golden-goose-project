@@ -18,10 +18,10 @@
     "live_trading/live_model/pre_ny_eth/contract.json": "e014ab01b157dc2d4d37f96ef667a4d6552230988e6b1dd281ca1ea3b2e3037b",
     "live_trading/live_model/pre_ny_eth/strategy.py": "23d0f99cfc8c518583e783d6df3d4ab6a18c4b462e7ab28d7b0e09b8cff9b9ef",
     "live_trading/live_model/burst_hype/strategy.py": "3486f35632526723915310893e02e5247d192596629c81113220e9de465bc50e",
-    "live_trading/live_model/burst_hype/contract.json": "0e2de401ee381bd6eaac91c4b031b5f7bd38658fdb7751a67707b23e4e17ad37",
+    "live_trading/live_model/burst_hype/contract.json": "2efeea21f8cf4d95daf1b0502a7bf60b1c8d3cf60f31a2369ca1bb39d65cb46c",
     "live_trading/live_model/burst_inj/strategy.py": "05754e4ec5640e88e788899721b82bb834c9eee2103579a65adb579f9f308dcb",
-    "live_trading/live_model/burst_inj/contract.json": "c49aac8b20fa8dea3347297b5354a0108a2ea007b1e1306d3033667b701054f8",
+    "live_trading/live_model/burst_inj/contract.json": "861eb465b55cae904c7056b29603f140e8bfa9f11df1182e5c5599f756b21455",
     "live_trading/live_model/burst_uni/strategy.py": "6a30d86b722e9036749cb08834f0f3d412aa8785e77900b550023e2a0edcd1ce",
-    "live_trading/live_model/burst_uni/contract.json": "d2b114b04a9372635c90cab15ad2dab5e78af2c6e899aa139175b748c8901212"
+    "live_trading/live_model/burst_uni/contract.json": "18fea8334e223b4e15ac01ec743fc50160feba8bf15c567e6805c04994f81c64"
   }
 }

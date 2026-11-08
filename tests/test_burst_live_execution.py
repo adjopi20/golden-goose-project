@@ -7,6 +7,8 @@ import pytest
 from live_trading.burst_runtime import run_stream
 from live_trading.live_model.burst_hype.strategy import Strategy as HypeBurst
 from live_trading.live_model.burst_uni.strategy import Strategy as UniBurst
+from utils.engine.adapters.burst_market import BurstMarketInput, trade_batch
+from utils.engine.contracts import make_event
 from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, SharedBurstAccount, HOLD_MS
 from utils.engine.monitoring.alerts import inspect_target, load_config
 from test_futures_execution import FakeVenue, NOW
@@ -311,6 +313,30 @@ def test_bad_symbol_feed_does_not_stop_sibling_or_send_exit(portfolio, monkeypat
     assert models["UNIUSDC"].get("public_cursor")["agg_trade_id"] == 1
     assert hype.s.active()["state"] == "OPEN"
     assert [role for role, _ in venue.lanes["HYPEUSDT"].posts] == ["ENTRY", "STOP"]
+
+
+def test_broker_batch_checkpoints_only_after_trade_cursor_commit(env):
+    executor, store, _, clock = env
+    model = HypeBurst(store, executor)
+    broker = BurstMarketInput("nats://test", model)
+    ticks = [dict(symbol="HYPEUSDT", agg_trade_id=i, timestamp_ms=clock[0]+i, price=1.0,
+                  quantity=2.0, buy=True) for i in (1, 2)]
+    event = make_event(venue="binance", product="futures", instrument_id="HYPEUSDT",
+                       source="native_aggregate_trades", event_type="trade", event_timestamp_ms=clock[0]+2,
+                       available_at_ms=clock[0]+3, received_timestamp_ms=clock[0]+3, stream_sequence=11,
+                       source_sequence=2, source_epoch="test-source", feature_version="market-data-v1",
+                       quality="complete", payload=dict(trades=ticks, first_source_sequence=1,
+                                                        last_source_sequence=2))
+    with pytest.raises(ValueError, match="unexpected_burst_market_event"):
+        trade_batch(event, "INJUSDT")
+    with pytest.raises(OSError, match="not_committed"):
+        list(broker.apply("test-broker", 11, event))
+    assert model.get("burst_broker_sequence") == 0
+    for tick in broker.apply("test-broker", 11, event):
+        model.ingest(tick, clock[0]+3, allow_entry=False)
+    assert model.get("burst_broker_sequence") == 11
+    assert model.get("public_cursor") == ticks[-1]
+    assert list(broker.apply("test-broker", 11, event)) == []
 
 
 def test_partial_recovers_lost_ack_then_stops_at_breakeven(portfolio):

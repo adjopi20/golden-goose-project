@@ -4,7 +4,7 @@ x-collector: &collector
   build:
     context: ../../../..
     dockerfile: utils/engine/collectors/market_data/Dockerfile
-  image: golden-goose/market-data-phase2:local
+  image: ${GG_MARKET_IMAGE:-golden-goose/market-data-phase2:local}
   restart: unless-stopped
   init: true
   read_only: true
@@ -49,7 +49,13 @@ services:
   binance-collector:
     <<: *collector
     command: ["--config", "/app/config/binance.json", "--database", "/data/binance.sqlite"]
-    volumes: [binance_data:/data]
+    volumes:
+      - binance_data:/data
+      - type: bind
+        source: ${GG_BINANCE_FEED_CONFIG:-./binance.json}
+        target: /app/config/binance.json
+        read_only: true
+        bind: {create_host_path: false}
     healthcheck:
       test: ["CMD", "python", "-m", "utils.engine.collectors.market_data.healthcheck", "--database", "/data/binance.sqlite"]
       interval: 60s
