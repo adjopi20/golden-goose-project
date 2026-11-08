@@ -8,9 +8,9 @@ COPY utils/engine/deploy/requirements-paper.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt cryptography==50.0.2 \
     && useradd --system --uid 1000 --create-home burst \
     && mkdir /data && chown burst:burst /data
-COPY utils/ /app/utils/
-COPY indicator/ /app/indicator/
-COPY model_development/ /app/model_development/
-COPY live_trading/live_model/ /app/live_trading/live_model/
+COPY --chown=burst:burst utils/ /app/utils/
+COPY --chown=burst:burst indicator/ /app/indicator/
+COPY --chown=burst:burst model_development/ /app/model_development/
+COPY --chown=burst:burst live_trading/live_model/ /app/live_trading/live_model/
 USER burst
 ENTRYPOINT ["python", "-m", "live_trading.live_model.burst_breakout.strategy"]
