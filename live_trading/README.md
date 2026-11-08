@@ -53,7 +53,9 @@ A first start needs 25 completed hours of native trade history.
 
 Build the exact reviewed Git commit with
 `docker build -f utils/engine/deploy/Dockerfile.burst-live --build-arg CODE_VERSION=<commit> -t <image> .`.
-The Compose file is `live_trading/deploy/hype-burst.compose.yaml`. Set its
+The Compose file `live_trading/deploy/hype-burst.compose.yaml` starts only HYPE
+on its existing journal, including when the image also contains other strategy
+packages. Set its
 image, allocation, state directory, secret directory and arming environment
 outside the checkout. The read-only secret directory holds `api-key`,
 `ed25519.pem` and `passphrase` (empty for an unencrypted key).
@@ -68,7 +70,7 @@ closure, commissions, funding and net realized P&L. Export it read-only with
 feed recovery and heartbeat events. Public-feed disruptions block stale
 entries. Venue-native protection remains during reconnects.
 
-The portfolio command loads three individually verified packages, each with
+The separate `--portfolio` runner mode loads three individually verified packages, each with
 its own strategy script and contract under `live_trading/live_model/`:
 
 | Package | Symbol | Profile and flow | Exit policy |
