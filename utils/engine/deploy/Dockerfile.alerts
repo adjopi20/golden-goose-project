@@ -7,10 +7,11 @@ WORKDIR /app
 RUN pip install --no-cache-dir requests==2.33.1 \
     && useradd --system --uid 1000 --create-home watcher \
     && mkdir /data && chown watcher:watcher /data
-COPY --chmod=0444 utils/__init__.py /app/utils/__init__.py
-COPY --chmod=0444 utils/engine/__init__.py /app/utils/engine/__init__.py
-COPY --chmod=0444 utils/engine/state/base.py /app/utils/engine/state/base.py
-COPY --chmod=0444 utils/engine/monitoring/alerts.py /app/utils/engine/monitoring/alerts.py
-COPY --chmod=0444 utils/engine/monitoring/engine_alerts.py /app/utils/engine/monitoring/engine_alerts.py
+COPY utils/__init__.py /app/utils/__init__.py
+COPY utils/engine/__init__.py /app/utils/engine/__init__.py
+COPY utils/engine/state/base.py /app/utils/engine/state/base.py
+COPY utils/engine/monitoring/alerts.py /app/utils/engine/monitoring/alerts.py
+COPY utils/engine/monitoring/engine_alerts.py /app/utils/engine/monitoring/engine_alerts.py
+RUN chmod -R a+rX /app/utils
 USER watcher
 ENTRYPOINT ["python", "-m", "utils.engine.monitoring.alerts"]
