@@ -3,9 +3,11 @@ import json
 
 import pytest
 
-from live_trading.live_model.burst_breakout.strategy import CONTRACT, NativeBurst
+from live_trading.live_model.burst_hype.strategy import Strategy as HypeBurst
 from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, SharedBurstAccount, HOLD_MS
 from test_futures_execution import FakeVenue, NOW
+
+CONTRACT = HypeBurst.CONTRACT
 
 
 def translate(value):
@@ -117,7 +119,7 @@ def test_native_stop_fill_reports_actual_reason_and_pnl(env):
 
 def test_missing_history_and_open_position_skip_are_durable(env):
     e, s, _, now = env
-    model = NativeBurst(s, e)
+    model = HypeBurst(s, e)
     with s.transaction():
         assert model.setup(now[0]) is None
     assert s.db.execute("SELECT json_extract(payload, '$.reason') FROM audit").fetchone()[0] == "profile_warmup"

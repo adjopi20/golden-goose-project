@@ -6,7 +6,9 @@
     "pre_ny_eth": "live_trading/live_model/pre_ny_eth",
     "btc_mvrv_fixed": "live_trading/live_model/btc_mvrv",
     "btc_mvrv_p5_p95": "live_trading/live_model/btc_mvrv",
-    "burst_hype_24h_b_3m12m_rm_c48": "live_trading/live_model/burst_breakout"
+    "burst_hype_24h_b_3m12m_rm_c48": "live_trading/live_model/burst_hype",
+    "burst_inj_24h_b_1m5m_rm_d48": "live_trading/live_model/burst_inj",
+    "burst_uni_12h_b_1m5m_rm_c48": "live_trading/live_model/burst_uni"
   },
   "files": {
     "live_trading/live_model/__init__.py": "a9410b6923336c59bc968c72ff49a320aef80d8ca59ab8af0d791057b82bfc66",
@@ -15,7 +17,11 @@
     "live_trading/live_model/btc_mvrv/strategy.py": "a7fba1a441a449b89272be354f6ac7aa197bb27bc3499c2a9ea719f37b715646",
     "live_trading/live_model/pre_ny_eth/contract.json": "e014ab01b157dc2d4d37f96ef667a4d6552230988e6b1dd281ca1ea3b2e3037b",
     "live_trading/live_model/pre_ny_eth/strategy.py": "23d0f99cfc8c518583e783d6df3d4ab6a18c4b462e7ab28d7b0e09b8cff9b9ef",
-    "live_trading/live_model/burst_breakout/contract.json": "9c871b501b12c3ff92d1660d6c15a6d12ef819b4eac724411d3f62cc570ec30b",
-    "live_trading/live_model/burst_breakout/strategy.py": "c1e8d232dc249685bd457a674286ff2df824d715fc4e99940e5ae5aef1ce718c"
+    "live_trading/live_model/burst_hype/strategy.py": "3486f35632526723915310893e02e5247d192596629c81113220e9de465bc50e",
+    "live_trading/live_model/burst_hype/contract.json": "b2a91e8e6e888231c41fc612d609ebf2ceb0bc9f0dc16da34105f638eacc523a",
+    "live_trading/live_model/burst_inj/strategy.py": "05754e4ec5640e88e788899721b82bb834c9eee2103579a65adb579f9f308dcb",
+    "live_trading/live_model/burst_inj/contract.json": "f4d2eab988fda0df48a6a95b0628bceabc42849d3b6f85d318918c730f1637db",
+    "live_trading/live_model/burst_uni/strategy.py": "6a30d86b722e9036749cb08834f0f3d412aa8785e77900b550023e2a0edcd1ce",
+    "live_trading/live_model/burst_uni/contract.json": "90316e938e74d65c131621f02e55bf92ab338267f32bd06ded1b3e797bb33214"
   }
 }

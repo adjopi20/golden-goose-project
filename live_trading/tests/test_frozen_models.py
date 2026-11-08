@@ -23,6 +23,9 @@ PATHS = {
     'pre_ny_hype': 'paper_trading/models/pre_ny_hype',
     'volume_profile_reversion': 'paper_trading/models/volume_profile_reversion',
     'btc_mvrv': 'live_trading/live_model/btc_mvrv',
+    'burst_hype': 'live_trading/live_model/burst_hype',
+    'burst_inj': 'live_trading/live_model/burst_inj',
+    'burst_uni': 'live_trading/live_model/burst_uni',
 }
 
 
@@ -36,7 +39,10 @@ def digest(path):
 
 def test_exclusive_stages_and_live_registry():
     from live_trading.live_model import load_model, verify_release
-    assert set(verify_release()['models']) == {'pre_ny_eth', 'btc_mvrv_fixed', 'btc_mvrv_p5_p95', 'burst_hype_24h_b_3m12m_rm_c48'}
+    assert set(verify_release()['models']) == {
+        'pre_ny_eth', 'btc_mvrv_fixed', 'btc_mvrv_p5_p95',
+        'burst_hype_24h_b_3m12m_rm_c48', 'burst_inj_24h_b_1m5m_rm_d48', 'burst_uni_12h_b_1m5m_rm_c48',
+    }
     assert load_model('btc_mvrv_fixed') is load_model('btc_mvrv_p5_p95')
     with pytest.raises(ValueError, match='Not a declared live'):
         load_model('pre_ny_hype')
@@ -48,6 +54,35 @@ def test_exclusive_stages_and_live_registry():
         assert not list(current.glob('*.sqlite'))
     assert (ROOT / 'model_development/models/trend_following_preny_profile_15m/strategy.py').is_file()
     assert (ROOT / 'model_development/models/bitcoin_onchain_cycles/live_mvrv/signal_monitor.py').is_file()
+
+
+def test_burst_models_use_distinct_verified_policies():
+    from decimal import Decimal
+    from live_trading.live_model import load_model
+    expected = {
+        'burst_hype_24h_b_3m12m_rm_c48': ('HYPEUSDT', 24, '3m_12m', 'rm-c', 'hype.sqlite'),
+        'burst_inj_24h_b_1m5m_rm_d48': ('INJUSDT', 24, '1m_5m', 'rm-d', 'injusdt.sqlite'),
+        'burst_uni_12h_b_1m5m_rm_c48': ('UNIUSDC', 12, '1m_5m', 'rm-c', 'uniusdc.sqlite'),
+    }
+    for key, values in expected.items():
+        cls = load_model(key).Strategy
+        policy = cls.model_config()
+        assert (cls.SYMBOL, policy['lookback_hours'], policy['flow_timeframes'],
+                policy['risk_management'], cls.DATABASE) == values
+        config = cls.execution_config(Decimal(99), False)
+        assert config['symbol'] == cls.SYMBOL
+        assert policy['risk_exit_hours'] == 48
+
+
+def test_burst_signal_freeze_matches_reference_source():
+    from live_trading import burst_signals
+    src = ROOT / 'model_development/models/burst_breakout/strategy.py'
+    live = ast.parse(Path(burst_signals.__file__).read_text(encoding='utf-8'))
+    reference = {n.name: ast.dump(n) for n in ast.parse(src.read_text(encoding='utf-8')).body
+                 if isinstance(n, ast.FunctionDef)}
+    for node in live.body:
+        if isinstance(node, ast.FunctionDef):
+            assert ast.dump(node) == reference[node.name]
 
 
 def test_original_frozen_release_sources_retain_exact_bytes():

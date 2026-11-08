@@ -10,7 +10,6 @@ RUN pip install --no-cache-dir -r /app/requirements.txt cryptography==50.0.2 \
     && mkdir /data && chown burst:burst /data
 COPY --chown=burst:burst utils/ /app/utils/
 COPY --chown=burst:burst indicator/ /app/indicator/
-COPY --chown=burst:burst model_development/ /app/model_development/
-COPY --chown=burst:burst live_trading/live_model/ /app/live_trading/live_model/
+COPY --chown=burst:burst live_trading/ /app/live_trading/
 USER burst
-ENTRYPOINT ["python", "-m", "live_trading.live_model.burst_breakout.strategy"]
+ENTRYPOINT ["python", "-m", "live_trading.burst_runtime"]

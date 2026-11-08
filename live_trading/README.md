@@ -68,8 +68,20 @@ closure, commissions, funding and net realized P&L. Export it read-only with
 feed recovery and heartbeat events. Public-feed disruptions block stale
 entries. Venue-native protection remains during reconnects.
 
-The portfolio command uses the same container and HYPE journal and adds
-INJUSDT 24H B 1m/5m rm-d 48H and UNIUSDC 12H B 1m/5m rm-c 48H.
+The portfolio command loads three individually verified packages, each with
+its own strategy script and contract under `live_trading/live_model/`:
+
+| Package | Symbol | Profile and flow | Exit policy |
+| --- | --- | --- | --- |
+| `burst_hype` | HYPEUSDT | B, 24H, 3m/12m | rm-c 48H |
+| `burst_inj` | INJUSDT | B, 24H, 1m/5m | rm-d 48H |
+| `burst_uni` | UNIUSDC | B, 12H, 1m/5m | rm-c 48H |
+
+The packages share the market loop, pinned Burst signal calculations, and
+Futures execution. Each loads independently of the other strategies and
+stores its own feed cursor, setup state, orders, fills and P&L. The Docker
+entry point is `python -m live_trading.burst_runtime`.
+
 Run the first portfolio preflight while the account is flat and the previous
 HYPE worker has released the journal. The three symbols require isolated margin
 with auto-add off in one-way, single-asset USD-M mode. Set

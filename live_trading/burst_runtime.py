@@ -1,10 +1,11 @@
-"""Native market decisions for the live Burst Breakout configurations."""
+"""Shared market input, evaluation loop and portfolio launcher for Burst packages."""
 import argparse
 from contextlib import ExitStack, closing
 from decimal import Decimal
 import json
 import os
 import sqlite3
+import sys
 from pathlib import Path
 import time
 
@@ -13,7 +14,7 @@ import pandas as pd
 from websockets.exceptions import ConnectionClosed
 
 from indicator.volume_profile import build_basic_volume_profile
-from model_development.models.burst_breakout.strategy import (
+from live_trading.burst_signals import (
     _burst_signals_from_features, assess_breakout_flow, confirm_flow_entries,
 )
 from utils.engine.adapters.binance_execution import FuturesOrders, VenueError
@@ -24,16 +25,18 @@ from utils.model_registry import verify_model
 
 MINUTE = 60_000
 HOUR = 60 * MINUTE
-SYMBOL = "HYPEUSDT"
-CONTRACT = "BURST-HYPE-24H-B-3M12M-RMC48-LIVE-001"
 
 
 class NativeBurst:
-    def __init__(self, store, executor, *, lookback_hours=24, step_minutes=3, window_minutes=12):
+    LOOKBACK_HOURS = 24
+    FLOW = (3, 12)
+    RISK_MANAGEMENT = "rm-c"
+    HOLD_HOURS = 48
+
+    def __init__(self, store, executor):
         self.store, self.executor = store, executor
-        self.lookback_hours = lookback_hours
-        self.step_minutes = step_minutes
-        self.window_minutes = window_minutes
+        self.lookback_hours = self.LOOKBACK_HOURS
+        self.step_minutes, self.window_minutes = self.FLOW
         store.db.executescript("""
             CREATE TABLE IF NOT EXISTS burst_minutes(
                 timestamp_ms INTEGER PRIMARY KEY, open REAL, high REAL, low REAL, close REAL,
@@ -41,6 +44,30 @@ class NativeBurst:
             CREATE TABLE IF NOT EXISTS burst_prices(
                 hour INTEGER, price REAL, qty REAL, PRIMARY KEY(hour,price));
         """)
+
+    @classmethod
+    def model_config(cls):
+        step, window = cls.FLOW
+        return dict(mode="profile_burst", setup_variant="b", lookback_hours=cls.LOOKBACK_HOURS,
+                    flow_entry_confirmation=True, flow_timeframes=f"{step}m_{window}m",
+                    flow_interpretation="static", entry_gate=False, one_entry_per_utc_day=True,
+                    risk_management=cls.RISK_MANAGEMENT, risk_exit_hours=cls.HOLD_HOURS)
+
+    @classmethod
+    def execution_config(cls, allocation, armed):
+        contract = verify_model(sys.modules[cls.__module__].__file__)
+        policy = cls.model_config()
+        if (contract["symbol"], contract["contract"], contract["pnl_unit"], contract["model_config"]) != (
+            cls.SYMBOL, cls.CONTRACT, cls.MARGIN_ASSET, policy
+        ):
+            raise ValueError("contract_identity_mismatch")
+        config = dict(symbol=cls.SYMBOL, contract=cls.CONTRACT, allocation_id=cls.ALLOCATION_ID,
+                      initial_equity=str(allocation), execution_mode="live",
+                      execution_enabled=armed, accept_new_entries=armed)
+        if cls.SYMBOL != "HYPEUSDT":
+            config.update(margin_asset=cls.MARGIN_ASSET, risk_management=cls.RISK_MANAGEMENT,
+                          model_config=policy)
+        return config
 
     def get(self, name, default=None):
         return json.loads(self.store.meta(name, json.dumps(default)))
@@ -126,7 +153,7 @@ class NativeBurst:
                             eligible = signal["entry_eligible_timestamp_ms"]
                             if allow_entry and eligible <= received_ms < eligible + MINUTE:
                                 identity = active["sample_id"]
-                                if self.executor.symbol != SYMBOL:
+                                if self.executor.symbol != "HYPEUSDT":
                                     identity = f"{self.executor.symbol}-{identity}"
                                 self.executor.offer(dict(sample_id=identity,
                                     direction=signal["direction"], initial_stop=signal["stop"],
@@ -276,6 +303,10 @@ def report(database):
 
 
 def main(argv=None):
+    from live_trading.live_model.burst_hype.strategy import Strategy as Hype
+    from live_trading.live_model.burst_inj.strategy import Strategy as Inj
+    from live_trading.live_model.burst_uni.strategy import Strategy as Uni
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--allocation-usdt", type=Decimal)
@@ -302,14 +333,14 @@ def main(argv=None):
         parser.error("USDC allocation requires portfolio mode")
     if args.duration is not None and (args.armed or args.duration <= 0):
         parser.error("Duration is only supported for a positive disarmed smoke test")
-    contract = verify_model(__file__)
-    if contract["contract"] != CONTRACT:
-        raise ValueError("contract_identity_mismatch")
     if (args.armed or args.preflight) and not all((args.api_key_file, args.private_key_file)):
         parser.error("Live preflight and execution require external Ed25519 secret mounts")
-    cfg = dict(symbol=SYMBOL, contract=CONTRACT, allocation_id="hype_burst_rmc48",
-               initial_equity=str(args.allocation_usdt), execution_mode="live",
-               execution_enabled=args.armed, accept_new_entries=args.armed)
+    specs = {}
+    for package in (Hype, Inj, Uni) if args.portfolio else (Hype,):
+        allocation = args.allocation_usdt if package.MARGIN_ASSET == "USDT" else args.allocation_usdc
+        config = package.execution_config(allocation, args.armed)
+        database = args.database if package is Hype else args.database.with_name(package.DATABASE)
+        specs[package.SYMBOL] = (database, config, package)
     venue = FuturesOrders(execution_enabled=args.armed,
                           acknowledgement=os.getenv("BINANCE_PRODUCTION_ACK", ""),
                           api_key_file=args.api_key_file, private_key_file=args.private_key_file,
@@ -319,19 +350,9 @@ def main(argv=None):
     public = BinancePublic()
     try:
         with ExitStack() as stores:
-            specs = {SYMBOL: (args.database, cfg, contract["model_config"])}
-            if args.portfolio:
-                for symbol, item in contract["portfolio_models"].items():
-                    asset = item["margin_asset"]
-                    model_config = item["model_config"]
-                    allocation = args.allocation_usdt if asset == "USDT" else args.allocation_usdc
-                    specs[symbol] = (args.database.with_name(symbol.lower() + ".sqlite"), dict(
-                        cfg, symbol=symbol, contract=item["contract"], allocation_id=item["contract"],
-                        initial_equity=str(allocation), margin_asset=asset,
-                        risk_management=model_config["risk_management"], model_config=model_config), model_config)
             markets = public.validate_markets(list(specs))
             models = {}
-            for symbol, (database, config, model_config) in specs.items():
+            for symbol, (database, config, package) in specs.items():
                 if markets[symbol]["marginAsset"] != config.get("margin_asset", "USDT"):
                     raise ValueError(f"unexpected_{symbol}_collateral")
                 store = BurstFuturesStore(database, config)
@@ -340,9 +361,7 @@ def main(argv=None):
                 if not args.portfolio and store.meta("shared_burst_account") is not None:
                     raise ValueError("journal_requires_shared_account_mode")
                 executor = BurstFuturesExecutor(store, venue, config)
-                step, window = (int(value.removesuffix("m")) for value in model_config["flow_timeframes"].split("_"))
-                models[symbol] = NativeBurst(store, executor, lookback_hours=model_config["lookback_hours"],
-                                              step_minutes=step, window_minutes=window)
+                models[symbol] = package(store, executor)
             if args.preflight or args.armed:
                 venue.sync_time()
                 now = int(time.time() * 1000)
