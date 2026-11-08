@@ -1,0 +1,34 @@
+{
+  "schema": "operational_model_package_v1",
+  "model": "burst_breakout",
+  "symbol": "HYPEUSDT",
+  "venue": "binance",
+  "contract": "BURST-HYPE-24H-B-3M12M-RMC48-LIVE-001",
+  "strategy_sha256": "c1e8d232dc249685bd457a674286ff2df824d715fc4e99940e5ae5aef1ce718c",
+  "engine_release": {
+    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
+    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+  },
+  "dependencies": {
+    "model_development/models/burst_breakout/strategy.py": "217542ee7dccd0b9ecf4c6d2a44d7a0728bd645c43acb5a7b7dd34dea2f533cc",
+    "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
+    "utils/engine/execution/burst_futures.py": "831c8b18fde2a3d98c85fe09c0fdc4faf19454c4e9558a3813d9b3923cf74f46"
+  },
+  "source_run": "model_development/models/burst_breakout/runs/window_rm_all_v01/HYPEUSDT_5b09f0b944e1491d",
+  "model_config": {
+    "mode": "profile_burst",
+    "setup_variant": "b",
+    "lookback_hours": 24,
+    "flow_entry_confirmation": true,
+    "flow_timeframes": "3m_12m",
+    "flow_interpretation": "static",
+    "entry_gate": false,
+    "one_entry_per_utc_day": true,
+    "risk_management": "rm-c",
+    "risk_exit_hours": 48
+  },
+  "risk_fraction": 0.01,
+  "notional_equity_cap": 5,
+  "quantity_unit": "HYPE",
+  "pnl_unit": "USDT"
+}

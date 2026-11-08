@@ -1,0 +1,30 @@
+services:
+  hype-burst-live:
+    image: ${HYPE_BURST_IMAGE:?set the verified image tag}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    env_file:
+      - ${HYPE_BURST_ARMING_ENV:?set the external arming env file}
+    volumes:
+      - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
+      - ${HYPE_BURST_SECRETS:?set the external Ed25519 secret directory}:/run/hype-secrets:ro
+    command:
+      - --database
+      - /data/hype.sqlite
+      - --allocation-usdt
+      - ${HYPE_BURST_ALLOCATION_USDT:?set the approved allocation}
+      - --api-key-file
+      - /run/hype-secrets/api-key
+      - --private-key-file
+      - /run/hype-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/hype-secrets/passphrase
+      - --armed
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"

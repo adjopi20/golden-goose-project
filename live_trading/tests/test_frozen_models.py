@@ -36,7 +36,7 @@ def digest(path):
 
 def test_exclusive_stages_and_live_registry():
     from live_trading.live_model import load_model, verify_release
-    assert set(verify_release()['models']) == {'pre_ny_eth', 'btc_mvrv_fixed', 'btc_mvrv_p5_p95'}
+    assert set(verify_release()['models']) == {'pre_ny_eth', 'btc_mvrv_fixed', 'btc_mvrv_p5_p95', 'burst_hype_24h_b_3m12m_rm_c48'}
     assert load_model('btc_mvrv_fixed') is load_model('btc_mvrv_p5_p95')
     with pytest.raises(ValueError, match='Not a declared live'):
         load_model('pre_ny_hype')

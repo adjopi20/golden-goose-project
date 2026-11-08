@@ -1,0 +1,16 @@
+FROM python:3.13.7-slim-bookworm
+ARG CODE_VERSION
+RUN test -n "$CODE_VERSION"
+LABEL org.opencontainers.image.revision=$CODE_VERSION
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY utils/engine/deploy/requirements-paper.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt cryptography==50.0.2 \
+    && useradd --system --uid 1000 --create-home burst \
+    && mkdir /data && chown burst:burst /data
+COPY utils/ /app/utils/
+COPY indicator/ /app/indicator/
+COPY model_development/ /app/model_development/
+COPY live_trading/live_model/ /app/live_trading/live_model/
+USER burst
+ENTRYPOINT ["python", "-m", "live_trading.live_model.burst_breakout.strategy"]

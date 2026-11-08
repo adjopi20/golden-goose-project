@@ -37,3 +37,33 @@ still serve compatibility callers; current packages use pinned utils/engine.
 Old deployment configurations are compatibility sources, not evidence of new
 package activation or end-to-end service conversion. No Docker build/deployment,
 account/state move, exchange order or Telegram message was performed.
+
+
+## HYPEUSDT Burst Breakout
+
+The live package uses setup B with a 24H profile and P85 baseline, static
+3m/12m flow, and rm-c. It moves the native stop at 1R, 2R, 4R and later
+doubling milestones. The 48-hour clock starts at the first exchange fill.
+Sizing uses 1% of the strategy allocation's running equity, adverse quote
+padding of 5 bps, and the research 5x notional ceiling. Venue quantity is
+rounded down. It uses the account's configured leverage. Entry requires a
+dedicated one-way, single-asset USD-M account, HYPEUSDT isolated margin,
+auto-add margin disabled, and the approved available USDT allocation.
+A first start needs 25 completed hours of native trade history.
+
+Build the exact reviewed Git commit with
+`docker build -f utils/engine/deploy/Dockerfile.burst-live --build-arg CODE_VERSION=<commit> -t <image> .`.
+The Compose file is `live_trading/deploy/hype-burst.compose.yaml`. Set its
+image, allocation, state directory, secret directory and arming environment
+outside the checkout. The read-only secret directory holds `api-key`,
+`ed25519.pem` and `passphrase` (empty for an unencrypted key).
+Use `--preflight` without `--armed` to validate the dedicated account without
+sending orders. A public stream smoke can use `--duration 20` without
+credentials. Use a separate disposable database for smoke tests.
+
+The persistent SQLite journal contains hourly decisions, order-flow assessments,
+entry skips, sizing, exchange order and fill IDs, stop updates, reasons for
+closure, commissions, funding and net realized P&L. Export it read-only with
+`--database /data/hype.sqlite --report`. Container output contains startup,
+feed recovery and heartbeat events. Public-feed disruptions block stale
+entries. Venue-native protection remains during reconnects.
