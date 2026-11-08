@@ -2,6 +2,7 @@ services:
   hype-burst-live:
     image: ${HYPE_BURST_IMAGE:?set the verified image tag}
     restart: unless-stopped
+    stop_grace_period: 30s
     init: true
     read_only: true
     tmpfs:
@@ -26,6 +27,12 @@ services:
       - --passphrase-file
       - /run/hype-secrets/passphrase
       - --armed
+    healthcheck:
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/hype.sqlite", "--keys", "worker_heartbeat_ms"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
     logging:
       driver: json-file
       options:

@@ -330,9 +330,10 @@ class BurstFuturesExecutor(FuturesExecutor):
         suffix = "initial" if desired == -1 else str(desired)
         cid = order_id(session["id"], "sl-" + suffix)
         row = next((row for row in stop_rows if row["client_id"] == cid), None)
-        if row is None and any(row["state"] in {"SENDING", "UNKNOWN"} for row in stop_rows):
+        uncertain = {"SENDING", "UNKNOWN"}
+        if row is None and any(row["state"] in uncertain for row in stop_rows):
             # Resolve an earlier submission before adding another native stop.
-            return "protected" if any(row["state"] == "NEW" for row in stop_rows) else "unprotected"
+            return "protected" if any(row["state"] == "NEW" for row in stop_rows) else "uncertain"
         if row is None:
             params = dict(algoType="CONDITIONAL", symbol=self.symbol, side="SELL" if side > 0 else "BUY",
                           positionSide="BOTH", type="STOP_MARKET", triggerPrice=str(trigger), workingType="CONTRACT_PRICE",
@@ -347,6 +348,8 @@ class BurstFuturesExecutor(FuturesExecutor):
         if row["state"] != "NEW":
             if any(other["state"] == "NEW" and other["client_id"] != cid for other in stop_rows):
                 return "protected"
+            if row["state"] in uncertain or any(other["state"] in uncertain for other in stop_rows):
+                return "uncertain"
             return "unprotected"
         if desired > lock:
             with self.s.transaction():
@@ -440,6 +443,8 @@ class BurstFuturesExecutor(FuturesExecutor):
                                   partial=self.c.get("risk_management") == "rm-d")
             except ValueError as error:
                 return self._skip(session, str(error))
+            # Until fill history arrives, use the latest normal fill deadline.
+            plan["force_exit_ms"] = p["expires_timestamp_ms"] + HOLD_MS
             with self.s.transaction():
                 self.s.db.execute("UPDATE sessions SET plan=?,state='ENTRY_PENDING' WHERE session=?",
                                   (canonical_json(plan), session["session"]))
@@ -491,7 +496,7 @@ class BurstFuturesExecutor(FuturesExecutor):
             return self._exit(session, amount, "protective_stop_not_confirmed")
         if protection == "trigger_finished":
             return self._exit(session, amount, "stop_left_unclosed_quantity")
-        if protection == "triggering":
+        if protection in {"triggering", "uncertain"}:
             return
         if entry["state"] not in TERMINAL:
             if now_ms > p["expires_timestamp_ms"]:
@@ -516,8 +521,11 @@ class BurstFuturesExecutor(FuturesExecutor):
                 self.s.session_state(session["session"], "OPEN")
                 self.s.set_meta("last_entry_day", first // DAY)
                 self.s.audit("position_open", dict(setup_id=session["id"], **plan))
-            if sign*(price-positive(plan["stop"])) <= 0 or risk > positive(plan["risk_budget"]) or qty*price > positive(plan["notional_cap"]):
-                return self._exit(session, amount, "actual_fill_exceeds_initial_stop_risk")
+        price = positive(plan["actual_entry_price"])
+        if (sign * (price - positive(plan["stop"])) <= 0
+                or positive(plan["actual_initial_price_risk"]) > positive(plan["risk_budget"])
+                or qty * price > positive(plan["notional_cap"])):
+            return self._exit(session, amount, "actual_fill_exceeds_initial_stop_risk")
         if now_ms >= plan["force_exit_ms"]:
             return self._exit(session, amount, "time_exit_48h")
         if self.c.get("risk_management") == "rm-d":

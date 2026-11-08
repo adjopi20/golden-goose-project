@@ -1,10 +1,14 @@
 from decimal import Decimal
 import json
+from pathlib import Path
 
 import pytest
 
+from live_trading.burst_runtime import run_stream
 from live_trading.live_model.burst_hype.strategy import Strategy as HypeBurst
+from live_trading.live_model.burst_uni.strategy import Strategy as UniBurst
 from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, SharedBurstAccount, HOLD_MS
+from utils.engine.monitoring.alerts import inspect_target, load_config
 from test_futures_execution import FakeVenue, NOW
 
 CONTRACT = HypeBurst.CONTRACT
@@ -103,6 +107,54 @@ def test_uncertain_replacement_keeps_protection_then_reconciles(env):
     assert len(v.cancels) == 1
     assert len(v.posts) == 3
     assert json.loads(s.active()["plan"])["risk_lock_r"] == 1
+
+
+def test_lost_initial_stop_ack_keeps_position_then_reconciles(env):
+    e, s, v, now = env
+    v.fail["STOP"] = "timeout"
+    e.offer(dict(sample_id="burst-1", direction="long", initial_stop=990,
+                 eligible_timestamp_ms=now[0], expires_timestamp_ms=now[0] + 59_999), now[0])
+    e.cycle(now[0])
+    stop = s.db.execute("SELECT * FROM orders WHERE role='STOP'").fetchone()
+    assert stop["state"] == "UNKNOWN"
+    assert v.position and [role for role, _ in v.posts] == ["ENTRY", "STOP"]
+    with s.transaction():
+        for key, value in (("worker_heartbeat_ms", now[0]), ("worker_armed", 1), ("worker_symbol", "HYPEUSDT")):
+            s.set_meta(key, value)
+    config = Path(__file__).resolve().parents[1] / "live_trading/deploy/burst-alerts.json"
+    target = dict(load_config(config)["targets"][0], path=str(s.path))
+    issues, read_ok = inspect_target(target, now[0])
+    assert read_ok and {issue["code"] for issue in issues} == {"ORDER_UNRESOLVED", "STOP_UNCONFIRMED"}
+    e.cycle(now[0], new_entries_ok=False)
+    assert s.active()["state"] == "OPEN"
+    assert [role for role, _ in v.posts] == ["ENTRY", "STOP"]
+    assert inspect_target(target, now[0]) == ([], True)
+
+
+def test_restart_resumes_journal_without_sending_an_entry_or_close(env):
+    e, s, v, now = env
+    plan = open_position(env)
+    s.close()
+    reopened = BurstFuturesStore(s.path, e.c)
+    try:
+        reopened.acquire_writer()
+        resumed = BurstFuturesExecutor(reopened, v, e.c)
+        resumed.cycle(now[0] + 1_000, new_entries_ok=False)
+        assert reopened.active()["state"] == "OPEN"
+        assert json.loads(reopened.active()["plan"])["force_exit_ms"] == plan["force_exit_ms"]
+        assert v.position and [role for role, _ in v.posts] == ["ENTRY", "STOP"]
+    finally:
+        reopened.close()
+
+
+def test_known_initial_stop_rejection_still_emergency_closes(env):
+    e, s, v, now = env
+    v.fail["STOP"] = "rejected"
+    e.offer(dict(sample_id="burst-1", direction="long", initial_stop=990,
+                 eligible_timestamp_ms=now[0], expires_timestamp_ms=now[0] + 59_999), now[0])
+    e.cycle(now[0])
+    assert not v.position and [role for role, _ in v.posts] == ["ENTRY", "STOP", "CLOSE"]
+    assert s.active()["reason"] == "protective_stop_not_confirmed"
 
 
 def test_native_stop_fill_reports_actual_reason_and_pnl(env):
@@ -225,6 +277,40 @@ def test_insufficient_usdc_leaves_account_unbound(portfolio):
         pools.initialize(NOW)
     assert pools.state() is None
     assert not any(lane.posts for lane in venue.lanes.values())
+
+
+def test_bad_symbol_feed_does_not_stop_sibling_or_send_exit(portfolio, monkeypatch):
+    pools, executors, venue, wall = portfolio
+    pools.initialize(NOW)
+    hype = executors["HYPEUSDT"]
+    hype.offer(dict(sample_id="burst-1", direction="long", initial_stop=990,
+                    eligible_timestamp_ms=NOW, expires_timestamp_ms=NOW + 59_999), NOW)
+    hype.cycle(NOW)
+    models = {"HYPEUSDT": HypeBurst(hype.s, hype),
+              "UNIUSDC": UniBurst(executors["UNIUSDC"].s, executors["UNIUSDC"])}
+    seconds = [0]
+    monkeypatch.setattr("live_trading.burst_runtime.time.monotonic", lambda: seconds[0])
+
+    def bad_print(*args, **kwargs):
+        raise ValueError("unreconciled_public_stream_sequence")
+
+    monkeypatch.setattr(models["HYPEUSDT"], "ingest", bad_print)
+
+    class Public:
+        def stream(self, symbols):
+            assert symbols == list(models)
+            for age, symbol in ((2, "HYPEUSDT"), (32, "UNIUSDC")):
+                seconds[0] = age
+                wall[0] = NOW + age * 1000
+                yield dict(symbol=symbol, agg_trade_id=1, timestamp_ms=wall[0], price=1000.0,
+                           quantity=1.0, buy=True)
+
+    run_stream(models, venue, Public(), duration=31)
+    assert hype.s.meta("worker_error") == "feed_ValueError"
+    assert models["UNIUSDC"].store.meta("worker_error") == ""
+    assert models["UNIUSDC"].get("public_cursor")["agg_trade_id"] == 1
+    assert hype.s.active()["state"] == "OPEN"
+    assert [role for role, _ in venue.lanes["HYPEUSDT"].posts] == ["ENTRY", "STOP"]
 
 
 def test_partial_recovers_lost_ack_then_stops_at_breakeven(portfolio):

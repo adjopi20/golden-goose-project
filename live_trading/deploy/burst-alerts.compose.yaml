@@ -1,0 +1,41 @@
+name: golden-goose-burst-alerts
+services:
+  ops-alerts:
+    build:
+      context: ../..
+      dockerfile: utils/engine/deploy/Dockerfile.alerts
+      args:
+        CODE_VERSION: ${BURST_ALERTS_COMMIT:?set the verified alert code commit}
+    image: golden-goose/burst-alerts:${BURST_ALERTS_COMMIT}
+    command: ["--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite", "--action", "run"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: ["/tmp:size=8m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    env_file:
+      - ${BURST_ALERTS_TELEGRAM_ENV:?set the existing external Telegram env file}
+    volumes:
+      - alert_data:/data
+      - type: bind
+        source: ${HYPE_BURST_STATE:?set the Burst journal directory}
+        target: /observed
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./burst-alerts.json
+        target: /app/config/alerts.json
+        read_only: true
+        bind: {create_host_path: false}
+    healthcheck:
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.alerts", "--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite", "--action", "health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 1m
+    logging:
+      driver: local
+      options: {max-size: "3m", max-file: "2"}
+volumes:
+  alert_data:

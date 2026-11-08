@@ -227,69 +227,107 @@ class NativeBurst:
 
 def run_stream(models, venue, public, *, duration=None):
     started = last_heartbeat = last_cycle = last_sync = time.monotonic()
+    started_ms = int(time.time() * 1000)
     last_live_ms = dict.fromkeys(models, 0)
+    feed_errors = {}
+    cycle_errors = {}
+    transient = (OSError, TimeoutError, ConnectionClosed, VenueError, PreflightError)
 
-    def manage(now, *, allow_entry):
+    def heartbeat(*, force=False):
+        nonlocal last_heartbeat
+        if not force and time.monotonic() - last_heartbeat < 30:
+            return
+        now = int(time.time() * 1000)
+        for symbol, model in models.items():
+            error = cycle_errors.get(symbol) or feed_errors.get(symbol)
+            if not error and now - (last_live_ms[symbol] or started_ms) > 30_000:
+                error = "public_feed_stale"
+            with model.store.transaction():
+                model.store.set_meta("worker_heartbeat_ms", now)
+                model.store.set_meta("worker_armed", int(venue.armed))
+                model.store.set_meta("worker_symbol", symbol)
+                model.store.set_meta("worker_error", error or "")
+            print(json.dumps(dict(event="heartbeat", symbol=symbol, status=model.store.status(),
+                                  worker_error=error, public_cursor=model.get("public_cursor"))), flush=True)
+        last_heartbeat = time.monotonic()
+
+    def manage(*, allow_entry):
         if not venue.armed:
             return
         for symbol, model in models.items():
             try:
-                model.executor.cycle(now, new_entries_ok=allow_entry and now - last_live_ms[symbol] <= 10_000)
-            except (ValueError, OSError, TimeoutError, VenueError, PreflightError) as error:
+                now = int(time.time() * 1000)
+                can_enter = (allow_entry and symbol not in cycle_errors and symbol not in feed_errors
+                             and 0 <= now - last_live_ms[symbol] <= 10_000)
+                model.executor.cycle(now, new_entries_ok=can_enter)
+                cycle_errors.pop(symbol, None)
+            except (ValueError, *transient) as error:
+                cycle_errors[symbol] = "execution_" + type(error).__name__
                 with model.store.transaction():
                     model.store.audit("cycle_error", dict(symbol=symbol, error_type=type(error).__name__,
                                                           reason=str(error) if type(error) is ValueError else None))
                 print(json.dumps(dict(event="cycle_error", symbol=symbol, error_type=type(error).__name__)), flush=True)
 
+    def observe(symbol, trade):
+        nonlocal last_cycle
+        model = models[symbol]
+        previous = model.get("public_cursor")
+        if previous and trade["agg_trade_id"] > previous["agg_trade_id"] + 1:
+            last_live_ms[symbol] = 0
+            with model.store.transaction():
+                model.store.audit("feed_gap", dict(expected=previous["agg_trade_id"] + 1,
+                                                  incoming=trade["agg_trade_id"]))
+            try:
+                for missing in public.repair(symbol, previous, trade):
+                    model.ingest(missing, int(time.time() * 1000), allow_entry=False)
+                    if time.monotonic() - last_cycle >= 2:
+                        manage(allow_entry=True)
+                        last_cycle = time.monotonic()
+                    heartbeat()
+            except UnrecoverableGap:
+                model.reset_profile("unrecoverable_public_gap")
+        now = int(time.time() * 1000)
+        fresh = -1000 <= now - trade["timestamp_ms"] <= 10_000
+        model.ingest(trade, now, allow_entry=fresh and symbol not in cycle_errors)
+        if fresh:
+            last_live_ms[symbol] = now
+            feed_errors.pop(symbol, None)
+
+    manage(allow_entry=False)
+    heartbeat(force=True)
     while duration is None or time.monotonic() - started < duration:
         try:
             for trade in public.stream(list(models)):
-                now = int(time.time() * 1000)
                 if trade is not None:
                     symbol = trade["symbol"]
-                    model = models[symbol]
-                    previous = model.get("public_cursor")
-                    if previous and trade["agg_trade_id"] > previous["agg_trade_id"] + 1:
-                        with model.store.transaction():
-                            model.store.audit("feed_gap", dict(expected=previous["agg_trade_id"] + 1,
-                                                              incoming=trade["agg_trade_id"]))
-                        try:
-                            for missing in public.repair(symbol, previous, trade):
-                                now = int(time.time() * 1000)
-                                model.ingest(missing, now, allow_entry=False)
-                                if venue.armed and time.monotonic() - last_cycle >= 2:
-                                    manage(now, allow_entry=False)
-                                    last_cycle = time.monotonic()
-                        except UnrecoverableGap:
-                            model.reset_profile("unrecoverable_public_gap")
-                    now = int(time.time() * 1000)
-                    fresh = -1000 <= now - trade["timestamp_ms"] <= 10_000
-                    model.ingest(trade, now, allow_entry=fresh)
-                    if fresh:
-                        last_live_ms[symbol] = now
+                    try:
+                        observe(symbol, trade)
+                    except (ValueError, *transient) as error:
+                        last_live_ms[symbol] = 0
+                        feed_errors[symbol] = "feed_" + type(error).__name__
+                        with models[symbol].store.transaction():
+                            models[symbol].store.audit("feed_error", dict(symbol=symbol,
+                                                                          error_type=type(error).__name__))
                 if time.monotonic() - last_sync >= 60 and venue.armed:
                     venue.sync_time()
                     last_sync = time.monotonic()
                 if venue.armed and time.monotonic() - last_cycle >= 2:
                     # An idle feed can manage exits, but only a recent print permits an entry.
-                    manage(now, allow_entry=True)
+                    manage(allow_entry=True)
                     last_cycle = time.monotonic()
-                if time.monotonic() - last_heartbeat >= 60:
-                    for symbol, model in models.items():
-                        print(json.dumps(dict(event="heartbeat", symbol=symbol, status=model.store.status(),
-                                              public_cursor=model.get("public_cursor"))), flush=True)
-                    last_heartbeat = time.monotonic()
+                heartbeat()
                 if duration is not None and time.monotonic() - started >= duration:
                     return
-        except (OSError, TimeoutError, ConnectionClosed, VenueError, PreflightError) as error:
+        except (ValueError, *transient) as error:
             last_live_ms = dict.fromkeys(models, 0)
-            for model in models.values():
+            for symbol, model in models.items():
+                feed_errors[symbol] = "connection_" + type(error).__name__
                 with model.store.transaction():
                     model.store.audit("connection_error", dict(error_type=type(error).__name__))
             print(json.dumps(dict(event="connection_error", error_type=type(error).__name__)), flush=True)
-            if venue.armed:
-                # An exchange-native stop remains in place while public data reconnects.
-                manage(int(time.time() * 1000), allow_entry=False)
+            # Native stops remain at Binance while public data reconnects.
+            manage(allow_entry=False)
+            heartbeat()
             time.sleep(2)
 
 
@@ -373,7 +411,6 @@ def main(argv=None):
                     if model.store.active():
                         if args.preflight:
                             raise ValueError("preflight_requires_flat_ledger")
-                        model.executor.cycle(now, new_entries_ok=False)
                     elif not args.portfolio or args.preflight:
                         model.executor.entry_guard(now)
             for symbol, (_, config, _) in specs.items():

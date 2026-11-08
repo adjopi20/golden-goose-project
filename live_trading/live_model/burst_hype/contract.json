@@ -10,9 +10,9 @@
   "notional_equity_cap": 5,
   "dependencies": {
     "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
-    "live_trading/burst_runtime.py": "ad472ceda72c4d547e5e18621b9e9db177cb645035f0a7ff4416e84f9d7361aa",
+    "live_trading/burst_runtime.py": "e17cf3072f835a92c4d441ef2421de9d65bfeed5ccbf4bb06b1b1c6509fd9867",
     "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
-    "utils/engine/execution/burst_futures.py": "18052c3a6895c2246ad4539fc34a4fbf6137d6e11c8ecc472c3729f7422094c3"
+    "utils/engine/execution/burst_futures.py": "d58bb6c11a31975cb7575edde54dc74565f2fd5bdf188747f6890abd488a65a4"
   },
   "symbol": "HYPEUSDT",
   "contract": "BURST-HYPE-24H-B-3M12M-RMC48-LIVE-001",

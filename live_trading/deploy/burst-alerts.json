@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "monitor_id": "binance-burst-live",
+  "poll_seconds": 15,
+  "reminder_seconds": 1800,
+  "targets": [
+    {
+      "id": "burst-hype",
+      "label": "Burst HYPEUSDT",
+      "kind": "futures_executor",
+      "path": "/observed/hype.sqlite",
+      "expected_metadata": {"owner": "binance_futures_pilot", "schema": "1", "environment": "production", "worker_symbol": "HYPEUSDT"},
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 90
+    },
+    {
+      "id": "burst-inj",
+      "label": "Burst INJUSDT",
+      "kind": "futures_executor",
+      "path": "/observed/injusdt.sqlite",
+      "expected_metadata": {"owner": "binance_futures_pilot", "schema": "1", "environment": "production", "worker_symbol": "INJUSDT"},
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 90
+    },
+    {
+      "id": "burst-uni",
+      "label": "Burst UNIUSDC",
+      "kind": "futures_executor",
+      "path": "/observed/uniusdc.sqlite",
+      "expected_metadata": {"owner": "binance_futures_pilot", "schema": "1", "environment": "production", "worker_symbol": "UNIUSDC"},
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 90
+    }
+  ]
+}
