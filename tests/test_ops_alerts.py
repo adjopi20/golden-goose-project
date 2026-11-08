@@ -6,6 +6,7 @@ import pytest
 import requests
 
 from utils.engine.monitoring import alerts as a
+from utils.engine.monitoring import engine_alerts
 from utils.engine.execution.preny_futures import FuturesExecutor
 from utils.engine.state.futures import FuturesStore
 from test_futures_execution import policy,intent,NOW,FakeVenue
@@ -52,6 +53,53 @@ def test_healthy_ledger_readonly_no_mutation(ledger):
     assert a.inspect_target(target,NOW)==([],True)
     assert dict(s.db.execute('SELECT key,value FROM metadata'))==before
     assert not v.posts
+
+
+def test_central_notifier_reads_legacy_burst_cursor_and_order_health(ledger):
+    s, v, e, target = ledger
+    e.offer(intent(), NOW)
+    e.cycle(NOW)
+    s.db.execute("DELETE FROM metadata WHERE key='worker_heartbeat_ms'")
+    s.set_meta("public_cursor", json.dumps(dict(symbol="HYPEUSDT", timestamp_ms=NOW)))
+    s.db.execute("UPDATE orders SET state='UNKNOWN' WHERE role='STOP'")
+    target = dict(target, adapter="burst_legacy",
+                  expected_metadata=dict(target["expected_metadata"], worker_symbol="HYPEUSDT"))
+    before = dict(s.db.execute("SELECT key,value FROM metadata"))
+    issues, ok = engine_alerts.inspect_engine(target, NOW + 61_000)
+    assert ok and {x["code"] for x in issues} == {
+        "HEARTBEAT_STALE", "ORDER_UNRESOLVED", "STOP_UNCONFIRMED"}
+    assert dict(s.db.execute("SELECT key,value FROM metadata")) == before
+
+
+def test_central_notifier_checks_mvrv_delivery_without_copying_error_text(tmp_path):
+    path = tmp_path / "signals.sqlite"
+    with sqlite3.connect(path) as db:
+        db.execute("CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT)")
+        db.executemany("INSERT INTO meta VALUES (?,?)", [
+            ("monitor_contract", '{"contract":"btc-mvrv-dual-v1"}'),
+            ("heartbeat", a.stamp(NOW)),
+            ("last_data_date", a.stamp(NOW)[:10]),
+        ])
+        target = dict(path=str(path), adapter="mvrv", monitor_contract="btc-mvrv-dual-v1", max_age_seconds=300)
+    assert engine_alerts.inspect_engine(target, NOW) == ([], True)
+    with sqlite3.connect(path) as db:
+        db.execute("INSERT INTO meta VALUES ('notification_error','private error details')")
+    issues, ok = engine_alerts.inspect_engine(target, NOW)
+    assert ok and {x["code"] for x in issues} == {"MVRV_DELIVERY_ERROR"}
+    assert "private" not in json.dumps(issues)
+
+
+def test_central_notifier_waits_for_first_heartbeat_then_reports_loss(ledger, alerts):
+    s, _, _, target = ledger
+    config = dict(monitor_id="test-monitor", reminder_seconds=1800)
+    target = dict(target, start_when_present=True)
+    s.db.execute("DELETE FROM metadata WHERE key='worker_heartbeat_ms'")
+    engine_alerts.poll_target(alerts, target, NOW, config)
+    assert not alerts.db.execute("SELECT 1 FROM conditions").fetchall()
+    s.set_meta("worker_heartbeat_ms", NOW)
+    engine_alerts.poll_target(alerts, target, NOW, config)
+    engine_alerts.poll_target(alerts, target, NOW + 61_000, config)
+    assert alerts.db.execute("SELECT code FROM conditions WHERE active=1").fetchone()[0] == "HEARTBEAT_STALE"
 
 
 def test_missing_target_not_created(tmp_path):

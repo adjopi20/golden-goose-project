@@ -26,13 +26,18 @@ Operational target/account configuration remains specific to its environment.
   as a normal strategy exit. A watcher outside the trading host is needed to
   detect a full-host outage.
 
-The independent `live_trading/deploy/burst-alerts.compose.yaml` uses the existing
-ledger watchdog and Telegram delivery queue. It reads all three Burst journals
-through a read-only mount and has a separate alert database. It receives no
-exchange keys or Docker socket. Set `BURST_ALERTS_COMMIT`,
-`HYPE_BURST_STATE` and `BURST_ALERTS_TELEGRAM_ENV` externally. The Telegram file
-uses the existing `TELEGRAM_ENABLED`, `TELEGRAM_BOT_TOKEN`, and
-`TELEGRAM_CHAT_ID` contract. Confirm the alert destination and delivery on the
-server before relying on it. Heartbeat, persistent worker errors, protection,
-unresolved orders and overdue exits are watched per symbol. The same-host
-notifier can report a dead worker while the notifier and server remain reachable.
+The central engine notifier in `live_trading/deploy/burst-alerts.compose.yaml`
+uses one Telegram destination and one durable delivery queue. It reads the
+HYPE Burst and BTC MVRV journals through read-only mounts. INJ and UNI join the
+same watcher after their first worker heartbeat. For a legacy HYPE journal,
+the watcher uses the timestamp of the persisted public trade cursor; newer
+workers publish an explicit heartbeat and error status.
+
+Set `BURST_ALERTS_COMMIT`, `HYPE_BURST_STATE`, and
+`BURST_ALERTS_TELEGRAM_ENV` externally. The latter uses the existing
+`TELEGRAM_ENABLED`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_CHAT_ID` contract.
+The notifier has a separate alert database and does not mount exchange keys or
+the Docker socket. Alerts identify the originating target even when several
+strategies share a container. Existing BTC MVRV strategy signals continue to
+use their own delivery outbox. The same-host notifier can report a dead worker
+while the notifier and server remain reachable.

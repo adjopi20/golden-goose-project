@@ -1,4 +1,4 @@
-name: golden-goose-burst-alerts
+name: golden-goose-engine-alerts
 services:
   ops-alerts:
     build:
@@ -6,8 +6,9 @@ services:
       dockerfile: utils/engine/deploy/Dockerfile.alerts
       args:
         CODE_VERSION: ${BURST_ALERTS_COMMIT:?set the verified alert code commit}
-    image: golden-goose/burst-alerts:${BURST_ALERTS_COMMIT}
-    command: ["--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite", "--action", "run"]
+    image: golden-goose/engine-alerts:${BURST_ALERTS_COMMIT}
+    entrypoint: ["python", "-m", "utils.engine.monitoring.engine_alerts"]
+    command: ["--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite"]
     restart: unless-stopped
     init: true
     read_only: true
@@ -18,6 +19,7 @@ services:
       - ${BURST_ALERTS_TELEGRAM_ENV:?set the existing external Telegram env file}
     volumes:
       - alert_data:/data
+      - mvrv_signal_data:/observed-mvrv:ro
       - type: bind
         source: ${HYPE_BURST_STATE:?set the Burst journal directory}
         target: /observed
@@ -39,3 +41,6 @@ services:
       options: {max-size: "3m", max-file: "2"}
 volumes:
   alert_data:
+  mvrv_signal_data:
+    external: true
+    name: ${BTC_MVRV_ALERT_VOLUME:-btc-mvrv-signals_signal_data}
