@@ -16,6 +16,9 @@ services:
       - /data/hype.sqlite
       - --allocation-usdt
       - ${HYPE_BURST_ALLOCATION_USDT:?set the approved allocation}
+      - --portfolio
+      - --allocation-usdc
+      - ${UNI_BURST_ALLOCATION_USDC:?set the approved UNI allocation}
       - --api-key-file
       - /run/hype-secrets/api-key
       - --private-key-file

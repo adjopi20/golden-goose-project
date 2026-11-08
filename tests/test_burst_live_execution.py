@@ -4,7 +4,7 @@ import json
 import pytest
 
 from live_trading.live_model.burst_breakout.strategy import CONTRACT, NativeBurst
-from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, HOLD_MS
+from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, SharedBurstAccount, HOLD_MS
 from test_futures_execution import FakeVenue, NOW
 
 
@@ -125,3 +125,132 @@ def test_missing_history_and_open_position_skip_are_durable(env):
     e.offer(dict(sample_id="burst-2", direction="long", initial_stop=990,
                  eligible_timestamp_ms=now[0], expires_timestamp_ms=now[0] + 59_999), now[0])
     assert s.db.execute("SELECT reason FROM sessions WHERE id='burst-2'").fetchone()[0] == "position_or_entry_pending"
+
+
+class PortfolioVenue:
+    armed, offset, _key = True, 0, "test-api-key"
+
+    def __init__(self):
+        self.lanes = {symbol: FakeVenue() for symbol in ("HYPEUSDT", "INJUSDT", "UNIUSDC")}
+        self.assets = {"HYPEUSDT": "USDT", "INJUSDT": "USDT", "UNIUSDC": "USDC"}
+
+    def load_credentials(self):
+        pass
+
+    def _replace(self, result, symbol):
+        if isinstance(result, list):
+            return [self._replace(row, symbol) for row in result]
+        if isinstance(result, dict):
+            return {key: self._replace(value, symbol) for key, value in result.items()}
+        return {"ETHUSDC": symbol, "USDC": self.assets[symbol]}.get(result, result)
+
+    def get(self, path, **kw):
+        if path == "/fapi/v1/exchangeInfo":
+            return {"symbols": [self._replace(lane.spec, symbol) for symbol, lane in self.lanes.items()]}
+        return self._replace(self.lanes[kw["symbol"]].get(path, **kw), kw["symbol"])
+
+    def read(self, path, **kw):
+        if path == "/fapi/v3/account":
+            assets = []
+            for asset in ("USDT", "USDC"):
+                wallet = 200 + sum(lane.wallet - 200 for symbol, lane in self.lanes.items()
+                                   if self.assets[symbol] == asset)
+                assets.append(dict(asset=asset, walletBalance=str(wallet), availableBalance=str(wallet)))
+            return {"assets": assets}
+        if path in ("/fapi/v3/positionRisk", "/fapi/v1/openOrders", "/fapi/v1/openAlgoOrders"):
+            return [row for symbol, lane in self.lanes.items() for row in self._replace(lane.read(path), symbol)]
+        symbol = kw.get("symbol", "HYPEUSDT")
+        result = self._replace(self.lanes[symbol].read(path, **kw), symbol)
+        if path == "/fapi/v1/symbolConfig":
+            result[0].update(marginType="ISOLATED", isAutoAddMargin=False)
+        return result
+
+    def submit(self, role, params):
+        return self.lanes[params["symbol"]].submit(role, params)
+
+    def query(self, cid, *, symbol, **kw):
+        return self.lanes[symbol].query(cid, **kw)
+
+    def cancel(self, cid, *, symbol, **kw):
+        return self.lanes[symbol].cancel(cid, **kw)
+
+
+@pytest.fixture
+def portfolio(tmp_path, monkeypatch):
+    clock = [NOW]
+    monkeypatch.setattr("utils.engine.execution.preny_futures.time.time", lambda: clock[0] / 1000)
+    venue = PortfolioVenue()
+    models = {}
+    try:
+        for symbol, asset in venue.assets.items():
+            config = dict(symbol=symbol, contract=symbol, allocation_id=symbol, initial_equity="100",
+                          execution_mode="live", accept_new_entries=True, margin_asset=asset,
+                          risk_management="rm-d" if symbol == "INJUSDT" else "rm-c")
+            store = BurstFuturesStore(tmp_path / (symbol + ".sqlite"), config)
+            models[symbol] = BurstFuturesExecutor(store, venue, config)
+        pools = SharedBurstAccount(list(models.values()), dict(USDT=Decimal("100"), USDC=Decimal("99")))
+        yield pools, models, venue, clock
+    finally:
+        for model in models.values():
+            model.s.close()
+
+
+def test_shared_equity_and_independent_journals(portfolio):
+    pools, models, venue, clock = portfolio
+    pools.initialize(NOW)
+    for symbol, model in models.items():
+        model.offer(dict(sample_id=symbol, direction="long", initial_stop=990,
+                         eligible_timestamp_ms=NOW, expires_timestamp_ms=NOW+59_999), NOW)
+        model.cycle(NOW)
+        assert model.s.active()["state"] == "OPEN"
+    hype, inj, uni = models.values()
+    assert Decimal(json.loads(hype.s.active()["plan"])["risk_budget"]) == Decimal("1")
+    assert Decimal(json.loads(inj.s.active()["plan"])["risk_budget"]) == (100 + hype.s.equity(0))/100
+    assert Decimal(json.loads(uni.s.active()["plan"])["risk_budget"]) == Decimal("0.99")
+    assert all(model.s.db.execute("SELECT COUNT(*) FROM fills").fetchone()[0] == 1 for model in models.values())
+    assert all(venue.lanes[symbol].position for symbol in models)
+    pools.initialize(clock[0])
+    venue.lanes["INJUSDT"].wallet += 1
+    with pytest.raises(ValueError, match="shared_wallet_fill_funding_mismatch"):
+        pools.balance("USDT", NOW)
+    assert pools.balance("USDC", NOW)[0] == 99 + uni.s.equity(0)
+
+
+def test_insufficient_usdc_leaves_account_unbound(portfolio):
+    pools, _, venue, _ = portfolio
+    venue.lanes["UNIUSDC"].wallet = Decimal("98.99")
+    with pytest.raises(ValueError, match="insufficient_USDC"):
+        pools.initialize(NOW)
+    assert pools.state() is None
+    assert not any(lane.posts for lane in venue.lanes.values())
+
+
+def test_partial_recovers_lost_ack_then_stops_at_breakeven(portfolio):
+    pools, models, venue, clock = portfolio
+    pools.initialize(NOW)
+    inj = models["INJUSDT"]
+    lane = venue.lanes["INJUSDT"]
+    lane.fail["TP1"] = "timeout"
+    inj.offer(dict(sample_id="inj-1", direction="long", initial_stop=990,
+                   eligible_timestamp_ms=NOW, expires_timestamp_ms=NOW+59_999), NOW)
+    inj.cycle(NOW)
+    order = inj.s.db.execute("SELECT * FROM orders WHERE role='TP1'").fetchone()
+    assert order["state"] == "UNKNOWN"
+    tp = json.loads(order["params"])
+    plan = json.loads(inj.s.active()["plan"])
+    assert Decimal(tp["quantity"]) == Decimal(plan["actual_entry_quantity"]) / 10
+    assert tp["reduceOnly"] == "true" and Decimal(tp["price"]) == 1010
+    lane.clock = clock[0] = NOW + 1000
+    lane.fill(order["client_id"], maker=True)
+    inj.s.set_meta("live_excursion", json.dumps(dict(setup_id="inj-1", timestamp_ms=clock[0], price=1010)))
+    inj.cycle(clock[0])
+    assert len([role for role, _ in lane.posts if role == "TP1"]) == 1
+    assert Decimal(lane.position) == Decimal(plan["actual_entry_quantity"]) * Decimal(".9")
+    assert json.loads(inj.s.active()["plan"])["risk_lock_r"] == 0
+    assert lane.position and any(row.get("algoStatus") == "NEW" for row in lane.orders.values())
+    lane.clock = clock[0] = NOW + HOLD_MS
+    inj.cycle(clock[0])
+    inj.cycle(clock[0])
+    assert not inj.s.active()
+    close = json.loads(inj.s.db.execute("SELECT payload FROM audit WHERE kind='trade_closed'").fetchone()[0])
+    assert close["pnl_asset"] == "USDT" and len(close["fill_ids"]) == 3

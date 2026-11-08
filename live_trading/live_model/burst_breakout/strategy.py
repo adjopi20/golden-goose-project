@@ -1,6 +1,6 @@
-"""Native market decisions for HYPEUSDT 24H B, 3m/12m, rm-c 48H."""
+"""Native market decisions for the live Burst Breakout configurations."""
 import argparse
-from contextlib import closing
+from contextlib import ExitStack, closing
 from decimal import Decimal
 import json
 import os
@@ -19,7 +19,7 @@ from model_development.models.burst_breakout.strategy import (
 from utils.engine.adapters.binance_execution import FuturesOrders, VenueError
 from utils.engine.adapters.binance_futures_readonly import PreflightError
 from utils.engine.adapters.binance_public import BinancePublic, UnrecoverableGap
-from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, DAY
+from utils.engine.execution.burst_futures import BurstFuturesExecutor, BurstFuturesStore, SharedBurstAccount, DAY
 from utils.model_registry import verify_model
 
 MINUTE = 60_000
@@ -29,8 +29,11 @@ CONTRACT = "BURST-HYPE-24H-B-3M12M-RMC48-LIVE-001"
 
 
 class NativeBurst:
-    def __init__(self, store, executor):
+    def __init__(self, store, executor, *, lookback_hours=24, step_minutes=3, window_minutes=12):
         self.store, self.executor = store, executor
+        self.lookback_hours = lookback_hours
+        self.step_minutes = step_minutes
+        self.window_minutes = window_minutes
         store.db.executescript("""
             CREATE TABLE IF NOT EXISTS burst_minutes(
                 timestamp_ms INTEGER PRIMARY KEY, open REAL, high REAL, low REAL, close REAL,
@@ -51,7 +54,8 @@ class NativeBurst:
         return pd.DataFrame([dict(row) for row in rows])
 
     def setup(self, closing):
-        frame = self.minutes(closing - 25 * HOUR, closing)
+        first_hour = closing - (self.lookback_hours + 1) * HOUR
+        frame = self.minutes(first_hour, closing)
         event = dict(setup_id=f"profile-burst-{closing}", closing_ms=closing)
         if frame.empty:
             self.store.audit("hourly_decision", dict(event, reason="profile_warmup"))
@@ -59,14 +63,14 @@ class NativeBurst:
         hourly = frame.groupby(frame.timestamp_ms // HOUR).agg(
             open=("open", "first"), close=("close", "last"),
             buy=("buy_volume", "sum"), sell=("sell_volume", "sum"))
-        if len(hourly) != 25:
+        if len(hourly) != self.lookback_hours + 1:
             self.store.audit("hourly_decision", dict(event, reason="profile_warmup_or_missing_hour",
                                                     complete_hours=len(hourly)))
             return None
         history, candle = hourly.iloc[:-1], hourly.iloc[-1]
         price_rows = self.store.db.execute(
             "SELECT price,SUM(qty) AS qty FROM burst_prices WHERE hour>=? AND hour<? GROUP BY price ORDER BY price",
-            (closing - 25 * HOUR, closing - HOUR))
+            (first_hour, closing - HOUR))
         profile = build_basic_volume_profile(pd.DataFrame([dict(row) for row in price_rows]),
                                              n_bins=50, value_area_pct=.70)
         feature = dict(closing=closing, open=float(candle.open), close=float(candle.close),
@@ -94,12 +98,14 @@ class NativeBurst:
         if active:
             setup_ms = active["feature_available_at_ms"]
             elapsed = (closing - setup_ms) // MINUTE
-            if 12 <= elapsed <= 60 and elapsed % 3 == 0:
+            if self.window_minutes <= elapsed <= 60 and elapsed % self.step_minutes == 0:
                 frame = self.minutes(setup_ms - DAY, closing)
                 if not frame.empty:
-                    trace = assess_breakout_flow(frame, [active], step_minutes=3, window_minutes=12)
+                    trace = assess_breakout_flow(frame, [active], step_minutes=self.step_minutes,
+                                                 window_minutes=self.window_minutes)
                     trace = trace[trace.assessment_timestamp_ms <= closing].copy()
-                    confirmed, trace = confirm_flow_entries(trace, [active], closing + 1, window_minutes=12)
+                    confirmed, trace = confirm_flow_entries(trace, [active], closing + 1,
+                                                            window_minutes=self.window_minutes)
                     if not trace.empty:
                         row = json.loads(trace.iloc[-1].to_json())
                         if not row["decision_reason"]:
@@ -119,7 +125,10 @@ class NativeBurst:
                             signal = confirmed[0]
                             eligible = signal["entry_eligible_timestamp_ms"]
                             if allow_entry and eligible <= received_ms < eligible + MINUTE:
-                                self.executor.offer(dict(sample_id=active["sample_id"],
+                                identity = active["sample_id"]
+                                if self.executor.symbol != SYMBOL:
+                                    identity = f"{self.executor.symbol}-{identity}"
+                                self.executor.offer(dict(sample_id=identity,
                                     direction=signal["direction"], initial_stop=signal["stop"],
                                     reference_close=signal["entry_reference"], observed_at_ms=received_ms,
                                     eligible_timestamp_ms=eligible, expires_timestamp_ms=eligible + MINUTE - 1,
@@ -135,8 +144,10 @@ class NativeBurst:
                 active = None
         if closing % HOUR == 0:
             active = self.setup(closing)
-            self.store.db.execute("DELETE FROM burst_minutes WHERE timestamp_ms<?", (closing - 27 * HOUR,))
-            self.store.db.execute("DELETE FROM burst_prices WHERE hour<?", (closing - 26 * HOUR,))
+            self.store.db.execute("DELETE FROM burst_minutes WHERE timestamp_ms<?",
+                                  (closing - (self.lookback_hours + 3) * HOUR,))
+            self.store.db.execute("DELETE FROM burst_prices WHERE hour<?",
+                                  (closing - (self.lookback_hours + 2) * HOUR,))
         self.put("active_setup", active)
 
     def ingest(self, trade, received_ms, *, allow_entry):
@@ -187,26 +198,40 @@ class NativeBurst:
             self.store.audit("feed_reset", dict(reason=reason))
 
 
-def run_stream(model, executor, public, *, duration=None):
+def run_stream(models, venue, public, *, duration=None):
     started = last_heartbeat = last_cycle = last_sync = time.monotonic()
-    last_live_ms = 0
+    last_live_ms = dict.fromkeys(models, 0)
+
+    def manage(now, *, allow_entry):
+        if not venue.armed:
+            return
+        for symbol, model in models.items():
+            try:
+                model.executor.cycle(now, new_entries_ok=allow_entry and now - last_live_ms[symbol] <= 10_000)
+            except (ValueError, OSError, TimeoutError, VenueError, PreflightError) as error:
+                with model.store.transaction():
+                    model.store.audit("cycle_error", dict(symbol=symbol, error_type=type(error).__name__,
+                                                          reason=str(error) if type(error) is ValueError else None))
+                print(json.dumps(dict(event="cycle_error", symbol=symbol, error_type=type(error).__name__)), flush=True)
+
     while duration is None or time.monotonic() - started < duration:
         try:
-            for trade in public.stream([SYMBOL]):
+            for trade in public.stream(list(models)):
                 now = int(time.time() * 1000)
-                fresh = False
                 if trade is not None:
+                    symbol = trade["symbol"]
+                    model = models[symbol]
                     previous = model.get("public_cursor")
                     if previous and trade["agg_trade_id"] > previous["agg_trade_id"] + 1:
                         with model.store.transaction():
                             model.store.audit("feed_gap", dict(expected=previous["agg_trade_id"] + 1,
                                                               incoming=trade["agg_trade_id"]))
                         try:
-                            for missing in public.repair(SYMBOL, previous, trade):
+                            for missing in public.repair(symbol, previous, trade):
                                 now = int(time.time() * 1000)
                                 model.ingest(missing, now, allow_entry=False)
-                                if executor.v.armed and time.monotonic() - last_cycle >= 2:
-                                    executor.cycle(now, new_entries_ok=False)
+                                if venue.armed and time.monotonic() - last_cycle >= 2:
+                                    manage(now, allow_entry=False)
                                     last_cycle = time.monotonic()
                         except UnrecoverableGap:
                             model.reset_profile("unrecoverable_public_gap")
@@ -214,28 +239,30 @@ def run_stream(model, executor, public, *, duration=None):
                     fresh = -1000 <= now - trade["timestamp_ms"] <= 10_000
                     model.ingest(trade, now, allow_entry=fresh)
                     if fresh:
-                        last_live_ms = now
-                if time.monotonic() - last_sync >= 60 and executor.v.armed:
-                    executor.v.sync_time()
+                        last_live_ms[symbol] = now
+                if time.monotonic() - last_sync >= 60 and venue.armed:
+                    venue.sync_time()
                     last_sync = time.monotonic()
-                if executor.v.armed and time.monotonic() - last_cycle >= 2:
+                if venue.armed and time.monotonic() - last_cycle >= 2:
                     # An idle feed can manage exits, but only a recent print permits an entry.
-                    executor.cycle(now, new_entries_ok=now - last_live_ms <= 10_000)
+                    manage(now, allow_entry=True)
                     last_cycle = time.monotonic()
                 if time.monotonic() - last_heartbeat >= 60:
-                    print(json.dumps(dict(event="heartbeat", symbol=SYMBOL, status=model.store.status(),
-                                          public_cursor=model.get("public_cursor"))), flush=True)
+                    for symbol, model in models.items():
+                        print(json.dumps(dict(event="heartbeat", symbol=symbol, status=model.store.status(),
+                                              public_cursor=model.get("public_cursor"))), flush=True)
                     last_heartbeat = time.monotonic()
                 if duration is not None and time.monotonic() - started >= duration:
                     return
         except (OSError, TimeoutError, ConnectionClosed, VenueError, PreflightError) as error:
-            last_live_ms = 0
-            with model.store.transaction():
-                model.store.audit("connection_error", dict(error_type=type(error).__name__))
+            last_live_ms = dict.fromkeys(models, 0)
+            for model in models.values():
+                with model.store.transaction():
+                    model.store.audit("connection_error", dict(error_type=type(error).__name__))
             print(json.dumps(dict(event="connection_error", error_type=type(error).__name__)), flush=True)
-            if executor.v.armed:
+            if venue.armed:
                 # An exchange-native stop remains in place while public data reconnects.
-                executor.cycle(int(time.time() * 1000), new_entries_ok=False)
+                manage(int(time.time() * 1000), allow_entry=False)
             time.sleep(2)
 
 
@@ -252,12 +279,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--allocation-usdt", type=Decimal)
+    parser.add_argument("--allocation-usdc", type=Decimal)
+    parser.add_argument("--portfolio", action="store_true")
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--api-key-file", type=Path)
     parser.add_argument("--private-key-file", type=Path)
     parser.add_argument("--passphrase-file", type=Path)
-    parser.add_argument("--armed", action="store_true")
-    parser.add_argument("--preflight", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--armed", action="store_true")
+    mode.add_argument("--preflight", action="store_true")
     parser.add_argument("--duration", type=int)
     args = parser.parse_args(argv)
     if args.report:
@@ -265,6 +295,11 @@ def main(argv=None):
         return 0
     if args.allocation_usdt is None or not args.allocation_usdt.is_finite() or args.allocation_usdt <= 0:
         parser.error("Allocation must be finite and positive")
+    if args.portfolio and (args.allocation_usdc is None or not args.allocation_usdc.is_finite()
+                           or args.allocation_usdc <= 0):
+        parser.error("Portfolio mode requires an approved positive USDC allocation")
+    if args.allocation_usdc is not None and not args.portfolio:
+        parser.error("USDC allocation requires portfolio mode")
     if args.duration is not None and (args.armed or args.duration <= 0):
         parser.error("Duration is only supported for a positive disarmed smoke test")
     contract = verify_model(__file__)
@@ -281,38 +316,62 @@ def main(argv=None):
                           passphrase_file=args.passphrase_file)
     if args.armed and not venue.armed:
         parser.error("Server real-money acknowledgement is required for execution")
-    store = BurstFuturesStore(args.database, cfg)
     public = BinancePublic()
     try:
-        store.acquire_writer()
-        executor = BurstFuturesExecutor(store, venue, cfg)
-        model = NativeBurst(store, executor)
-        markets = public.validate_markets([SYMBOL])
-        if markets[SYMBOL]["marginAsset"] != "USDT":
-            raise ValueError("unexpected_HYPE_collateral")
-        if args.preflight or args.armed:
-            venue.sync_time()
-            now = int(time.time() * 1000)
-            if store.active() and args.preflight:
-                raise ValueError("preflight_requires_flat_ledger")
-            if not store.active():
-                executor.entry_guard(now)
-            else:
-                executor.cycle(now, new_entries_ok=False)
-        print(json.dumps(dict(event="startup", symbol=SYMBOL, contract=CONTRACT, armed=venue.armed,
-                              initial_equity=str(args.allocation_usdt), stop_risk_fraction=.01)), flush=True)
-        if not args.preflight:
-            run_stream(model, executor, public, duration=args.duration)
-        if args.duration is not None:
-            cursor = model.get("public_cursor")
-            if cursor is None:
-                raise ValueError("smoke_no_public_trades")
-            print(json.dumps(dict(event="smoke_complete", last_agg_trade_id=cursor["agg_trade_id"],
-                                  armed=venue.armed, fill_count=store.status()["fill_count"])), flush=True)
+        with ExitStack() as stores:
+            specs = {SYMBOL: (args.database, cfg, contract["model_config"])}
+            if args.portfolio:
+                for symbol, item in contract["portfolio_models"].items():
+                    asset = item["margin_asset"]
+                    model_config = item["model_config"]
+                    allocation = args.allocation_usdt if asset == "USDT" else args.allocation_usdc
+                    specs[symbol] = (args.database.with_name(symbol.lower() + ".sqlite"), dict(
+                        cfg, symbol=symbol, contract=item["contract"], allocation_id=item["contract"],
+                        initial_equity=str(allocation), margin_asset=asset,
+                        risk_management=model_config["risk_management"], model_config=model_config), model_config)
+            markets = public.validate_markets(list(specs))
+            models = {}
+            for symbol, (database, config, model_config) in specs.items():
+                if markets[symbol]["marginAsset"] != config.get("margin_asset", "USDT"):
+                    raise ValueError(f"unexpected_{symbol}_collateral")
+                store = BurstFuturesStore(database, config)
+                stores.callback(store.close)
+                store.acquire_writer()
+                if not args.portfolio and store.meta("shared_burst_account") is not None:
+                    raise ValueError("journal_requires_shared_account_mode")
+                executor = BurstFuturesExecutor(store, venue, config)
+                step, window = (int(value.removesuffix("m")) for value in model_config["flow_timeframes"].split("_"))
+                models[symbol] = NativeBurst(store, executor, lookback_hours=model_config["lookback_hours"],
+                                              step_minutes=step, window_minutes=window)
+            if args.preflight or args.armed:
+                venue.sync_time()
+                now = int(time.time() * 1000)
+                if args.portfolio:
+                    shared = SharedBurstAccount([model.executor for model in models.values()],
+                                                dict(USDT=args.allocation_usdt, USDC=args.allocation_usdc))
+                    shared.initialize(now)
+                for model in models.values():
+                    if model.store.active():
+                        if args.preflight:
+                            raise ValueError("preflight_requires_flat_ledger")
+                        model.executor.cycle(now, new_entries_ok=False)
+                    elif not args.portfolio or args.preflight:
+                        model.executor.entry_guard(now)
+            for symbol, (_, config, _) in specs.items():
+                print(json.dumps(dict(event="startup", symbol=symbol, contract=config["contract"], armed=venue.armed,
+                                      initial_equity=config["initial_equity"], stop_risk_fraction=.01)), flush=True)
+            if not args.preflight:
+                run_stream(models, venue, public, duration=args.duration)
+            if args.duration is not None:
+                for symbol, model in models.items():
+                    cursor = model.get("public_cursor")
+                    if cursor is None:
+                        raise ValueError(f"smoke_no_public_trades:{symbol}")
+                    print(json.dumps(dict(event="smoke_complete", symbol=symbol, last_agg_trade_id=cursor["agg_trade_id"],
+                                          armed=venue.armed, fill_count=model.store.status()["fill_count"])), flush=True)
     finally:
         public.http.close()
         venue.close()
-        store.close()
     return 0
 
 

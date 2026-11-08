@@ -67,3 +67,21 @@ closure, commissions, funding and net realized P&L. Export it read-only with
 `--database /data/hype.sqlite --report`. Container output contains startup,
 feed recovery and heartbeat events. Public-feed disruptions block stale
 entries. Venue-native protection remains during reconnects.
+
+The portfolio command uses the same container and HYPE journal and adds
+INJUSDT 24H B 1m/5m rm-d 48H and UNIUSDC 12H B 1m/5m rm-c 48H.
+Run the first portfolio preflight while the account is flat and the previous
+HYPE worker has released the journal. The three symbols require isolated margin
+with auto-add off in one-way, single-asset USD-M mode. Set
+`UNI_BURST_ALLOCATION_USDC` in the external Compose environment. The approved
+HYPE allocation becomes the starting USDT pool. Realized HYPE and INJ P&L,
+commission and funding change the same sizing pool, with 1% stop risk per entry
+and up to one position per symbol. UNI sizes from its USDC pool.
+
+INJ places a reduce-only 10% limit at +1R and trails the stop to breakeven at
+the 1R print. Quantity must fit the venue lot and the risk budget. Keep and
+export each journal separately via `--report`: `hype.sqlite`, `injusdt.sqlite`,
+and `uniusdc.sqlite`. The first successful portfolio preflight binds the journals
+and API identity to the pools. Use disposable copies of the journals for a
+preflight rehearsal. Returning to the standalone image after portfolio fills
+requires account and journal reconciliation.
