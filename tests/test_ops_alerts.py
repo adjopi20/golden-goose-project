@@ -333,3 +333,53 @@ def test_status_before_first_start_is_explicit_and_does_not_create_db(tmp_path,m
     assert a.main()==0
     assert json.loads(capsys.readouterr().out)['status']=='starting'
     assert not path.exists() and not a.health(path,NOW)
+
+def test_performance_alerts_use_closed_horizon_and_distinct_heading(ledger, alerts):
+    s, _, _, target = ledger
+    target = dict(target, performance_contract="test-burst")
+    s.set_meta("strategy_contract", "test-burst")
+    profiles = {"test-burst": dict(minimum_closed_trades=2, simulations=500, bands={
+        "net_loss": [[.01, .02], [.03, .09]],
+        "drawdown": [[.01, .02], [.03, .07]],
+        "loss_streak": [[.5, 1], [1.2, 2]],
+    })}
+    config = dict(monitor_id="test-monitor", reminder_seconds=1800)
+    s.audit("trade_closed", dict(net_pnl="-5", plan=dict(equity_before_entry="100")))
+    engine_alerts.poll_target(alerts, target, NOW, config, profiles)
+    assert not alerts.db.execute("SELECT 1 FROM outbox").fetchall()
+    s.audit("trade_closed", dict(net_pnl="-4.75", plan=dict(equity_before_entry="95")))
+    engine_alerts.poll_target(alerts, target, NOW, config, profiles)
+    rows = alerts.db.execute("SELECT text FROM outbox ORDER BY id").fetchall()
+    assert len(rows) == 3 and all(r[0].startswith(engine_alerts.PERFORMANCE) for r in rows)
+    assert "9.75%" in rows[0][0] and "P95" in rows[0][0]
+
+
+def test_broker_archive_links_fills_and_does_not_adopt_external_orders(ledger, tmp_path):
+    from contextlib import closing
+    from utils.engine.monitoring.binance_audit import capture, compare_journals
+
+    s, venue, engine, _ = ledger
+    engine.offer(intent(), NOW)
+    engine.cycle(NOW)
+    fill, = venue.fills
+    external = dict(fill, id=9999, orderId=9999, commission=".00001")
+    changed = dict(fill, commission=".50")
+
+    class ReadOnly:
+        _key = venue._key
+        def load_credentials(self):
+            pass
+        def get(self, path, **_params):
+            return [changed, external] if path.endswith("userTrades") else []
+
+    with closing(sqlite3.connect(tmp_path / "broker.sqlite")) as db:
+        db.executescript("""CREATE TABLE metadata(key TEXT PRIMARY KEY,value TEXT);
+            CREATE TABLE events(kind TEXT,symbol TEXT,native_id TEXT,payload TEXT,observed_ms INTEGER,
+            PRIMARY KEY(kind,symbol,native_id,payload))""")
+        capture(db, ReadOnly(), ["ETHUSDC"], NOW - 1000, NOW)
+        capture(db, ReadOnly(), ["ETHUSDC"], NOW - 1000, NOW + 1)
+        report = {r["status"]: r for r in compare_journals(db, [s.path])}
+        assert report["fill_mismatch"]["differences"] == ["commission"]
+        assert report["unattributed"]["linked_order"] is None
+        assert db.execute("SELECT COUNT(*) FROM events WHERE kind='trade'").fetchone()[0] == 2
+        assert s.db.execute("SELECT COUNT(*) FROM fills").fetchone()[0] == 1

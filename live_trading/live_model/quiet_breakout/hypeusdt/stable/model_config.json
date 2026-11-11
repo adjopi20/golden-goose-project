@@ -1,0 +1,20 @@
+{
+  "contract": "QUIET-HYPE-STABLE-P5-INIT15-LIVE-001",
+  "allocation_id": "quiet_breakout_stable",
+  "journal": "quiet_breakout_stable.sqlite",
+  "source_run": "model_development/models/quiet_breakout/runs/hypeusdt_combined_v01_stable_after/run.json",
+  "source_run_sha256": "ffd385388344b1e20f5174c3eb1cca08deebaab6c5f8838fdeb7460c0d79b004",
+  "model_config": {
+    "lookback_hours": 24,
+    "flow_timeframes": "3m_12m",
+    "risk_management": "rm-e",
+    "risk_exit_hours": 48,
+    "one_entry_per_utc_day": true,
+    "require_volume_p75": true,
+    "entry_filter": "path_p5",
+    "initiative_risk_multiplier": 1.5
+  },
+  "tags": [
+    "stabil"
+  ]
+}

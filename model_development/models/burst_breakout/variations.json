@@ -1,0 +1,849 @@
+{
+  "model_id": "burst_breakout",
+  "recorded_date": "2026-11-06",
+  "timezone": "Asia/Jakarta",
+  "variation_count": 12,
+  "current_checkpoint_number": 1,
+  "next_checkpoint": null,
+  "status": "12 tested combinations recorded; no subsequent checkpoint selected",
+  "variations": [
+    {
+      "id": "a",
+      "label": "A",
+      "setup_variant": "a",
+      "risk_management": "none",
+      "baseline_checkpoint": "breakout_kontol_cp001_a",
+      "reference_run": "model_development/models/burst_breakout/runs/hypeusdt_2025_10_to_2026_10_profile_burst_flow_entry_v01/run.json",
+      "reference_run_sha256": "37bdd0a72fc6f4605086186ab45785427ddbd29314f8dad3e05e06129f32252d",
+      "model_config": {
+        "mode": "profile_burst",
+        "flow_entry_confirmation": true,
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31",
+        "setup_variant": "a",
+        "risk_management": "none"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 154,
+        "net_pnl": 371.80609373648474,
+        "final_equity": 1371.8060937364849,
+        "expectancy_r": 0.22227084612202389,
+        "max_closed_equity_drawdown": 0.0790252006349028
+      }
+    },
+    {
+      "id": "b",
+      "label": "B",
+      "setup_variant": "b",
+      "risk_management": "none",
+      "baseline_checkpoint": "breakout_kontol_cp001_b",
+      "reference_run": "model_development/models/burst_breakout/runs/hypeusdt_2025_10_to_2026_10_cp001_b_flow_entry_v01/run.json",
+      "reference_run_sha256": "694400c689be6eb793e3504f08ed665c5e52d34d5adc42c06f901cf9bec23e99",
+      "model_config": {
+        "mode": "profile_burst",
+        "flow_entry_confirmation": true,
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31",
+        "setup_variant": "b",
+        "risk_management": "none"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 216,
+        "net_pnl": 275.1499344374877,
+        "final_equity": 1275.1499344374877,
+        "expectancy_r": 0.12593004331381288,
+        "max_closed_equity_drawdown": 0.10015790752925502
+      }
+    },
+    {
+      "id": "a_rm_a",
+      "label": "A + rm-a",
+      "setup_variant": "a",
+      "risk_management": "rm-a",
+      "baseline_checkpoint": "breakout_kontol_cp001_a",
+      "reference_run": "model_development/models/burst_breakout/runs/hypeusdt_2025_10_to_2026_10_cp001_a_rm_a_v01/run.json",
+      "reference_run_sha256": "84416994fea9c8cfa70eb2a4aee645d0f95c860db6d08c0007dc42a6d6bd1868",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "a",
+        "risk_management": "rm-a",
+        "flow_entry_confirmation": true,
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 159,
+        "net_pnl": 448.32374578701547,
+        "final_equity": 1448.3237457870155,
+        "expectancy_r": 0.24704346090235607,
+        "max_closed_equity_drawdown": 0.09380928176489532
+      }
+    },
+    {
+      "id": "b_rm_a",
+      "label": "B + rm-a",
+      "setup_variant": "b",
+      "risk_management": "rm-a",
+      "baseline_checkpoint": "breakout_kontol_cp001_b",
+      "reference_run": "model_development/models/burst_breakout/runs/hypeusdt_2025_10_to_2026_10_cp001_b_rm_a_v01/run.json",
+      "reference_run_sha256": "0af8a8c9eddc36a48cb9e05aee11d0881700a81efa4d7a7afd2af4d4434c10fc",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "b",
+        "risk_management": "rm-a",
+        "flow_entry_confirmation": true,
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 224,
+        "net_pnl": 433.8052451073674,
+        "final_equity": 1433.8052451073675,
+        "expectancy_r": 0.17242520995567856,
+        "max_closed_equity_drawdown": 0.11926497857006832
+      }
+    },
+    {
+      "id": "a_rm_b",
+      "label": "A + rm-b",
+      "setup_variant": "a",
+      "risk_management": "rm-b",
+      "baseline_checkpoint": "breakout_kontol_cp001_a",
+      "reference_run": "model_development/models/burst_breakout/runs/hypeusdt_2025_10_to_2026_10_cp001_a_rm_b_v01/run.json",
+      "reference_run_sha256": "42d3b829a98973f6edd57f44522808651615f71801753d4366161ff45cce504d",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "a",
+        "risk_management": "rm-b",
+        "flow_entry_confirmation": true,
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 151,
+        "net_pnl": 257.59097444034967,
+        "final_equity": 1257.5909744403498,
+        "expectancy_r": 0.16312636355379037,
+        "max_closed_equity_drawdown": 0.0977336944428478
+      }
+    },
+    {
+      "id": "b_rm_b",
+      "label": "B + rm-b",
+      "setup_variant": "b",
+      "risk_management": "rm-b",
+      "baseline_checkpoint": "breakout_kontol_cp001_b",
+      "reference_run": "model_development/models/burst_breakout/runs/hypeusdt_2025_10_to_2026_10_cp001_b_rm_b_v01/run.json",
+      "reference_run_sha256": "0705d9611153fd95578484f21e468c770f8a61ef488fb0c30a92a2a38a06fa32",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "b",
+        "risk_management": "rm-b",
+        "flow_entry_confirmation": true,
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 200,
+        "net_pnl": 368.28879199305936,
+        "final_equity": 1368.2887919930595,
+        "expectancy_r": 0.16755638457844632,
+        "max_closed_equity_drawdown": 0.12499533769090619
+      }
+    },
+    {
+      "id": "c_a",
+      "label": "C-A",
+      "family": "C",
+      "setup_variant": "a",
+      "flow_timeframes": "5m_10m",
+      "risk_management": "none",
+      "baseline_checkpoint": "breakout_kontol_cp001_a",
+      "reference_run": "model_development/models/burst_breakout/runs/burst_breakout_2025_10_to_2026_10_a_flow_5m_10m_v01/run.json",
+      "reference_run_sha256": "8c63c5a34b941e42e618494818e625f4c0dad0b68498a69d3d534970b4174578",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "a",
+        "risk_management": "none",
+        "flow_entry_confirmation": true,
+        "flow_timeframes": "5m_10m",
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 135,
+        "net_pnl": 174.64197566823893,
+        "final_equity": 1174.641975668239,
+        "expectancy_r": 0.13439874883500402,
+        "max_closed_equity_drawdown": 0.14330342859643797
+      }
+    },
+    {
+      "id": "c_b",
+      "label": "C-B",
+      "family": "C",
+      "setup_variant": "b",
+      "flow_timeframes": "5m_10m",
+      "risk_management": "none",
+      "baseline_checkpoint": "breakout_kontol_cp001_b",
+      "reference_run": "model_development/models/burst_breakout/runs/burst_breakout_2025_10_to_2026_10_b_flow_5m_10m_v01/run.json",
+      "reference_run_sha256": "4d6a53b5a7aa6c42321b888b7f4aad8c66de5670ad3907ad903b5d2b31f0288d",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "b",
+        "risk_management": "none",
+        "flow_entry_confirmation": true,
+        "flow_timeframes": "5m_10m",
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 193,
+        "net_pnl": 146.88552410896648,
+        "final_equity": 1146.8855241089664,
+        "expectancy_r": 0.08320877584078831,
+        "max_closed_equity_drawdown": 0.12867219643539268
+      }
+    },
+    {
+      "id": "a_rm_c",
+      "label": "A + rm-c",
+      "setup_variant": "a",
+      "flow_timeframes": "1m_5m",
+      "risk_management": "rm-c",
+      "baseline_checkpoint": "breakout_kontol_cp001_a",
+      "reference_run": "model_development/models/burst_breakout/runs/hypeusdt_2025_10_to_2026_10_cp001_a_rm_c_v01/run.json",
+      "reference_run_sha256": "9a854da4f74b4053a25f48eb25b7a3277326dc5f81e77646c033fae0e950369c",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "a",
+        "risk_management": "rm-c",
+        "flow_entry_confirmation": true,
+        "flow_timeframes": "1m_5m",
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 151,
+        "net_pnl": 230.40761897152223,
+        "final_equity": 1230.4076189715222,
+        "expectancy_r": 0.1509013199453565,
+        "max_closed_equity_drawdown": 0.1017850304220248
+      }
+    },
+    {
+      "id": "b_rm_c",
+      "label": "B + rm-c",
+      "setup_variant": "b",
+      "flow_timeframes": "1m_5m",
+      "risk_management": "rm-c",
+      "baseline_checkpoint": "breakout_kontol_cp001_b",
+      "reference_run": "model_development/models/burst_breakout/runs/hypeusdt_2025_10_to_2026_10_cp001_b_rm_c_v01/run.json",
+      "reference_run_sha256": "da454c2e0fbe4c7fc9e9ac5e0d599849b9efd15ade3f88c41ef78c03883f1c60",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "b",
+        "risk_management": "rm-c",
+        "flow_entry_confirmation": true,
+        "flow_timeframes": "1m_5m",
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 200,
+        "net_pnl": 451.54116563193367,
+        "final_equity": 1451.5411656319336,
+        "expectancy_r": 0.20011682171655043,
+        "max_closed_equity_drawdown": 0.1225541995066041
+      }
+    },
+    {
+      "id": "d_a",
+      "label": "D-A",
+      "family": "D",
+      "setup_variant": "a",
+      "flow_timeframes": "3m_12m",
+      "risk_management": "none",
+      "baseline_checkpoint": "breakout_kontol_cp001_a",
+      "reference_run": "model_development/models/burst_breakout/runs/burst_breakout_2025_10_to_2026_10_d_a_flow_3m_12m_v01/run.json",
+      "reference_run_sha256": "7b8c1aac5f6145e911725ac0a2959c8533e928f0e11279939cd0043e12ab404f",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "a",
+        "risk_management": "none",
+        "flow_entry_confirmation": true,
+        "flow_timeframes": "3m_12m",
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 138,
+        "net_pnl": 261.26164689394676,
+        "final_equity": 1261.2616468939468,
+        "win_rate": 0.39855072463768115,
+        "expectancy_r": 0.18391292591981048,
+        "max_closed_equity_drawdown": 0.10801507789960803
+      },
+      "observation_semantics": {
+        "evaluation_bar_minutes": 3,
+        "rolling_window_minutes": 12,
+        "first_assessment_minutes_after_breakout": 12,
+        "assessment_minutes_after_breakout": [
+          12,
+          15,
+          18,
+          21,
+          24,
+          27,
+          30,
+          33,
+          36,
+          39,
+          42,
+          45,
+          48,
+          51,
+          54,
+          57,
+          60
+        ],
+        "observation_horizon_minutes": 60,
+        "uses_only_post_breakout_bars_for_current_window": true,
+        "early_bar_role": "First and second 3m candles contribute to the 12m assessment; no standalone entry judgement before minute 12"
+      }
+    },
+    {
+      "id": "d_b",
+      "label": "D-B",
+      "family": "D",
+      "setup_variant": "b",
+      "flow_timeframes": "3m_12m",
+      "risk_management": "none",
+      "baseline_checkpoint": "breakout_kontol_cp001_b",
+      "reference_run": "model_development/models/burst_breakout/runs/burst_breakout_2025_10_to_2026_10_d_b_flow_3m_12m_v01/run.json",
+      "reference_run_sha256": "ec637b43171f585d23b4ec0730b4945b12296aacefea7efc859a04ebaf7adac8",
+      "model_config": {
+        "mode": "profile_burst",
+        "setup_variant": "b",
+        "risk_management": "none",
+        "flow_entry_confirmation": true,
+        "flow_timeframes": "3m_12m",
+        "start_date": "2025-10-01",
+        "end_date": "2026-10-31"
+      },
+      "execution": {
+        "initial_equity": 1000.0,
+        "risk_fraction": 0.01,
+        "fee_bps": 4.0,
+        "max_leverage": 5.0
+      },
+      "result": {
+        "closed_trades": 196,
+        "net_pnl": 148.5250210137363,
+        "final_equity": 1148.5250210137363,
+        "win_rate": 0.413265306122449,
+        "expectancy_r": 0.08284745593911906,
+        "max_closed_equity_drawdown": 0.0925064145974805
+      },
+      "observation_semantics": {
+        "evaluation_bar_minutes": 3,
+        "rolling_window_minutes": 12,
+        "first_assessment_minutes_after_breakout": 12,
+        "assessment_minutes_after_breakout": [
+          12,
+          15,
+          18,
+          21,
+          24,
+          27,
+          30,
+          33,
+          36,
+          39,
+          42,
+          45,
+          48,
+          51,
+          54,
+          57,
+          60
+        ],
+        "observation_horizon_minutes": 60,
+        "uses_only_post_breakout_bars_for_current_window": true,
+        "early_bar_role": "First and second 3m candles contribute to the 12m assessment; no standalone entry judgement before minute 12"
+      }
+    }
+  ],
+  "historical_model_id": "breakout_kontol",
+  "entry_families": {
+    "a": "Previous-close crossing required, 1m evaluation / rolling 5m",
+    "b": "Previous close unrestricted, 1m evaluation / rolling 5m",
+    "c": "5m evaluation / rolling 10m, retained separately on setup A and B",
+    "d": "3m evaluation / rolling 12m; first entry assessment at minute 12, then every 3m through minute 60; tested on setup A and B",
+    "e": "Dynamic aggressor composition and price response; applies to setup A/B and all three flow timeframes"
+  },
+  "risk_management_plans": {
+    "none": {
+      "full_exit_hours": 24,
+      "trailing": false
+    },
+    "rm-a": {
+      "full_exit_hours": 24,
+      "trailing": "1R:0R,2R:1R,4R:2R,8R:4R,doubling onward"
+    },
+    "rm-b": {
+      "partial_exit_hours": 24,
+      "partial_fraction": 0.5,
+      "final_exit_hours": 48,
+      "trailing": "1R:0R,2R:1R,4R:2R,8R:4R,doubling onward"
+    },
+    "rm-c": {
+      "full_exit_hours": 48,
+      "partial_fraction": 0,
+      "trailing": "1R:0R,2R:1R,4R:2R,8R:4R,doubling onward",
+      "status": "Backtests completed for A and B; results recorded"
+    }
+  },
+  "entry_gate_subvariation": {
+    "name": "next_gate",
+    "model_config": {
+      "entry_gate": true
+    },
+    "default_enabled": false,
+    "origin": "breakout candle close",
+    "gate_minutes_by_flow_timeframes": {
+      "1m_5m": 5,
+      "3m_12m": 12,
+      "5m_10m": 10
+    },
+    "strictly_next_gate": true,
+    "examples": {
+      "1m_5m": "ready at 5 or 6 -> revalidate at 10",
+      "3m_12m": "ready at 12 or 15 -> revalidate at 24",
+      "5m_10m": "ready at 10 or 15 -> revalidate at 20"
+    },
+    "revalidate_current_price_and_flow_at_gate": true,
+    "failed_gate": "wait for a new provisional confirmation and its strictly next gate",
+    "cancel_on_poc_touch_or_missing_minute": true,
+    "observation_deadline_minutes": 60,
+    "applies_to_setup_variants": [
+      "a",
+      "b"
+    ],
+    "status": "Implemented; no market backtest result recorded; no new checkpoint"
+  },
+  "dynamic_flow_subvariation": {
+    "family": "E",
+    "model_config": {
+      "flow_interpretation": "dynamic"
+    },
+    "default": "static",
+    "comparison": "Current window against immediately preceding nonoverlapping window of equal duration",
+    "composition": "Change in favorable aggressor quantity share, with separate favorable/opposing percentage quantity changes",
+    "rules": {
+      "initiative": "Favorable aggression dominates, with quantity and share holding or increasing",
+      "exhaustion": "Opposing quantity declines and favorable share rises",
+      "absorption": "Opposing aggression dominates and does not decline while price prints a new favorable extreme",
+      "low_volume_expansion": "Volume falls below its historical median while positive price progress accelerates against the prior post-breakout window and prints a new favorable extreme"
+    },
+    "uses_existing_price_gates": true,
+    "supports_entry_gate": true,
+    "risk_management_plans": [
+      "none",
+      "rm-a",
+      "rm-b",
+      "rm-c"
+    ],
+    "cache": "Existing raw price/flow assessment reused; dynamic interpretation applied after cache load",
+    "initial_comparison": "At first assessment, preceding flow window may precede or straddle breakout; price acceleration requires two full post-breakout windows",
+    "status": "Implemented; no market backtest result recorded; no new checkpoint"
+  },
+  "approved_execution_behavior": {
+    "user_confirmed_date": "2026-11-06",
+    "scope": "profile_burst, across setup, flow interpretation, entry gate and risk-management variants",
+    "rolling_profile": {
+      "lookback_completed_1h_candles": 24,
+      "refresh_every_hours": 1,
+      "continues_while_position_open": true,
+      "includes_market_data_observed_during_open_position": true,
+      "reset_or_new_24h_warmup_after_exit": false,
+      "candidate_hour_reference": "For candidate candle H to H+1, use the preceding 24 completed hours ending at H; exclude the candidate candle",
+      "setup_profile": "Each setup retains its frozen reference profile during its subsequent flow observation"
+    },
+    "after_exit": {
+      "next_hourly_candidate_can_use_existing_rolling_history": true,
+      "entry_requires_normal_burst_and_flow_confirmation": true,
+      "maximum_open_positions": 1,
+      "maximum_filled_entries_per_utc_day": 1,
+      "daily_quota_scope": "One filled entry per UTC day is the default; explicit one_entry_per_utc_day=false disables only that quota"
+    },
+    "blocked_setup": {
+      "confirmed_while_position_open": "Record as position_block",
+      "queued_for_entry_after_exit": false,
+      "automatically_retried_after_exit": false
+    },
+    "example": {
+      "exit_time": "03:00",
+      "next_candidate_candle": "03:00-04:00",
+      "reference_profile": "Previous day 03:00 to current day 03:00, including the 02:00-03:00 candle",
+      "burst_evaluation": "At 04:00 candle close, followed by configured flow confirmation",
+      "following_candidate": "04:00-05:00 uses previous day 04:00 to current day 04:00"
+    },
+    "change_type": "Documentation of accepted existing behavior; no trading-rule or checkpoint change"
+  },
+  "daily_entry_limit_subvariation": {
+    "name": "no_daily_cap",
+    "user_requested_date": "2026-11-06",
+    "model_config": {
+      "one_entry_per_utc_day": false
+    },
+    "default_profile_burst_one_entry_per_utc_day": true,
+    "maximum_open_positions": 1,
+    "overlapping_positions_allowed": false,
+    "behavior": "After a completed exit, another newly confirmed setup may enter on the same UTC day",
+    "blocked_setups_retried_after_exit": false,
+    "rolling_profile_continues_during_positions": true,
+    "initial_test_grid": {
+      "setup_variant": [
+        "a",
+        "b"
+      ],
+      "flow_timeframes": [
+        "1m_5m",
+        "3m_12m",
+        "5m_10m"
+      ],
+      "risk_management": [
+        "rm-a",
+        "rm-b",
+        "rm-c"
+      ],
+      "flow_interpretation": "static",
+      "entry_gate": false
+    },
+    "supports_dynamic_flow_and_gate": true,
+    "status": "Implemented; no market backtest result recorded; no new checkpoint"
+  },
+  "no_orderflow_subvariation": {
+    "name": "no_orderflow_confirmation",
+    "user_requested_date": "2026-11-06",
+    "model_config": {
+      "flow_entry_confirmation": false,
+      "flow_observation_minutes": 0,
+      "entry_gate": false,
+      "one_entry_per_utc_day": true
+    },
+    "setup_variants": [
+      "a",
+      "b"
+    ],
+    "risk_management_plans": [
+      "rm-a",
+      "rm-b",
+      "rm-c"
+    ],
+    "entry": "At burst candle close, become eligible for the first available print of the next 1H candle under existing Phase 2 execution checks",
+    "burst_rules": "Rolling prior 24H profile, close outside VAH/VAL, body and volume each above prior-24H P85; setup A retains previous-close crossing and setup B does not require it",
+    "stop": "Frozen setup POC; selected RM trailing remains active",
+    "flow_timeframes_applicable": false,
+    "maximum_open_positions": 1,
+    "test_scope": "Six combinations; orderflow confirmation and observation disabled; one entry per UTC day retained",
+    "validation": "All six prepared configurations validated on existing cached source; no market replay run",
+    "checkpoint_change": false
+  },
+  "profile_window_and_partial_rm_subvariation": {
+    "user_requested_date": "2026-11-07",
+    "profile_and_body_volume_p85_hours": [
+      12,
+      16,
+      24
+    ],
+    "setup_variants": [
+      "a",
+      "b"
+    ],
+    "flow_timeframes": [
+      "1m_5m",
+      "3m_12m",
+      "5m_10m"
+    ],
+    "risk_management_cases": [
+      {
+        "risk_management": "rm-a",
+        "risk_exit_hours": 24
+      },
+      {
+        "risk_management": "rm-b",
+        "risk_exit_hours": 48
+      },
+      {
+        "risk_management": "rm-c",
+        "risk_exit_hours": 48
+      },
+      {
+        "risk_management": "rm-d",
+        "risk_exit_hours": 24
+      },
+      {
+        "risk_management": "rm-d",
+        "risk_exit_hours": 48
+      },
+      {
+        "risk_management": "rm-e",
+        "risk_exit_hours": 24
+      },
+      {
+        "risk_management": "rm-e",
+        "risk_exit_hours": 48
+      }
+    ],
+    "rm_d": "Take 10% original quantity at 1R via next-print execution; move stop to entry at 1R; doubled ladder thereafter",
+    "rm_e": "Take 10% original quantity at 1R via next-print execution; retain original POC stop until 2R, then lock +1R and follow the doubled ladder",
+    "remaining_quantity_time_exit_hours": [
+      24,
+      48
+    ],
+    "risk_clock": "Initial entry-to-POC distance; time exit anchored to actual entry fill",
+    "comparison": "Fee-inclusive average/total losses versus winning payoff and >=5R tail capture; initial stop distance and actual risk fraction recorded separately",
+    "combinations_per_asset": 126,
+    "assets": [
+      "BTCUSDC",
+      "HYPEUSDT"
+    ],
+    "grid": "window_rm_all_grid.json",
+    "seed_grid": "window_rm_seed_grid.json",
+    "status": "Implemented and synthetically validated; no market backtest or cache build performed",
+    "checkpoint_change": false,
+    "validation": {
+      "selected_tests_passed": 47,
+      "subtests_passed": 90,
+      "legacy_tests_excluded": 3,
+      "scope": "Partial/trailing both directions, 24/48H exits, full prepared runner, exact fast/every-print replay parity, window/P85 cache separation, master/child batch reconciliation, net loss/reward summaries"
+    }
+  },
+  "backtest_sweep_policy": {
+    "effective_date": "2026-11-08",
+    "active_grid": "window_rm_all_grid.json",
+    "retired_setup_variants": [
+      "a"
+    ],
+    "retired_risk_management": [
+      "rm-a",
+      "rm-b"
+    ],
+    "combinations_per_asset": 45,
+    "scope": "Standard future Burst Breakout backtest sweeps. Historical configurations and strategy logic remain available for explicit replay."
+  },
+  "selected_live_candidate": {
+    "selected_by": "user",
+    "selected_date": "2026-11-07",
+    "status": "paper_infrastructure_prepared_not_running",
+    "instrument": "HYPEUSDT",
+    "model_config": {
+      "end_date": "2026-10-31",
+      "entry_gate": false,
+      "flow_entry_confirmation": true,
+      "flow_interpretation": "static",
+      "flow_timeframes": "3m_12m",
+      "lookback_hours": 16,
+      "mode": "profile_burst",
+      "one_entry_per_utc_day": true,
+      "risk_exit_hours": 48,
+      "risk_management": "rm-e",
+      "setup_variant": "b",
+      "start_date": "2025-10-01"
+    },
+    "research_execution_reference": {
+      "initial_equity": 1000.0,
+      "risk_fraction": 0.01,
+      "fee_bps": 4.0,
+      "max_leverage": 5.0
+    },
+    "retained_stop_risk_fraction": 0.01,
+    "kelly_sizing_applied": false,
+    "maximum_open_positions": 1,
+    "one_entry_per_utc_day": true,
+    "source_run": "model_development/models/burst_breakout/runs/window_rm_all_v01/HYPEUSDT_7280841129f3dfbd",
+    "source_hashes": {
+      "run.json": "110ba1c8ac0e970be1cec1aacb5d6ab1bf13a0f52d011f367d63fdafb03301dd",
+      "trades.parquet": "b234938fc85ca284951235e48a5b2cda485bb74f62759a09fd99be772ddfcb54"
+    },
+    "strategy_sha256": "217542ee7dccd0b9ecf4c6d2a44d7a0728bd645c43acb5a7b7dd34dea2f533cc",
+    "evaluation_study": "model_development/phase_3/runs/burst_three_mc_kelly_20261107_v01/study.json",
+    "operational_activation": false,
+    "checkpoint_change": false,
+    "research_dates_are_historical_reference": true,
+    "paper_preparation": {
+      "date": "2026-11-07",
+      "package": "paper_trading/models/burst_breakout",
+      "config": "paper_trading/config/burst_hype_16h_b_3m12m_rm_e_48h.json",
+      "execution_contract": "legacy_next_native_print_paper",
+      "stop_risk_fraction": 0.01,
+      "kelly_sizing_applied": false,
+      "offline_tests_passed": 24,
+      "existing_operational_pins_verified": 5,
+      "public_feed_smoke": {
+        "duration_seconds": 30,
+        "status": "received_native_trades",
+        "last_agg_trade_id": 286698668,
+        "last_received_ms": 1794024894499,
+        "candidates": 0,
+        "fills": 0,
+        "positions": 0,
+        "diagnostic_database": "tmp/paper/burst_hype_16h_b_3m12m_rm_e_48h_v01/account.sqlite"
+      },
+      "service_running": false,
+      "live_copy_created": false,
+      "live_execution_bound": false,
+      "exchange_orders_sent": false,
+      "limitation": "No automatic gap repair/reconnect, orderbook/rounding/funding/liquidation simulation or live Futures lifecycle binding"
+    }
+  },
+  "live_promotion_selection": {
+    "selected_by": "user",
+    "selected_date": "2026-11-08",
+    "status": "selected_pending_live_execution_binding",
+    "previous_hype_selection": "selected_live_candidate",
+    "candidates": {
+      "HYPEUSDT": {
+        "model_config": {
+          "entry_gate": false,
+          "flow_entry_confirmation": true,
+          "flow_interpretation": "static",
+          "flow_timeframes": "3m_12m",
+          "lookback_hours": 24,
+          "mode": "profile_burst",
+          "one_entry_per_utc_day": true,
+          "setup_variant": "b",
+          "risk_management": "rm-c",
+          "risk_exit_hours": 48
+        },
+        "research_strategy_sha256": "217542ee7dccd0b9ecf4c6d2a44d7a0728bd645c43acb5a7b7dd34dea2f533cc",
+        "research_execution_reference": {
+          "initial_equity": 1000.0,
+          "risk_fraction": 0.01,
+          "fee_bps": 4.0,
+          "max_leverage": 5.0
+        },
+        "reference_runs": [
+          {
+            "path": "model_development/models/burst_breakout/runs/window_rm_all_v01/HYPEUSDT_5b09f0b944e1491d",
+            "start_date": "2025-10-01",
+            "end_date": "2026-10-31",
+            "sha256": {
+              "run.json": "952f3e2a719cb26e6a0f6335b619cd95668478b8ebc298633233e9ef618c77eb",
+              "trades.parquet": "9a27659178b2dca32d675a60a703a434ebf40b3ee853832cb27a1ed7e2c8877b"
+            }
+          }
+        ]
+      },
+      "AAVEUSDC": {
+        "model_config": {
+          "entry_gate": false,
+          "flow_entry_confirmation": true,
+          "flow_interpretation": "static",
+          "flow_timeframes": "5m_10m",
+          "lookback_hours": 24,
+          "mode": "profile_burst",
+          "one_entry_per_utc_day": true,
+          "setup_variant": "b",
+          "risk_management": "rm-d",
+          "risk_exit_hours": 24
+        },
+        "research_strategy_sha256": "217542ee7dccd0b9ecf4c6d2a44d7a0728bd645c43acb5a7b7dd34dea2f533cc",
+        "research_execution_reference": {
+          "initial_equity": 1000.0,
+          "risk_fraction": 0.01,
+          "fee_bps": 4.0,
+          "max_leverage": 5.0
+        },
+        "reference_runs": [
+          {
+            "path": "model_development/models/burst_breakout/runs/aaveusdc_window_rm_all_20261107_222102/AAVEUSDC_bb04aff4c7118c55",
+            "start_date": "2025-06-18",
+            "end_date": "2026-08-31",
+            "sha256": {
+              "run.json": "5b3103562fd10de2083ab35240c61ad32a36da76898cd3c05ebf461c287ad603",
+              "trades.parquet": "5a7360921d2b77dd690c99b78715df19f54464cc70423d3a4b73224678a3e998"
+            }
+          },
+          {
+            "path": "model_development/models/burst_breakout/runs/aaveusdc_oos_2026_09_10_20261107_232106/AAVEUSDC_ec8fb8f6434da20b",
+            "start_date": "2026-09-01",
+            "end_date": "2026-10-31",
+            "sha256": {
+              "run.json": "6cf11054fe3e27538f33f4bad1744c7c2bef39c50081deb0fd3c8d738c28de1d",
+              "trades.parquet": "76a186d34cd71fff1c060474b6d21f9d62fd95f337236567fcd33b2fcfb4139a"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

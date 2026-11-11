@@ -3,7 +3,12 @@
   "environment": "shared-market",
   "venue": "binance",
   "product": "futures",
-  "symbols": ["HYPEUSDT", "INJUSDT", "UNIUSDC"],
+  "symbols": [
+    "ETHUSDC",
+    "HYPEUSDT",
+    "INJUSDT",
+    "UNIUSDC"
+  ],
   "nats_url": "nats://nats:4222",
   "max_outbox_bytes": 33554432
 }

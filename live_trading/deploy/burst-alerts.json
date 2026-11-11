@@ -8,31 +8,52 @@
       "id": "burst-hype",
       "label": "Burst HYPEUSDT",
       "kind": "futures_executor",
-      "adapter": "burst_legacy",
-      "path": "/observed/hype.sqlite",
-      "expected_metadata": {"owner": "binance_futures_pilot", "schema": "1", "environment": "production", "worker_symbol": "HYPEUSDT"},
+      "start_when_present": true,
+      "path": "/observed/burst_hypeusdt_16h_f_p1_initiative_add.sqlite",
+      "expected_metadata": {
+        "owner": "binance_futures_pilot",
+        "schema": "1",
+        "environment": "production",
+        "worker_symbol": "HYPEUSDT",
+        "strategy_contract": "BURST-HYPEUSDT-16H-B-3M12M-RME48-P1-LIVE-002"
+      },
       "heartbeat_key": "worker_heartbeat_ms",
-      "max_age_seconds": 90
+      "max_age_seconds": 90,
+      "performance_contract": "BURST-HYPEUSDT-16H-B-3M12M-RME48-P1-LIVE-002"
     },
     {
       "id": "burst-inj",
       "label": "Burst INJUSDT",
       "kind": "futures_executor",
       "start_when_present": true,
-      "path": "/observed/injusdt.sqlite",
-      "expected_metadata": {"owner": "binance_futures_pilot", "schema": "1", "environment": "production", "worker_symbol": "INJUSDT"},
+      "path": "/observed/burst_injusdt_24h_f_p15_initiative.sqlite",
+      "expected_metadata": {
+        "owner": "binance_futures_pilot",
+        "schema": "1",
+        "environment": "production",
+        "worker_symbol": "INJUSDT",
+        "strategy_contract": "BURST-INJUSDT-24H-B-5M10M-RME48-P15-LIVE-002"
+      },
       "heartbeat_key": "worker_heartbeat_ms",
-      "max_age_seconds": 90
+      "max_age_seconds": 90,
+      "performance_contract": "BURST-INJUSDT-24H-B-5M10M-RME48-P15-LIVE-002"
     },
     {
       "id": "burst-uni",
       "label": "Burst UNIUSDC",
       "kind": "futures_executor",
       "start_when_present": true,
-      "path": "/observed/uniusdc.sqlite",
-      "expected_metadata": {"owner": "binance_futures_pilot", "schema": "1", "environment": "production", "worker_symbol": "UNIUSDC"},
+      "path": "/observed/burst_uniusdc_12h_f_p10_initiative.sqlite",
+      "expected_metadata": {
+        "owner": "binance_futures_pilot",
+        "schema": "1",
+        "environment": "production",
+        "worker_symbol": "UNIUSDC",
+        "strategy_contract": "BURST-UNIUSDC-12H-B-1M5M-RMA48-P10-LIVE-002"
+      },
       "heartbeat_key": "worker_heartbeat_ms",
-      "max_age_seconds": 90
+      "max_age_seconds": 90,
+      "performance_contract": "BURST-UNIUSDC-12H-B-1M5M-RMA48-P10-LIVE-002"
     },
     {
       "id": "btc-mvrv",
@@ -41,9 +62,115 @@
       "adapter": "mvrv",
       "monitor_contract": "btc-mvrv-dual-v1",
       "path": "/observed-mvrv/signals.sqlite",
-      "expected_metadata": {"owner": "btc-mvrv-signals"},
+      "expected_metadata": {
+        "owner": "btc-mvrv-signals"
+      },
       "heartbeat_key": "heartbeat",
       "max_age_seconds": 300
+    },
+    {
+      "id": "binance-broker-audit",
+      "label": "Binance Broker Audit",
+      "kind": "heartbeat",
+      "path": "/observed/binance-broker-audit.sqlite",
+      "start_when_present": true,
+      "expected_metadata": {
+        "owner": "binance_broker_audit"
+      },
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 240
+    },
+    {
+      "id": "hype-quiet-stable",
+      "label": "Quiet HYPEUSDT Stable",
+      "kind": "futures_executor",
+      "start_when_present": true,
+      "path": "/observed/quiet_breakout_stable.sqlite",
+      "expected_metadata": {
+        "owner": "binance_futures_pilot",
+        "schema": "1",
+        "environment": "production",
+        "worker_symbol": "HYPEUSDT",
+        "strategy_contract": "QUIET-HYPE-STABLE-P5-INIT15-LIVE-001"
+      },
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 90,
+      "performance_contract": "QUIET-HYPE-STABLE-P5-INIT15-LIVE-001"
+    },
+    {
+      "id": "eth-quiet-stable",
+      "label": "Quiet ETHUSDC Stable",
+      "kind": "futures_executor",
+      "start_when_present": true,
+      "path": "/observed/quiet_breakout_ethusdc_stable.sqlite",
+      "expected_metadata": {
+        "owner": "binance_futures_pilot",
+        "schema": "1",
+        "environment": "production",
+        "worker_symbol": "ETHUSDC",
+        "strategy_contract": "QUIET-ETH-STABLE-P85-P5-INIT15-RME24-LIVE-001"
+      },
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 90,
+      "performance_contract": "QUIET-ETH-STABLE-P85-P5-INIT15-RME24-LIVE-001"
+    },
+    {
+      "id": "uni-quiet-stable",
+      "label": "Quiet UNIUSDC Stable",
+      "kind": "futures_executor",
+      "start_when_present": true,
+      "path": "/observed/quiet_breakout_uniusdc_stable_position_addition.sqlite",
+      "expected_metadata": {
+        "owner": "binance_futures_pilot",
+        "schema": "1",
+        "environment": "production",
+        "worker_symbol": "UNIUSDC",
+        "strategy_contract": "QUIET-UNI-STABLE-P85-P5-INIT15-RME48-ADD-LIVE-001"
+      },
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 90,
+      "performance_contract": "QUIET-UNI-STABLE-P85-P5-INIT15-RME48-ADD-LIVE-001"
+    },
+    {
+      "id": "hype-quiet-tail",
+      "label": "Quiet HYPEUSDT Tail",
+      "kind": "futures_executor",
+      "start_when_present": true,
+      "path": "/observed/quiet_breakout_tail_dependent_position_addition.sqlite",
+      "expected_metadata": {
+        "owner": "binance_futures_pilot",
+        "schema": "1",
+        "environment": "production",
+        "worker_symbol": "HYPEUSDT",
+        "strategy_contract": "QUIET-HYPE-TAIL-P5-INIT15-ADD-LIVE-002"
+      },
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 90,
+      "performance_contract": "QUIET-HYPE-TAIL-P5-INIT15-ADD-LIVE-002"
+    },
+    {
+      "id": "binance-broker-audit-quiet-core",
+      "label": "Binance Audit quiet-core",
+      "kind": "heartbeat",
+      "start_when_present": true,
+      "path": "/observed/binance-broker-audit-quiet-core.sqlite",
+      "expected_metadata": {
+        "owner": "binance_broker_audit"
+      },
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 240
+    },
+    {
+      "id": "binance-broker-audit-quiet-tail",
+      "label": "Binance Audit quiet-tail",
+      "kind": "heartbeat",
+      "start_when_present": true,
+      "path": "/observed/binance-broker-audit-quiet-tail.sqlite",
+      "expected_metadata": {
+        "owner": "binance_broker_audit"
+      },
+      "heartbeat_key": "worker_heartbeat_ms",
+      "max_age_seconds": 240
     }
   ]
 }

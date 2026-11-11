@@ -155,7 +155,7 @@ def test_other_account_and_changed_configuration_rejected(tmp_path):
 def test_source_and_all_existing_engine_pins_unchanged():
     verify_model(paper.__file__)
     for folder in ["paper_trading/models/pre_ny_hype", "paper_trading/models/pre_ny_bnb",
-                   "paper_trading/models/volume_profile_reversion", "live_trading/live_model/pre_ny_eth",
+                   "paper_trading/models/volume_profile_reversion",
                    "live_trading/live_model/btc_mvrv"]:
         verify_model(ROOT/folder/"strategy.py")
     source=ast.parse(Path(paper.__file__).read_text())

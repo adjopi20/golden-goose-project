@@ -10,6 +10,7 @@ from utils.engine.collectors.market_data.broker import connect
 from utils.engine.contracts import validate_event
 
 STREAM = "GG_EXEC_V1"
+BROKER_TIMEOUT_SECONDS = 5
 
 
 def trade_batch(raw, symbol):
@@ -104,8 +105,12 @@ class BurstMarketInput:
         with asyncio.Runner() as loop:
             nc = None
             try:
-                nc = loop.run(connect(self.url))
-                identity, subscription = loop.run(self._subscribe(nc, durable))
+                # Initial NATS retries can be unlimited. Return control to the worker
+                # for heartbeat and exchange-side exit management during broker outages.
+                nc = loop.run(asyncio.wait_for(connect(self.url), BROKER_TIMEOUT_SECONDS))
+                identity, subscription = loop.run(asyncio.wait_for(
+                    self._subscribe(nc, durable), BROKER_TIMEOUT_SECONDS,
+                ))
                 while True:
                     messages = loop.run(fetch_batch(subscription, batch=1))
                     if not messages:

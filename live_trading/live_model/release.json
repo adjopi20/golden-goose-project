@@ -1,27 +1,40 @@
 {
   "schema": "live_model_packages_v1",
   "date": "2026-11-03",
-  "status": "packaged_not_activated",
+  "status": "portfolio_packaged",
   "models": {
-    "pre_ny_eth": "live_trading/live_model/pre_ny_eth",
     "btc_mvrv_fixed": "live_trading/live_model/btc_mvrv",
     "btc_mvrv_p5_p95": "live_trading/live_model/btc_mvrv",
-    "burst_hype_24h_b_3m12m_rm_c48": "live_trading/live_model/burst_hype",
-    "burst_inj_24h_b_1m5m_rm_d48": "live_trading/live_model/burst_inj",
-    "burst_uni_12h_b_1m5m_rm_c48": "live_trading/live_model/burst_uni"
+    "quiet_breakout_stable": "live_trading/live_model/quiet_breakout/hypeusdt",
+    "quiet_breakout_tail_dependent": "live_trading/live_model/quiet_breakout/hypeusdt",
+    "quiet_breakout_ethusdc_stable": "live_trading/live_model/quiet_breakout/ethusdc",
+    "quiet_breakout_uniusdc_stable": "live_trading/live_model/quiet_breakout/uniusdc",
+    "burst_hypeusdt_16h_f_p1_initiative_add": "live_trading/live_model/burst_breakout/hypeusdt",
+    "burst_injusdt_24h_f_p15_initiative": "live_trading/live_model/burst_breakout/injusdt",
+    "burst_uniusdc_12h_f_p10_initiative": "live_trading/live_model/burst_breakout/uniusdc"
   },
   "files": {
     "live_trading/live_model/__init__.py": "a9410b6923336c59bc968c72ff49a320aef80d8ca59ab8af0d791057b82bfc66",
     "live_trading/live_model/btc_mvrv/contract.json": "b64f91152821e2835e45e673a0a61bd99f63002f12d0fca9eb6b3f5c1f41d39b",
     "live_trading/live_model/btc_mvrv/model_config.json": "5fa782e11cfe806e1cb4bcf5d5e457e34569131421a9fd1744676659f0f5b804",
     "live_trading/live_model/btc_mvrv/strategy.py": "a7fba1a441a449b89272be354f6ac7aa197bb27bc3499c2a9ea719f37b715646",
-    "live_trading/live_model/pre_ny_eth/contract.json": "e014ab01b157dc2d4d37f96ef667a4d6552230988e6b1dd281ca1ea3b2e3037b",
-    "live_trading/live_model/pre_ny_eth/strategy.py": "23d0f99cfc8c518583e783d6df3d4ab6a18c4b462e7ab28d7b0e09b8cff9b9ef",
-    "live_trading/live_model/burst_hype/strategy.py": "3486f35632526723915310893e02e5247d192596629c81113220e9de465bc50e",
-    "live_trading/live_model/burst_hype/contract.json": "a4a1fadaf2be30a65383b07bb9810d6cb096b04e31b60fc91ebf06125afc3ac1",
-    "live_trading/live_model/burst_inj/strategy.py": "05754e4ec5640e88e788899721b82bb834c9eee2103579a65adb579f9f308dcb",
-    "live_trading/live_model/burst_inj/contract.json": "c21e017935bed56effd7dfe3fc1cc7b80239410092d467119062f04b36e830ff",
-    "live_trading/live_model/burst_uni/strategy.py": "6a30d86b722e9036749cb08834f0f3d412aa8785e77900b550023e2a0edcd1ce",
-    "live_trading/live_model/burst_uni/contract.json": "e4423a9bca64c06e602f08543380889850d44345b4c418a515102080624ad902"
+    "live_trading/live_model/quiet_breakout/hypeusdt/stable/model_config.json": "7abe1f48ed8a1de45a4a5b7bcc4ab7e369b2f39203696e3af910ec73cc41bc80",
+    "live_trading/live_model/quiet_breakout/hypeusdt/tail_dependent/model_config.json": "bd46416b6c10ee79e2f9274227407560aa7302b980d31358e65a2b2402df2b0b",
+    "live_trading/live_model/quiet_breakout/hypeusdt/strategy.py": "e983bf77374332c22a65a72469685efb28a352db4ab4cc9fbd1bc34bd20fe713",
+    "live_trading/live_model/quiet_breakout/hypeusdt/contract.json": "0f3e7127e843d0a814a4a2a58e2e67e58ea60e802dceb03e95d9754cb6e81555",
+    "live_trading/live_model/quiet_breakout/ethusdc/strategy.py": "2a1c4cb9cd4cd6d715e39a18aa12ce257d2a7464490755b94618fcae9dbdf2c2",
+    "live_trading/live_model/quiet_breakout/ethusdc/contract.json": "8f4720089a52d02d95dabacca6cdf7a261d9a47f0890876b2eaa281e3ea06482",
+    "live_trading/live_model/quiet_breakout/ethusdc/model_config.json": "089e3e033720e67fa13faa6b9d7f285671aca46d0647e65e6dc4fe39012dc74c",
+    "live_trading/live_model/quiet_breakout/position_addition.py": "d3ef366d2afbaf69764d4d5bed8cb78763a0213cc6e8731eeca70e104d7b6b45",
+    "live_trading/live_model/quiet_breakout/uniusdc/strategy.py": "d3810c431a7517d095eff15f9b5855cda6480eabaab49ee36c55e540787fcf09",
+    "live_trading/live_model/quiet_breakout/uniusdc/contract.json": "c934f4ca480e8d57c112f4eb01830352471517490fbc8b3e03babf0544889c0f",
+    "live_trading/live_model/quiet_breakout/uniusdc/model_config.json": "af0064c47260a1708c4b181efe333cbb3f490b557285e0e2a858a6126caf8751",
+    "live_trading/live_model/burst_breakout/hypeusdt/strategy.py": "a851d9df0527ed8bee238213c872ed0b6daa3f43846ed7522d0471532616e87b",
+    "live_trading/live_model/burst_breakout/hypeusdt/contract.json": "43900396ede376704f6663fd867eac957e5ff2c23eb7500fc623c9eee8bd1195",
+    "live_trading/live_model/burst_breakout/injusdt/strategy.py": "c50db8f10161a576325836909ad8c61a442db231f298c54dd64c15b37bc00c6d",
+    "live_trading/live_model/burst_breakout/injusdt/contract.json": "e1442e03575ff0725488d2a972ef387427b8c56b1e16e12d63975b05b821aadc",
+    "live_trading/live_model/burst_breakout/uniusdc/strategy.py": "c93c5c6370c596874a446748c0f4108682480391fe382f71571665e07352c4a8",
+    "live_trading/live_model/burst_breakout/uniusdc/contract.json": "f72cfa3a8589e0de07327508f293d19ea35996b6e796bed6b21857b81bd3fd8f",
+    "live_trading/live_model/burst_breakout/policy.py": "77d705b0dc436903a41bb5b1165981937bd99846867fd6e6892afaef5043cb86"
   }
 }

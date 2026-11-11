@@ -18,7 +18,7 @@ HOLD_MS = 2 * DAY
 ACTIVE_STOPS = {"NEW", "TRIGGERING", "TRIGGERED"}
 
 
-def plan_entry(intention, spec, quote, equity, available, settings, *, partial=False):
+def plan_entry(intention, spec, quote, equity, available, settings, *, partial=False, risk_fraction=Decimal("0.01")):
     rules = quantity_rules(spec)
     long = intention["direction"] == "long"
     entry = positive(quote["askPrice"] if long else quote["bidPrice"])
@@ -28,7 +28,10 @@ def plan_entry(intention, spec, quote, equity, available, settings, *, partial=F
     distance = (sizing_entry - stop) * sign
     if stop <= 0 or distance <= 0:
         raise ValueError("poc_not_behind_executable_entry")
-    budget = positive(equity) * Decimal("0.01")
+    risk_fraction = positive(risk_fraction)
+    if risk_fraction >= 1:
+        raise ValueError("invalid_entry_risk_fraction")
+    budget = positive(equity) * risk_fraction
     leverage = positive(settings["leverage"])
     cap = min(equity * 5, positive(settings["maxNotionalValue"]), min(available, equity) * leverage)
     step = rules["step"] * (10 if partial else 1)
@@ -39,6 +42,7 @@ def plan_entry(intention, spec, quote, equity, available, settings, *, partial=F
         raise ValueError("partial_quantity_below_exchange_minimum")
     return dict(direction=intention["direction"], entry_reference=str(entry), stop=str(stop),
                 quantity=str(qty), tick_size=str(rules["tick_size"]), risk_budget=str(budget),
+                equity_before_entry=str(equity),
                 planned_price_risk=str(qty * distance), notional=str(qty * entry),
                 notional_cap=str(cap), quantity_step=str(rules["step"]), min_qty=str(rules["min_qty"]))
 
@@ -166,17 +170,51 @@ class EntryAdmissionBusy(Exception):
 class CoordinatedBurstAccount(SharedBurstAccount):
     """One executor per process, with a same-host admission lock per collateral."""
 
-    def __init__(self, executor, journals):
+    def __init__(self, executor, journals, *, group=None):
         self.local = executor
         self.venue = executor.v
         self.journals = journals
+        self.group = group
         self.executors = {}
         executor.shared_account = self
+
+    def bind_portfolio_account(self, now_ms):
+        """Bind three collateral groups to three distinct native account aliases."""
+        self.venue.load_credentials()
+        key = hashlib.sha256(self.venue._key.encode()).hexdigest()
+        balances = self.venue.read("/fapi/v3/balance")
+        if not isinstance(balances, list) or not balances:
+            raise ValueError("portfolio_account_alias_unavailable")
+        aliases = {row.get("accountAlias") for row in balances}
+        if len(aliases) != 1:
+            raise ValueError("portfolio_account_alias_ambiguous")
+        alias = aliases.pop()
+        if not isinstance(alias, str) or not alias:
+            raise ValueError("portfolio_account_alias_unavailable")
+        identity = hashlib.sha256(alias.encode()).hexdigest()
+        store = self.local.s
+        if (store.meta("key_hash", key), store.meta("portfolio_account_alias", identity)) != (key, identity):
+            raise ValueError("portfolio_journal_account_changed")
+        index = store.path.with_name("portfolio-accounts.sqlite")
+        with closing(sqlite3.connect(index, timeout=5)) as db, db:
+            db.execute("CREATE TABLE IF NOT EXISTS accounts (name TEXT PRIMARY KEY, alias TEXT UNIQUE NOT NULL)")
+            db.execute("INSERT OR IGNORE INTO accounts VALUES (?,?)", (self.group, identity))
+            pinned = db.execute("SELECT alias FROM accounts WHERE name=?", (self.group,)).fetchone()
+            if pinned is None or pinned[0] != identity:
+                raise ValueError("portfolio_account_already_used_or_changed")
+        with store.transaction():
+            store.set_meta("key_hash", key)
+            store.set_meta("worker_symbol", self.local.symbol)
+            store.set_meta("portfolio_account_alias", identity)
+            store.set_meta("coordinated_account", "1")
+            if store.meta("funding_start_ms") is None:
+                store.set_meta("funding_start_ms", now_ms)
 
     @contextmanager
     def admission(self):
         store = self.local.s
-        gate = store.path.with_name(f"burst-admission-{store.asset.lower()}.sqlite")
+        prefix = f"portfolio-{self.group}" if self.group else "burst"
+        gate = store.path.with_name(f"{prefix}-admission-{store.asset.lower()}.sqlite")
         with closing(sqlite3.connect(gate, isolation_level=None, timeout=.1)) as lock, ExitStack() as readers:
             try:
                 lock.execute("BEGIN IMMEDIATE")
@@ -194,21 +232,38 @@ class CoordinatedBurstAccount(SharedBurstAccount):
                     peer = BurstFuturesStore(path, config, read_only=True)
                     readers.callback(peer.close)
                     frozen = {k: v for k, v in config.items() if k not in ("execution_enabled", "accept_new_entries")}
+                    active = peer.active()
+                    if (peer.meta("key_hash") is None and self.group and not active
+                            and peer.meta("config_hash") == content_hash(frozen)):
+                        continue  # The peer has created a fresh journal and has not bound its account yet.
                     if (peer.meta("key_hash") != key or peer.meta("worker_symbol") != symbol
-                            or peer.meta("config_hash") != content_hash(frozen)):
+                            or peer.meta("config_hash") != content_hash(frozen)
+                            or (self.group and peer.meta("portfolio_account_alias")
+                                != store.meta("portfolio_account_alias"))):
                         raise ValueError("peer_journal_identity_mismatch")
                     self.executors[symbol] = SimpleNamespace(symbol=symbol, s=peer)
-                    active = peer.active()
-                    if peer.asset == store.asset and active and active["state"] == "ENTRY_PENDING":
-                        raise EntryAdmissionBusy("peer_entry_awaiting_reconciliation")
+                    if peer.asset == store.asset and active:
+                        if active["state"] == "ENTRY_PENDING":
+                            raise EntryAdmissionBusy("peer_entry_awaiting_reconciliation")
+                        addition = peer.db.execute(
+                            "SELECT state FROM orders WHERE session_id=? AND role='ADD'",
+                            (active["session"],),
+                        ).fetchone()
+                        if addition is not None and addition["state"] not in TERMINAL:
+                            raise EntryAdmissionBusy("peer_add_awaiting_reconciliation")
                 yield
             finally:
                 self.executors = {}
                 lock.rollback()
 
-    def balance(self, asset, now_ms):
+    def balance(self, asset, now_ms, *, include_local=False):
         local = self.local
         wallet, available = local.wallet()
+        if self.group:
+            local.scan_funding(now_ms)
+            equity = positive(local.s.equity(local.c["initial_equity"]))
+            reserved = self._reserved_margin(asset, include_local=include_local)
+            return equity, min(available, max(Decimal(0), wallet - reserved))
         anchor_symbol = "HYPEUSDT" if asset == "USDT" else "UNIUSDC"
         anchor = self.executors.get(anchor_symbol)
         if anchor is None:
@@ -237,9 +292,13 @@ class CoordinatedBurstAccount(SharedBurstAccount):
             if anchor is local:
                 local.s.set_meta("initial_wallet", base)
                 local.s.set_meta("coordinated_allocation", allocation)
+        reserved = self._reserved_margin(asset, include_local=include_local)
+        return equity, min(available, max(Decimal(0), equity - reserved))
+
+    def _reserved_margin(self, asset, *, include_local):
         reserved = Decimal(0)
         for member in self.executors.values():
-            if member is local or member.s.asset != asset:
+            if (member is self.local and not include_local) or member.s.asset != asset:
                 continue
             active = member.s.active()
             if active and active["state"] in {"OPEN", "EXIT_PENDING"}:
@@ -247,8 +306,16 @@ class CoordinatedBurstAccount(SharedBurstAccount):
                 if not {"entry_leverage", "actual_entry_price", "actual_entry_quantity"} <= plan.keys():
                     raise EntryAdmissionBusy("peer_position_margin_unverified")
                 actual = positive(plan["actual_entry_price"]) * positive(plan["actual_entry_quantity"])
+                addition = member.s.db.execute(
+                    "SELECT response FROM orders WHERE session_id=? AND role='ADD'", (active["session"],),
+                ).fetchone()
+                if addition is not None:
+                    order = json.loads(addition["response"] or "{}")
+                    filled = number(order.get("executedQty", "0"))
+                    if filled:
+                        actual += filled * positive(order["avgPrice"])
                 reserved += max(actual, positive(plan["notional"])) / positive(plan["entry_leverage"])
-        return equity, min(available, max(Decimal(0), equity - reserved))
+        return reserved
 
 
 class BurstFuturesExecutor(FuturesExecutor):
@@ -414,6 +481,9 @@ class BurstFuturesExecutor(FuturesExecutor):
         if abs(wallet - expected) > Decimal(".00000001"):
             raise ValueError("wallet_fill_funding_mismatch")
 
+    def entry_risk_fraction(self, intention):
+        return Decimal("0.01")
+
     def _trail_stop(self, session, plan, price):
         side = 1 if plan["direction"] == "long" else -1
         desired = -1
@@ -421,7 +491,7 @@ class BurstFuturesExecutor(FuturesExecutor):
             entry = positive(plan["actual_entry_price"])
             distance = abs(entry - positive(plan["stop"]))
             reached = side * (positive(price) - entry) / distance
-            milestone = 1
+            milestone = 2 if self.c.get("risk_management") == "rm-e" else 1
             while reached >= milestone:
                 desired = 0 if milestone == 1 else milestone // 2
                 milestone *= 2
@@ -530,8 +600,9 @@ class BurstFuturesExecutor(FuturesExecutor):
         with self.s.transaction():
             if first_fill_day > int(self.s.meta("last_entry_day", "-1")):
                 self.s.set_meta("last_entry_day", first_fill_day)
-            equity = (dict(final_equity=str(self.s.equity(self.c["initial_equity"])))
-                      if self.shared_account is None else dict(strategy_net_pnl=str(self.s.equity(0))))
+            equity = dict(strategy_net_pnl=str(self.s.equity(0)))
+            if self.shared_account is None or self.c.get("portfolio_group"):
+                equity["final_equity"] = str(self.s.equity(self.c["initial_equity"]))
             self.s.audit("trade_closed", dict(setup_id=session["id"], reason=session["reason"],
                         pnl_asset=self.s.asset, realized=str(gross), fees=str(fees), funding=str(funding),
                         net_pnl=str(gross-fees+funding), fill_ids=[f["id"] for f in fills],
@@ -557,7 +628,8 @@ class BurstFuturesExecutor(FuturesExecutor):
                 with self.shared_account.admission() if coordinated else nullcontext():
                     spec, available, settings, equity = self.entry_guard(now_ms)
                     plan = plan_entry(p, spec, self.quote(now_ms), equity, available, settings,
-                                      partial=self.c.get("risk_management") == "rm-d")
+                                      partial=self.c.get("risk_management") in ("rm-d", "rm-e"),
+                                      risk_fraction=self.entry_risk_fraction(p))
                     if coordinated:
                         if int(time.time() * 1000) > p["expires_timestamp_ms"]:
                             raise ValueError("stale_after_collateral_admission")
@@ -657,14 +729,12 @@ class BurstFuturesExecutor(FuturesExecutor):
             return self._exit(session, amount, "actual_fill_exceeds_initial_stop_risk")
         if now_ms >= plan["force_exit_ms"]:
             return self._exit(session, amount, "time_exit_48h")
-        if self.c.get("risk_management") == "rm-d":
+        if self.c.get("risk_management") in ("rm-d", "rm-e"):
             self._partial(session, plan)
-        mark = self.s.meta("live_excursion")
-        if mark:
-            trade = json.loads(mark)
-            if trade["setup_id"] == session["id"] and trade["timestamp_ms"] >= plan["first_fill_ms"]:
-                protection = self._trail_stop(session, plan, trade["price"])
-                if protection == "unprotected":
-                    self._exit(session, amount, "protective_stop_not_confirmed")
-                elif protection == "trigger_finished":
-                    self._exit(session, amount, "stop_left_unclosed_quantity")
+        trade = json.loads(self.s.meta("live_excursion", "null"))
+        if trade and trade["setup_id"] == session["id"] and trade["timestamp_ms"] >= plan["first_fill_ms"]:
+            protection = self._trail_stop(session, plan, trade["price"])
+            if protection == "unprotected":
+                self._exit(session, amount, "protective_stop_not_confirmed")
+            elif protection == "trigger_finished":
+                self._exit(session, amount, "stop_left_unclosed_quantity")

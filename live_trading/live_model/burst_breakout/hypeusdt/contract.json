@@ -1,0 +1,49 @@
+{
+  "schema": "operational_model_package_v1",
+  "model": "burst_breakout",
+  "status": "packaged_not_activated",
+  "venue": "binance",
+  "product": "linear_quote_margined",
+  "symbol": "HYPEUSDT",
+  "contract": "BURST-HYPEUSDT-16H-B-3M12M-RME48-P1-LIVE-002",
+  "allocation_id": "burst_hypeusdt_16h_f_p1_initiative_add",
+  "journal": "burst_hypeusdt_16h_f_p1_initiative_add.sqlite",
+  "risk_fraction": 0.01,
+  "notional_equity_cap": 5,
+  "quantity_unit": "HYPE",
+  "pnl_unit": "USDT",
+  "engine_release": {
+    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
+    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+  },
+  "strategy_sha256": "a851d9df0527ed8bee238213c872ed0b6daa3f43846ed7522d0471532616e87b",
+  "dependencies": {
+    "live_trading/live_model/burst_breakout/policy.py": "77d705b0dc436903a41bb5b1165981937bd99846867fd6e6892afaef5043cb86",
+    "live_trading/burst_runtime.py": "2695c5b3656b1371560637f518228eb2e7e28a08a3f0a70ed52f141a4239f558",
+    "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
+    "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
+    "utils/engine/execution/burst_futures.py": "bd0917437ec6b2808c36cd9e26c94dbfc786dc11e7d9ca6bbf5d5d1a86f13007",
+    "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",
+    "live_trading/live_model/quiet_breakout/hypeusdt/strategy.py": "e983bf77374332c22a65a72469685efb28a352db4ab4cc9fbd1bc34bd20fe713",
+    "live_trading/live_model/quiet_breakout/position_addition.py": "d3ef366d2afbaf69764d4d5bed8cb78763a0213cc6e8731eeca70e104d7b6b45"
+  },
+  "model_config": {
+    "mode": "profile_burst",
+    "setup_variant": "b",
+    "flow_entry_confirmation": true,
+    "flow_timeframes": "3m_12m",
+    "flow_interpretation": "static",
+    "entry_gate": false,
+    "one_entry_per_utc_day": true,
+    "risk_exit_hours": 48,
+    "entry_filter": "path_p1",
+    "lookback_hours": 16,
+    "risk_management": "rm-e",
+    "position_sizing": "initiative_1p5_add_at_2r"
+  },
+  "source_run": "model_development/models/burst_breakout/runs/burst_live_candidate_validation_20261111_181027_926988/HYPEUSDT/HYPEUSDT_0634d250eab772f2",
+  "tags": [
+    "Initiative Without Exhaustion - 1.5x Entry Risk",
+    "Protected Scale-In - +2R Trigger - Up to 80%"
+  ]
+}

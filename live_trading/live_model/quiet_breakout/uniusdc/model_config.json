@@ -1,0 +1,24 @@
+{
+  "contract": "QUIET-UNI-STABLE-P85-P5-INIT15-RME48-ADD-LIVE-001",
+  "allocation_id": "quiet_breakout_uniusdc_stable_position_addition",
+  "journal": "quiet_breakout_uniusdc_stable_position_addition.sqlite",
+  "tags": [
+    "stabil",
+    "position_addition"
+  ],
+  "source_run": "model_development/models/quiet_breakout/runs/uniusdc_p85_p5_init15_lock1r_v01_add/run.json",
+  "source_run_sha256": "f3bdfc3138e7068ae0ac969f8d1af1d2d0983718106566f315c003f3ac936b0a",
+  "model_config": {
+    "one_entry_per_utc_day": true,
+    "require_volume_p75": true,
+    "entry_filter": "risk_p85",
+    "flow_timeframes": "1m_5m",
+    "lookback_hours": 16,
+    "risk_exit_hours": 48,
+    "risk_management": "rm-e",
+    "initiative_risk_multiplier": 1.5,
+    "additional_path_filter": "path_p5",
+    "pyramid_add": true,
+    "pyramid_balance": "lock_1r"
+  }
+}

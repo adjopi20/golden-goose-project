@@ -8,8 +8,8 @@ services:
         CODE_VERSION: ${BURST_ALERTS_COMMIT:?set the verified alert code commit}
     image: golden-goose/engine-alerts:${BURST_ALERTS_COMMIT}
     entrypoint: ["python", "-m", "utils.engine.monitoring.engine_alerts"]
-    command: ["--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite"]
-    restart: unless-stopped
+    command: ["--config", "/app/config/alerts.json", "--database", "/data/alerts.sqlite", "--performance", "/app/config/performance.json"]
+    restart: always
     init: true
     read_only: true
     tmpfs: ["/tmp:size=8m"]
@@ -28,6 +28,11 @@ services:
       - type: bind
         source: ./burst-alerts.json
         target: /app/config/alerts.json
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ./burst-performance.json
+        target: /app/config/performance.json
         read_only: true
         bind: {create_host_path: false}
     healthcheck:

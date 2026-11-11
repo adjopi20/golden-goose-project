@@ -1,21 +1,22 @@
-x-burst: &burst
-    image: ${HYPE_BURST_IMAGE:?set the verified image tag}
-    restart: unless-stopped
-    stop_grace_period: 30s
-    init: true
-    read_only: true
-    tmpfs:
-      - /tmp
-    env_file:
-      - ${HYPE_BURST_ARMING_ENV:?set the external arming env file}
-    volumes:
-      - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
-      - ${HYPE_BURST_SECRETS:?set the external Ed25519 secret directory}:/run/hype-secrets:ro
-    logging:
-      driver: json-file
-      options:
-        max-size: "20m"
-        max-file: "5"
+name: golden-goose-hype-burst
+
+x-worker: &worker
+  image: ${HYPE_BURST_IMAGE:?set the verified Git image tag}
+  restart: unless-stopped
+  stop_grace_period: 30s
+  init: true
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: local
+    options: {max-size: "20m", max-file: "5"}
+
+x-trading: &trading
+  networks: [default, market]
+  env_file:
+    - ${HYPE_BURST_ARMING_ENV:?set the external arming env file}
 
 x-health: &health
   interval: 30s
@@ -23,78 +24,241 @@ x-health: &health
   retries: 3
   start_period: 90s
 
+x-burst: &burst
+  profiles: [burst]
+  volumes:
+    - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
+    - type: bind
+      source: ${HYPE_BURST_SECRETS:?set the existing Burst secrets directory}
+      target: /run/account-secrets
+      read_only: true
+      bind: {create_host_path: false}
+
+x-quiet-core: &quiet-core
+  profiles: [quiet-core]
+  volumes:
+    - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
+    - type: bind
+      source: ${QUIET_CORE_SECRETS:-./unconfigured-quiet-core}
+      target: /run/account-secrets
+      read_only: true
+      bind: {create_host_path: false}
+
+x-quiet-tail: &quiet-tail
+  profiles: [quiet-tail]
+  volumes:
+    - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
+    - type: bind
+      source: ${QUIET_TAIL_SECRETS:-./unconfigured-quiet-tail}
+      target: /run/account-secrets
+      read_only: true
+      bind: {create_host_path: false}
+
 services:
   hype-burst-live:
-    <<: *burst
+    <<: [*worker, *trading, *burst]
     command:
-      - --live-symbol
-      - HYPEUSDT
+      - --portfolio-model
+      - burst_hypeusdt_16h_f_p1_initiative_add
       - --database
-      - /data/hype.sqlite
-      - --allocation-usdt
-      - ${HYPE_BURST_ALLOCATION_USDT:?set the approved USDT allocation}
-      - --allocation-usdc
-      - ${BURST_LIVE_ALLOCATION_USDC:?set the approved USDC allocation}
+      - /data/burst_hypeusdt_16h_f_p1_initiative_add.sqlite
       - --api-key-file
-      - /run/hype-secrets/api-key
+      - /run/account-secrets/api-key
       - --private-key-file
-      - /run/hype-secrets/ed25519.pem
+      - /run/account-secrets/ed25519.pem
       - --passphrase-file
-      - /run/hype-secrets/passphrase
+      - /run/account-secrets/passphrase
+      - --market-nats-url
+      - nats://nats:4222
       - --armed
     healthcheck:
       <<: *health
-      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/hype.sqlite", "--keys", "worker_heartbeat_ms"]
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/burst_hypeusdt_16h_f_p1_initiative_add.sqlite", "--keys", "worker_heartbeat_ms"]
 
   inj-burst-live:
-    <<: *burst
-    networks: [default, market]
+    <<: [*worker, *trading, *burst]
     command:
-      - --live-symbol
-      - INJUSDT
+      - --portfolio-model
+      - burst_injusdt_24h_f_p15_initiative
       - --database
-      - /data/injusdt.sqlite
-      - --allocation-usdt
-      - ${HYPE_BURST_ALLOCATION_USDT:?set the approved USDT allocation}
-      - --allocation-usdc
-      - ${BURST_LIVE_ALLOCATION_USDC:?set the approved USDC allocation}
+      - /data/burst_injusdt_24h_f_p15_initiative.sqlite
       - --api-key-file
-      - /run/hype-secrets/api-key
+      - /run/account-secrets/api-key
       - --private-key-file
-      - /run/hype-secrets/ed25519.pem
+      - /run/account-secrets/ed25519.pem
       - --passphrase-file
-      - /run/hype-secrets/passphrase
+      - /run/account-secrets/passphrase
       - --market-nats-url
       - nats://nats:4222
       - --armed
     healthcheck:
       <<: *health
-      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/injusdt.sqlite", "--keys", "worker_heartbeat_ms"]
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/burst_injusdt_24h_f_p15_initiative.sqlite", "--keys", "worker_heartbeat_ms"]
 
   uni-burst-live:
-    <<: *burst
-    networks: [default, market]
+    <<: [*worker, *trading, *burst]
     command:
-      - --live-symbol
-      - UNIUSDC
+      - --portfolio-model
+      - burst_uniusdc_12h_f_p10_initiative
       - --database
-      - /data/uniusdc.sqlite
-      - --allocation-usdt
-      - ${HYPE_BURST_ALLOCATION_USDT:?set the approved USDT allocation}
-      - --allocation-usdc
-      - ${BURST_LIVE_ALLOCATION_USDC:?set the approved USDC allocation}
+      - /data/burst_uniusdc_12h_f_p10_initiative.sqlite
       - --api-key-file
-      - /run/hype-secrets/api-key
+      - /run/account-secrets/api-key
       - --private-key-file
-      - /run/hype-secrets/ed25519.pem
+      - /run/account-secrets/ed25519.pem
       - --passphrase-file
-      - /run/hype-secrets/passphrase
+      - /run/account-secrets/passphrase
       - --market-nats-url
       - nats://nats:4222
       - --armed
     healthcheck:
       <<: *health
-      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/uniusdc.sqlite", "--keys", "worker_heartbeat_ms"]
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/burst_uniusdc_12h_f_p10_initiative.sqlite", "--keys", "worker_heartbeat_ms"]
+
+  hype-quiet-stable:
+    <<: [*worker, *trading, *quiet-core]
+    command:
+      - --portfolio-model
+      - quiet_breakout_stable
+      - --database
+      - /data/quiet_breakout_stable.sqlite
+      - --api-key-file
+      - /run/account-secrets/api-key
+      - --private-key-file
+      - /run/account-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/account-secrets/passphrase
+      - --market-nats-url
+      - nats://nats:4222
+      - --armed
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/quiet_breakout_stable.sqlite", "--keys", "worker_heartbeat_ms"]
+
+  eth-quiet-stable:
+    <<: [*worker, *trading, *quiet-core]
+    command:
+      - --portfolio-model
+      - quiet_breakout_ethusdc_stable
+      - --database
+      - /data/quiet_breakout_ethusdc_stable.sqlite
+      - --api-key-file
+      - /run/account-secrets/api-key
+      - --private-key-file
+      - /run/account-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/account-secrets/passphrase
+      - --market-nats-url
+      - nats://nats:4222
+      - --armed
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/quiet_breakout_ethusdc_stable.sqlite", "--keys", "worker_heartbeat_ms"]
+
+  uni-quiet-stable:
+    <<: [*worker, *trading, *quiet-core]
+    command:
+      - --portfolio-model
+      - quiet_breakout_uniusdc_stable_position_addition
+      - --database
+      - /data/quiet_breakout_uniusdc_stable_position_addition.sqlite
+      - --api-key-file
+      - /run/account-secrets/api-key
+      - --private-key-file
+      - /run/account-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/account-secrets/passphrase
+      - --market-nats-url
+      - nats://nats:4222
+      - --armed
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/quiet_breakout_uniusdc_stable_position_addition.sqlite", "--keys", "worker_heartbeat_ms"]
+
+  hype-quiet-tail:
+    <<: [*worker, *trading, *quiet-tail]
+    command:
+      - --portfolio-model
+      - quiet_breakout_tail_dependent_position_addition
+      - --database
+      - /data/quiet_breakout_tail_dependent_position_addition.sqlite
+      - --api-key-file
+      - /run/account-secrets/api-key
+      - --private-key-file
+      - /run/account-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/account-secrets/passphrase
+      - --market-nats-url
+      - nats://nats:4222
+      - --armed
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/quiet_breakout_tail_dependent_position_addition.sqlite", "--keys", "worker_heartbeat_ms"]
+
+  binance-broker-audit:
+    <<: [*worker, *burst]
+    entrypoint: ["python", "-m", "utils.engine.monitoring.binance_audit"]
+    command:
+      - --watch
+      - --database
+      - /data/binance-broker-audit.sqlite
+      - --symbol
+      - HYPEUSDT
+      - --symbol
+      - INJUSDT
+      - --symbol
+      - UNIUSDC
+      - --api-key-file
+      - /run/account-secrets/api-key
+      - --private-key-file
+      - /run/account-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/account-secrets/passphrase
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit.sqlite", "--keys", "worker_heartbeat_ms"]
+
+  binance-broker-audit-quiet-core:
+    <<: [*worker, *quiet-core]
+    entrypoint: ["python", "-m", "utils.engine.monitoring.binance_audit"]
+    command:
+      - --watch
+      - --database
+      - /data/binance-broker-audit-quiet-core.sqlite
+      - --symbol
+      - ETHUSDC
+      - --symbol
+      - HYPEUSDT
+      - --symbol
+      - UNIUSDC
+      - --api-key-file
+      - /run/account-secrets/api-key
+      - --private-key-file
+      - /run/account-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/account-secrets/passphrase
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit-quiet-core.sqlite", "--keys", "worker_heartbeat_ms"]
+
+  binance-broker-audit-quiet-tail:
+    <<: [*worker, *quiet-tail]
+    entrypoint: ["python", "-m", "utils.engine.monitoring.binance_audit"]
+    command:
+      - --watch
+      - --database
+      - /data/binance-broker-audit-quiet-tail.sqlite
+      - --symbol
+      - HYPEUSDT
+      - --api-key-file
+      - /run/account-secrets/api-key
+      - --private-key-file
+      - /run/account-secrets/ed25519.pem
+      - --passphrase-file
+      - /run/account-secrets/passphrase
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit-quiet-tail.sqlite", "--keys", "worker_heartbeat_ms"]
 
 networks:
   market:

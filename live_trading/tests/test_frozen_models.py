@@ -18,14 +18,16 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 HISTORY = ROOT / 'model_development/models/legacy_frozen_candidates'
 PATHS = {
-    'pre_ny_eth': 'live_trading/live_model/pre_ny_eth',
     'pre_ny_bnb': 'paper_trading/models/pre_ny_bnb',
     'pre_ny_hype': 'paper_trading/models/pre_ny_hype',
     'volume_profile_reversion': 'paper_trading/models/volume_profile_reversion',
     'btc_mvrv': 'live_trading/live_model/btc_mvrv',
-    'burst_hype': 'live_trading/live_model/burst_hype',
-    'burst_inj': 'live_trading/live_model/burst_inj',
-    'burst_uni': 'live_trading/live_model/burst_uni',
+    'burst_hype': 'live_trading/live_model/burst_breakout/hypeusdt',
+    'burst_inj': 'live_trading/live_model/burst_breakout/injusdt',
+    'burst_uni': 'live_trading/live_model/burst_breakout/uniusdc',
+    'quiet_breakout': 'live_trading/live_model/quiet_breakout/hypeusdt',
+    'quiet_breakout_ethusdc': 'live_trading/live_model/quiet_breakout/ethusdc',
+    'quiet_breakout_uniusdc': 'live_trading/live_model/quiet_breakout/uniusdc',
 }
 
 
@@ -39,11 +41,20 @@ def digest(path):
 
 def test_exclusive_stages_and_live_registry():
     from live_trading.live_model import load_model, verify_release
-    assert set(verify_release()['models']) == {
-        'pre_ny_eth', 'btc_mvrv_fixed', 'btc_mvrv_p5_p95',
-        'burst_hype_24h_b_3m12m_rm_c48', 'burst_inj_24h_b_1m5m_rm_d48', 'burst_uni_12h_b_1m5m_rm_c48',
+    models = verify_release()['models']
+    assert set(models) == {
+        'btc_mvrv_fixed', 'btc_mvrv_p5_p95',
+        'burst_hypeusdt_16h_f_p1_initiative_add', 'burst_injusdt_24h_f_p15_initiative', 'burst_uniusdc_12h_f_p10_initiative',
+        'quiet_breakout_stable', 'quiet_breakout_tail_dependent', 'quiet_breakout_ethusdc_stable',
+        'quiet_breakout_uniusdc_stable',
     }
     assert load_model('btc_mvrv_fixed') is load_model('btc_mvrv_p5_p95')
+    assert models['quiet_breakout_stable'] == models['quiet_breakout_tail_dependent'] == PATHS['quiet_breakout']
+    assert load_model('quiet_breakout_stable') is load_model('quiet_breakout_tail_dependent')
+    assert models['quiet_breakout_ethusdc_stable'] == PATHS['quiet_breakout_ethusdc']
+    assert load_model('quiet_breakout_ethusdc_stable').Strategy.SYMBOL == 'ETHUSDC'
+    assert models['quiet_breakout_uniusdc_stable'] == PATHS['quiet_breakout_uniusdc']
+    assert load_model('quiet_breakout_uniusdc_stable').Strategy.SYMBOL == 'UNIUSDC'
     with pytest.raises(ValueError, match='Not a declared live'):
         load_model('pre_ny_hype')
     for name, path in PATHS.items():
@@ -60,29 +71,49 @@ def test_burst_models_use_distinct_verified_policies():
     from decimal import Decimal
     from live_trading.live_model import load_model
     expected = {
-        'burst_hype_24h_b_3m12m_rm_c48': ('HYPEUSDT', 24, '3m_12m', 'rm-c', 'hype.sqlite'),
-        'burst_inj_24h_b_1m5m_rm_d48': ('INJUSDT', 24, '1m_5m', 'rm-d', 'injusdt.sqlite'),
-        'burst_uni_12h_b_1m5m_rm_c48': ('UNIUSDC', 12, '1m_5m', 'rm-c', 'uniusdc.sqlite'),
+        'burst_hypeusdt_16h_f_p1_initiative_add': ('HYPEUSDT', 16, '3m_12m', 'rm-e', 'path_p1', 'initiative_1p5_add_at_2r', 0.01),
+        'burst_injusdt_24h_f_p15_initiative': ('INJUSDT', 24, '5m_10m', 'rm-e', 'path_p15', 'initiative_1p5', 0.009),
+        'burst_uniusdc_12h_f_p10_initiative': ('UNIUSDC', 12, '1m_5m', 'rm-c', 'path_p10', 'initiative_1p5', 0.01),
     }
     for key, values in expected.items():
         cls = load_model(key).Strategy
         policy = cls.model_config()
-        assert (cls.SYMBOL, policy['lookback_hours'], policy['flow_timeframes'],
-                policy['risk_management'], cls.DATABASE) == values
         config = cls.execution_config(Decimal(99), False)
-        assert config['symbol'] == cls.SYMBOL
+        assert (cls.SYMBOL, policy['lookback_hours'], policy['flow_timeframes'],
+                policy['risk_management'], policy['entry_filter'], policy['position_sizing'],
+                config['risk_fraction']) == values
+        assert config['symbol'] == cls.SYMBOL and config['allocation_id'] == key
+        assert cls.DATABASE == f'{key}.sqlite'
         assert policy['risk_exit_hours'] == 48
+        armed = cls.execution_config(Decimal(99), True)
+        assert not config['execution_enabled'] and not config['accept_new_entries']
+        assert armed['execution_enabled'] and armed['accept_new_entries']
+        from live_trading.live_model.burst_breakout.policy import SelectedBurstAdditionExecutor, SelectedBurstExecutor
+        expected_executor = SelectedBurstAdditionExecutor if cls.SYMBOL == 'HYPEUSDT' else SelectedBurstExecutor
+        assert cls.EXECUTOR is expected_executor
 
 
 def test_burst_signal_freeze_matches_reference_source():
     from live_trading import burst_signals
     src = ROOT / 'model_development/models/burst_breakout/strategy.py'
     live = ast.parse(Path(burst_signals.__file__).read_text(encoding='utf-8'))
-    reference = {n.name: ast.dump(n) for n in ast.parse(src.read_text(encoding='utf-8')).body
+    reference = {n.name: n for n in ast.parse(src.read_text(encoding='utf-8')).body
                  if isinstance(n, ast.FunctionDef)}
+
+    # Research also serves daily profiles. Its hourly default is the live window.
+    hourly = reference['_burst_signals_from_features']
+    assert [arg.arg for arg in hourly.args.kwonlyargs] == ['entry_window_ms']
+    assert [default.value for default in hourly.args.kw_defaults] == [3_600_000]
+    hour, = [n for n in ast.walk(hourly) if isinstance(n, ast.Assign) and
+             isinstance(n.targets[0], ast.Name) and n.targets[0].id == 'hour']
+    assert hour.value.value == 3_600_000
+    hourly.args.kwonlyargs.clear()
+    hourly.args.kw_defaults.clear()
+    deadline, = [n for n in ast.walk(hourly) if isinstance(n, ast.Name) and n.id == 'entry_window_ms']
+    deadline.id = 'hour'
     for node in live.body:
         if isinstance(node, ast.FunctionDef):
-            assert ast.dump(node) == reference[node.name]
+            assert ast.dump(node) == ast.dump(reference[node.name])
 
 
 def test_original_frozen_release_sources_retain_exact_bytes():
@@ -94,7 +125,7 @@ def test_original_frozen_release_sources_retain_exact_bytes():
         assert digest(path) == expected, name
 
 
-@pytest.mark.parametrize('name', ['pre_ny_eth', 'pre_ny_bnb', 'pre_ny_hype', 'volume_profile_reversion'])
+@pytest.mark.parametrize('name', ['pre_ny_bnb', 'pre_ny_hype', 'volume_profile_reversion'])
 def test_existing_strategy_functions_preserved(name):
     before = ast.parse((HISTORY / (name + '.py')).read_text(encoding='utf-8'))
     after = ast.parse((ROOT / PATHS[name] / 'strategy.py').read_text(encoding='utf-8'))
@@ -110,11 +141,16 @@ def test_import_and_release_verification_are_offline(name):
     with patch.object(socket.socket, 'connect', side_effect=AssertionError('network')):
         with patch.object(sqlite3, 'connect', side_effect=AssertionError('database')):
             module = load(name)
-            verify_model(module.__file__)
+            contract = verify_model(module.__file__)
     source = ast.parse(Path(module.__file__).read_text(encoding='utf-8'))
     for node in ast.walk(source):
         names = [node.module or ''] if isinstance(node, ast.ImportFrom) else [x.name for x in node.names] if isinstance(node, ast.Import) else []
-        assert not any(n == p or n.startswith(p + '.') for n in names for p in ('indicator', 'model_development', 'trading_core'))
+        for imported in names:
+            if name == 'quiet_breakout' and imported == 'indicator.volume_profile':
+                assert 'indicator/volume_profile.py' in contract['dependencies']
+                continue
+            assert not any(imported == p or imported.startswith(p + '.')
+                           for p in ('indicator', 'model_development', 'trading_core'))
 
 
 def test_promotable_package_and_tamper_guard(tmp_path):
@@ -172,14 +208,12 @@ def test_paper_factory_binds_existing_binance_account(name):
             m.create_paper_manager(store, venue='lighter')
 
 
-def test_eth_factory_binds_supported_lifecycle_only():
-    m = load('pre_ny_eth')
-    with patch('utils.engine.execution.session.create_execution') as create:
-        cfg = dict(contract='TF-PRENY-ETH-001')
-        m.create_execution(mode='live', config=cfg, database='external.sqlite', adapter_options={})
-        create.assert_called_once_with(mode='live', config=cfg, database='external.sqlite', adapter_options={})
-        with pytest.raises(ValueError, match='requires TF-PRENY-ETH'):
-            m.create_execution(mode='live', config={}, database='unused', adapter_options={})
+def test_retired_pre_ny_eth_is_research_only():
+    from live_trading.live_model import load_model
+    with pytest.raises(ValueError, match='Not a declared live'):
+        load_model('pre_ny_eth')
+    assert not (ROOT / 'live_trading/live_model/pre_ny_eth').exists()
+    assert (HISTORY / 'pre_ny_eth.py').is_file()
 
 
 def test_btc_model_local_config_tamper_rejected(tmp_path):

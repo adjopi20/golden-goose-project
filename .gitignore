@@ -1,44 +1,51 @@
-# Local tooling and generated output
-.venv/
+# ignore file
+# file.txt
+
+# ignore folder
+/data/
+apps/orb_live_agent/data/
 __pycache__/
+/_archive/
+reports/
+/storage/
+tmp/
+_tmp_binance_historical/
+.venv/
 .pytest_cache/
 .pytest_tmp*/
-.tmp*/
-.codex/
-/_archive/
-tmp/
-cache/
-browser_cache/
-reports/
-results/
-runs/
-chart_exports/
-data/
-storage/
+.tmp-pytest*/
+.tmp-mpl-cache/
+models/**/runs/
+
+# ignore extension
 *.log
 *.csv
-*.csv.gz
+*xlsx
 *.parquet
 *.jsonl
-*.xlsx
-*.png
 *.jpg
 *.html
-*.ipynb
-
-# Credentials and account state
+*ipynb
+*.png
 .env
+**/.env
 .env.*
-*.env
-!*.env.example
+**/.env.*
 !.env.example
-*.pem
-*.key
-*.p12
-*.pfx
+!**/.env.example
+
+# Source-only releases
+**/runs/
+**/storage/
+**/cache/
+**/__pycache__/
 *.sqlite
 *.sqlite-*
 *.db
 *.db-*
-*.sqlite3
-*.sqlite3-*
+*.pem
+*.key
+*.p12
+*.pfx
+**/secrets/
+**/private/

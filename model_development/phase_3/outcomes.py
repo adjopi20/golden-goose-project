@@ -9,7 +9,9 @@ import numpy as np
 
 from model_development.phase_3.run_input import load_run,verify_source,digest,IDENTITY
 from model_development.phase_3.kelly import kelly_summary
-from model_development.phase_3.monte_carlo import resample_paths,shuffle_trade_paths,scenarios,stressed_r
+from model_development.phase_3.monte_carlo import (
+    resample_paths, shuffle_trade_paths, shuffled_performance_bands, scenarios, stressed_r,
+)
 
 
 def parser():
@@ -128,6 +130,7 @@ def monte_carlo(data,args):
             ),
             source_trade_ids=[r['trade_id'] for r in trades],trade_net_returns=returns.tolist(),
             equity_paths=paths.tolist(),
+            closed_trade_performance_bands=shuffled_performance_bands(paths),
             equity_bands=dict(mean=paths.mean(axis=0).tolist(),median=np.median(paths,axis=0).tolist(),
                               p05=np.quantile(paths,.05,axis=0).tolist(),p95=np.quantile(paths,.95,axis=0).tolist()),
             path_statistics=dict(max_drawdown=drawdowns.tolist(),minimum_equity=minimum.tolist(),

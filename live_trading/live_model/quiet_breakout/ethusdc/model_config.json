@@ -1,0 +1,11 @@
+{
+  "flow_timeframes": "3m_12m",
+  "lookback_hours": 24,
+  "risk_exit_hours": 24,
+  "risk_management": "rm-e",
+  "require_volume_p75": true,
+  "one_entry_per_utc_day": true,
+  "entry_filter": "risk_p85",
+  "initiative_risk_multiplier": 1.5,
+  "additional_path_filter": "path_p5"
+}

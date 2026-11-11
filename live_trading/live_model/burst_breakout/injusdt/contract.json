@@ -1,0 +1,49 @@
+{
+  "schema": "operational_model_package_v1",
+  "model": "burst_breakout",
+  "status": "packaged_not_activated",
+  "venue": "binance",
+  "product": "linear_quote_margined",
+  "symbol": "INJUSDT",
+  "contract": "BURST-INJUSDT-24H-B-5M10M-RME48-P15-LIVE-002",
+  "allocation_id": "burst_injusdt_24h_f_p15_initiative",
+  "journal": "burst_injusdt_24h_f_p15_initiative.sqlite",
+  "risk_fraction": 0.009,
+  "notional_equity_cap": 5,
+  "quantity_unit": "INJ",
+  "pnl_unit": "USDT",
+  "engine_release": {
+    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
+    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+  },
+  "strategy_sha256": "c50db8f10161a576325836909ad8c61a442db231f298c54dd64c15b37bc00c6d",
+  "dependencies": {
+    "live_trading/live_model/burst_breakout/policy.py": "77d705b0dc436903a41bb5b1165981937bd99846867fd6e6892afaef5043cb86",
+    "live_trading/burst_runtime.py": "2695c5b3656b1371560637f518228eb2e7e28a08a3f0a70ed52f141a4239f558",
+    "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
+    "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
+    "utils/engine/execution/burst_futures.py": "bd0917437ec6b2808c36cd9e26c94dbfc786dc11e7d9ca6bbf5d5d1a86f13007",
+    "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",
+    "live_trading/live_model/quiet_breakout/hypeusdt/strategy.py": "e983bf77374332c22a65a72469685efb28a352db4ab4cc9fbd1bc34bd20fe713",
+    "live_trading/live_model/quiet_breakout/position_addition.py": "d3ef366d2afbaf69764d4d5bed8cb78763a0213cc6e8731eeca70e104d7b6b45"
+  },
+  "model_config": {
+    "position_sizing": "initiative_1p5",
+    "mode": "profile_burst",
+    "setup_variant": "b",
+    "flow_entry_confirmation": true,
+    "flow_interpretation": "static",
+    "entry_gate": false,
+    "one_entry_per_utc_day": true,
+    "lookback_hours": 24,
+    "flow_timeframes": "5m_10m",
+    "risk_management": "rm-e",
+    "risk_exit_hours": 48,
+    "entry_filter": "path_p15"
+  },
+  "source_run": "model_development/models/burst_breakout/runs/inj_sizing_under_20_20261111_175254_586740/initiative_1p5/INJUSDT_68ca85ae840a291d",
+  "tags": [
+    "Initiative Without Exhaustion - 1.5x Entry Risk",
+    "Single Entry - No Scale-In"
+  ]
+}

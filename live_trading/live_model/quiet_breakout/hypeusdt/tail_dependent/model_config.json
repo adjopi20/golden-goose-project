@@ -1,0 +1,24 @@
+{
+  "contract": "QUIET-HYPE-TAIL-P5-INIT15-ADD-LIVE-002",
+  "allocation_id": "quiet_breakout_tail_dependent_position_addition",
+  "journal": "quiet_breakout_tail_dependent_position_addition.sqlite",
+  "source_run": "model_development/models/quiet_breakout/runs/hypeusdt_tail_dependent_lock1r_v01_add/run.json",
+  "source_run_sha256": "8f4f56aa9e2d50683fe2dd3805f353b20e459622bf924c5c963e86dc939a8f00",
+  "model_config": {
+    "one_entry_per_utc_day": true,
+    "require_volume_p75": true,
+    "entry_filter": "risk_p85",
+    "flow_timeframes": "3m_12m",
+    "lookback_hours": 16,
+    "risk_exit_hours": 48,
+    "risk_management": "rm-a",
+    "additional_path_filter": "path_p5",
+    "initiative_risk_multiplier": 1.5,
+    "pyramid_add": true,
+    "pyramid_balance": "lock_1r"
+  },
+  "tags": [
+    "tail_dependent",
+    "position_addition"
+  ]
+}

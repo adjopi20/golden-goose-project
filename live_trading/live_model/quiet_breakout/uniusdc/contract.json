@@ -1,0 +1,29 @@
+{
+  "schema": "operational_model_package_v1",
+  "model": "quiet_breakout",
+  "status": "packaged_not_activated",
+  "venue": "binance",
+  "product": "linear_quote_margined",
+  "symbol": "UNIUSDC",
+  "quantity_unit": "UNI",
+  "pnl_unit": "USDC",
+  "risk_fraction": 0.01,
+  "notional_equity_cap": 5,
+  "engine_release": {
+    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
+    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+  },
+  "strategy_sha256": "d3810c431a7517d095eff15f9b5855cda6480eabaab49ee36c55e540787fcf09",
+  "dependencies": {
+    "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
+    "live_trading/burst_runtime.py": "2695c5b3656b1371560637f518228eb2e7e28a08a3f0a70ed52f141a4239f558",
+    "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
+    "utils/engine/execution/burst_futures.py": "bd0917437ec6b2808c36cd9e26c94dbfc786dc11e7d9ca6bbf5d5d1a86f13007",
+    "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",
+    "live_trading/live_model/quiet_breakout/position_addition.py": "d3ef366d2afbaf69764d4d5bed8cb78763a0213cc6e8731eeca70e104d7b6b45",
+    "live_trading/live_model/quiet_breakout/hypeusdt/strategy.py": "e983bf77374332c22a65a72469685efb28a352db4ab4cc9fbd1bc34bd20fe713"
+  },
+  "model_files": {
+    "model_config.json": "af0064c47260a1708c4b181efe333cbb3f490b557285e0e2a858a6126caf8751"
+  }
+}

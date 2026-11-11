@@ -248,6 +248,7 @@ def run_stream(models, venue, public, *, duration=None):
                 model.store.set_meta("worker_heartbeat_ms", now)
                 model.store.set_meta("worker_armed", int(venue.armed))
                 model.store.set_meta("worker_symbol", symbol)
+                model.store.set_meta("strategy_contract", model.executor.c["contract"])
                 model.store.set_meta("worker_error", error or "")
             print(json.dumps(dict(event="heartbeat", symbol=symbol, status=model.store.status(),
                                   worker_error=error, public_cursor=model.get("public_cursor"))), flush=True)
@@ -263,7 +264,7 @@ def run_stream(models, venue, public, *, duration=None):
                              and 0 <= now - last_live_ms[symbol] <= 10_000)
                 model.executor.cycle(now, new_entries_ok=can_enter)
                 cycle_errors.pop(symbol, None)
-            except (ValueError, *transient) as error:
+            except (ValueError, TypeError, KeyError, ArithmeticError, *transient) as error:
                 cycle_errors[symbol] = "execution_" + type(error).__name__
                 with model.store.transaction():
                     model.store.audit("cycle_error", dict(symbol=symbol, error_type=type(error).__name__,
@@ -295,6 +296,7 @@ def run_stream(models, venue, public, *, duration=None):
             last_live_ms[symbol] = now
             feed_errors.pop(symbol, None)
 
+    heartbeat(force=True)
     manage(allow_entry=False)
     heartbeat(force=True)
     while duration is None or time.monotonic() - started < duration:
@@ -342,11 +344,32 @@ def report(database):
                 print(json.dumps(dict(table=table, **dict(row)), allow_nan=False))
 
 
-def main(argv=None):
-    from live_trading.live_model.burst_hype.strategy import Strategy as Hype
-    from live_trading.live_model.burst_inj.strategy import Strategy as Inj
-    from live_trading.live_model.burst_uni.strategy import Strategy as Uni
+def portfolio_models():
+    from live_trading.live_model.burst_breakout.hypeusdt.strategy import Strategy as Hype
+    from live_trading.live_model.burst_breakout.injusdt.strategy import Strategy as Inj
+    from live_trading.live_model.burst_breakout.uniusdc.strategy import Strategy as Uni
+    from live_trading.live_model.quiet_breakout.ethusdc.strategy import EthFuturesExecutor, Strategy as QuietEth
+    from live_trading.live_model.quiet_breakout.hypeusdt.strategy import (
+        QuietAdditionExecutor, QuietFuturesExecutor, Stable, TailDependent,
+    )
+    from live_trading.live_model.quiet_breakout.uniusdc.strategy import Strategy as QuietUni
 
+    return {model.ALLOCATION_ID: (group, model, executor) for group, model, executor in (
+        ("burst", Hype, Hype.EXECUTOR),
+        ("burst", Inj, Inj.EXECUTOR),
+        ("burst", Uni, Uni.EXECUTOR),
+        ("quiet-core", Stable, QuietFuturesExecutor),
+        ("quiet-core", QuietEth, EthFuturesExecutor),
+        ("quiet-core", QuietUni, QuietAdditionExecutor),
+        ("quiet-tail", TailDependent, QuietAdditionExecutor),
+    )}
+
+
+def main(argv=None):
+    from live_trading.live_model.quiet_breakout.position_addition import PositionAdditionVenue
+
+    portfolio = portfolio_models()
+    Hype, Inj, Uni = (model for group, model, _ in portfolio.values() if group == "burst")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--allocation-usdt", type=Decimal)
@@ -355,6 +378,7 @@ def main(argv=None):
     symbols = parser.add_mutually_exclusive_group()
     symbols.add_argument("--shadow-symbol", choices=[Hype.SYMBOL, Inj.SYMBOL, Uni.SYMBOL])
     symbols.add_argument("--live-symbol", choices=[Hype.SYMBOL, Inj.SYMBOL, Uni.SYMBOL])
+    symbols.add_argument("--portfolio-model", choices=portfolio)
     parser.add_argument("--market-nats-url")
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--api-key-file", type=Path)
@@ -368,7 +392,12 @@ def main(argv=None):
     if args.report:
         report(args.database)
         return 0
-    if args.allocation_usdt is None or not args.allocation_usdt.is_finite() or args.allocation_usdt <= 0:
+    if args.portfolio_model:
+        if args.portfolio or args.allocation_usdt is not None or args.allocation_usdc is not None:
+            parser.error("Portfolio workers each start at 100 in their quote asset")
+        if not (args.armed or args.preflight):
+            parser.error("Select --preflight or --armed for the portfolio worker")
+    elif args.allocation_usdt is None or not args.allocation_usdt.is_finite() or args.allocation_usdt <= 0:
         parser.error("Allocation must be finite and positive")
     if (args.portfolio or args.live_symbol) and (
         args.allocation_usdc is None or not args.allocation_usdc.is_finite() or args.allocation_usdc <= 0
@@ -385,7 +414,10 @@ def main(argv=None):
         parser.error("JetStream shadow requires one symbol and a broker URL without live credentials")
     if args.live_symbol and (args.portfolio or not (args.armed or args.preflight)):
         parser.error("A coordinated worker runs exactly one live symbol or its read-only exchange preflight")
-    if args.market_nats_url and not (args.shadow_symbol or args.live_symbol):
+    coordinated = args.live_symbol or args.portfolio_model
+    if args.armed and not coordinated:
+        parser.error("Armed execution requires one coordinated model")
+    if args.market_nats_url and not (args.shadow_symbol or coordinated):
         parser.error("A broker URL requires a single-symbol worker")
     if (args.armed or args.preflight) and not all((args.api_key_file, args.private_key_file)):
         parser.error("Live preflight and execution require external Ed25519 secret mounts")
@@ -393,6 +425,22 @@ def main(argv=None):
     packages = {p.SYMBOL: p for p in (Hype, Inj, Uni)}
     selected = list(packages.values()) if args.portfolio else [packages[args.shadow_symbol or args.live_symbol or Hype.SYMBOL]]
     journals = {}
+    group = None
+    portfolio_executor = None
+    if args.portfolio_model:
+        group, model, portfolio_executor = portfolio[args.portfolio_model]
+        if args.database.name != model.DATABASE:
+            parser.error("A portfolio worker requires its canonical journal filename")
+        selected = [model]
+        for member_group, member, _ in portfolio.values():
+            if member_group != group:
+                continue
+            cfg = member.execution_config(Decimal(100), args.armed)
+            cfg.setdefault("risk_fraction", .01)
+            cfg["portfolio_group"] = group
+            if member.SYMBOL in journals:
+                raise ValueError("portfolio_duplicate_symbol_in_account")
+            journals[member.SYMBOL] = (args.database.with_name(member.DATABASE), cfg)
     if args.live_symbol:
         if args.database.name != packages[args.live_symbol].DATABASE:
             parser.error("A coordinated worker requires its canonical journal filename")
@@ -400,7 +448,7 @@ def main(argv=None):
             allocation = args.allocation_usdt if package.MARGIN_ASSET == "USDT" else args.allocation_usdc
             journals[package.SYMBOL] = (args.database.with_name(package.DATABASE), package.execution_config(allocation, args.armed))
     for package in selected:
-        if args.live_symbol:
+        if coordinated:
             database, config = journals[package.SYMBOL]
             specs[package.SYMBOL] = (database, config, package)
             continue
@@ -410,7 +458,13 @@ def main(argv=None):
             config["allocation_id"] = "shadow:" + config["allocation_id"]
         database = args.database if package is Hype or args.shadow_symbol else args.database.with_name(package.DATABASE)
         specs[package.SYMBOL] = (database, config, package)
-    venue = FuturesOrders(execution_enabled=args.armed,
+    if group:
+        class PortfolioVenue(PositionAdditionVenue):
+            READS = PositionAdditionVenue.READS | {"/fapi/v3/balance"}
+        venue_type = PortfolioVenue
+    else:
+        venue_type = PositionAdditionVenue if Hype in selected else FuturesOrders
+    venue = venue_type(execution_enabled=args.armed,
                           acknowledgement=os.getenv("BINANCE_PRODUCTION_ACK", ""),
                           api_key_file=args.api_key_file, private_key_file=args.private_key_file,
                           passphrase_file=args.passphrase_file)
@@ -429,11 +483,12 @@ def main(argv=None):
                 store.acquire_writer()
                 if not args.portfolio and store.meta("shared_burst_account") is not None:
                     raise ValueError("journal_requires_shared_account_mode")
-                if not args.live_symbol and store.meta("coordinated_account") is not None:
+                if not coordinated and store.meta("coordinated_account") is not None:
                     raise ValueError("journal_requires_coordinated_account_mode")
-                executor = BurstFuturesExecutor(store, venue, config)
-                if args.live_symbol:
-                    CoordinatedBurstAccount(executor, journals)
+                factory = portfolio_executor or package.EXECUTOR
+                executor = factory(store, venue, config)
+                if coordinated:
+                    CoordinatedBurstAccount(executor, journals, group=group)
                 models[symbol] = package(store, executor)
             if args.preflight or args.armed:
                 venue.sync_time()
@@ -443,10 +498,14 @@ def main(argv=None):
                                                 dict(USDT=args.allocation_usdt, USDC=args.allocation_usdc))
                     shared.initialize(now)
                 for model in models.values():
+                    if group:
+                        model.executor.account_mode()
+                        model.executor.market_settings()
+                        model.executor.shared_account.bind_portfolio_account(now)
                     if model.store.active():
                         if args.preflight:
                             raise ValueError("preflight_requires_flat_ledger")
-                    elif args.live_symbol:
+                    elif coordinated:
                         try:
                             with model.executor.shared_account.admission():
                                 model.executor.entry_guard(now)
@@ -457,7 +516,8 @@ def main(argv=None):
                         model.executor.entry_guard(now)
             for symbol, (_, config, _) in specs.items():
                 print(json.dumps(dict(event="startup", symbol=symbol, contract=config["contract"], armed=venue.armed,
-                                      initial_equity=config["initial_equity"], stop_risk_fraction=.01)), flush=True)
+                                      initial_equity=config["initial_equity"], portfolio_group=group,
+                                      stop_risk_fraction=config["risk_fraction"])), flush=True)
             if not args.preflight:
                 market = public
                 if args.market_nats_url:

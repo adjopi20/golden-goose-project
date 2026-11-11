@@ -1,6 +1,8 @@
-"""Burst breakout research with hourly expansion and minute-level flow confirmation."""
+"""Burst breakout research on hourly or daily closed candles."""
 
+from functools import partial
 from pathlib import Path
+import sys
 
 import numpy as np
 import pandas as pd
@@ -253,7 +255,89 @@ def _profile_signals(path, minutes, start, end, *, burst=False, cache_dir=None, 
     return _burst_signals_from_features(table, end)
 
 
-def _burst_signals_from_features(features, end):
+def _daily_price_volume(path, start, end):
+    """Aggregate native quantities at exact traded prices within each UTC day."""
+    from model_development.observation_cache import RawPrints
+
+    reader = RawPrints([path])
+    columns = ["timestamp", "price", "qty"]
+    chunks = []
+    try:
+        for source, index, first, last in reader.groups:
+            if last < start or first >= end:
+                continue
+            frame = source.read_row_group(index, columns=columns).to_pandas()
+            frame = frame.loc[frame.timestamp.between(start, end - 1), columns].copy()
+            frame["opening"] = frame.pop("timestamp") // 86_400_000 * 86_400_000
+            chunks.append(frame.groupby(["opening", "price"], sort=False, as_index=False).qty.sum())
+    finally:
+        reader.close()
+    if not chunks:
+        raise ValueError("No observed trades for daily volume profile")
+    return pd.concat(chunks, ignore_index=True).groupby(["opening", "price"], as_index=False).qty.sum()
+
+
+def _daily_profile_features(request, minutes, source_start, start, end, lookback, cache_info, *, select=None):
+    """Freeze price levels and P85 baselines from prior completed UTC days."""
+    from hashlib import sha256
+    from inspect import getsource
+    from tempfile import NamedTemporaryFile
+
+    from indicator.volume_profile import build_basic_volume_profile
+    from model_development.observation_cache import digest, source_identity
+
+    day = 86_400_000
+    first = max(start - 25 * day, (source_start + day - 1) // day * day)
+    last = end // day * day
+    identity = source_identity([request.input])
+    key = sha256(repr((identity, first, last, getsource(_daily_price_volume),
+                       pd.__version__, np.__version__)).encode()).hexdigest()
+    cache_path = request.cache_dir / "burst_daily_prices" / f"{key}.parquet"
+    reused = cache_path.is_file()
+    if reused:
+        prices = pd.read_parquet(cache_path)
+    else:
+        prices = _daily_price_volume(request.input, first, last)
+        if source_identity([request.input]) != identity:
+            raise ValueError("Source changed during daily profile cache build")
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with NamedTemporaryFile(dir=cache_path.parent, suffix=".partial", delete=False) as handle:
+            temporary = Path(handle.name)
+        try:
+            prices.to_parquet(temporary, index=False, compression="zstd")
+            temporary.replace(cache_path)
+        finally:
+            temporary.unlink(missing_ok=True)
+    cache_info.update(path=str(cache_path), reused=reused, sha256=digest(cache_path),
+                      rows=len(prices), aggregation="UTC day and exact trade price")
+
+    frame = minutes.loc[minutes.timestamp_ms.between(first, last - 1)]
+    bars = frame.groupby(frame.timestamp_ms // day * day).agg(
+        open=("open", "first"), close=("close", "last"), volume=("volume", "sum"),
+        high=("high", "max"), low=("low", "min"),
+    ).reindex(range(first, last, day))
+    bars["body"] = (bars.close - bars.open).abs()
+    bars["body_p85"] = bars.body.shift().rolling(lookback).quantile(.85)
+    bars["volume_p85"] = bars.volume.shift().rolling(lookback).quantile(.85)
+    candidates = (bars.body.gt(bars.body_p85) & bars.volume.gt(bars.volume_p85)
+                  if select is None else select(bars))
+    eligible = bars.loc[
+        (bars.index + day >= start) & (bars.index + day < end)
+        & candidates
+    ]
+    daily_prices = {opening: group[["price", "qty"]] for opening, group in prices.groupby("opening", sort=False)}
+    features = []
+    for opening, row in eligible.iterrows():
+        history = [daily_prices[previous] for previous in range(opening - lookback * day, opening, day)]
+        profile = build_basic_volume_profile(pd.concat(history, ignore_index=True), n_bins=50, value_area_pct=.70)
+        features.append(dict(closing=opening + day, **row.to_dict(),
+                             val=profile["val"], vah=profile["vah"], poc=profile["poc_price"]))
+    return pd.DataFrame(features, columns=[
+        "closing", "open", "close", "body", "volume", "body_p85", "volume_p85", "val", "vah", "poc",
+    ])
+
+
+def _burst_signals_from_features(features, end, *, entry_window_ms=3_600_000):
     """Apply current setup rules to reusable, source-backed profile features."""
     signals = []
     hour = 3_600_000
@@ -270,7 +354,7 @@ def _burst_signals_from_features(features, end):
             stop=float(row.poc), entry_reference=float(row.close),
             feature_as_of_ms=closing, feature_available_at_ms=closing,
             decision_timestamp_ms=closing, entry_eligible_timestamp_ms=closing,
-            entry_deadline_timestamp_ms=closing + hour - 1,
+            entry_deadline_timestamp_ms=closing + entry_window_ms - 1,
             force_exit_timestamp_ms=closing + 24 * hour, exit_after_fill_ms=24 * hour,
         ))
     return signals
@@ -727,54 +811,106 @@ def prepare_backtest(request):
     mode = request.model_config.get("mode", "body_volume")
     if mode not in ("body_volume", "profile_aggression", "profile_burst"):
         raise ValueError("Unknown breakout mode")
+    profile_timeframe = request.model_config.get("profile_timeframe", "1h")
+    if profile_timeframe not in ("1h", "1d") or (profile_timeframe == "1d" and mode != "profile_burst"):
+        raise ValueError("1d profiles are supported for profile_burst")
+    daily = profile_timeframe == "1d"
+    bar_ms = (24 if daily else 1) * hour_ms
+    flow_confirmation = request.model_config.get("flow_entry_confirmation", False)
+    if type(flow_confirmation) is not bool:
+        raise ValueError("flow_entry_confirmation must be boolean")
+    if daily and (flow_confirmation or request.model_config.get("flow_observation_minutes", 0)):
+        raise ValueError("Daily Burst runs without minute order-flow confirmation or observation")
+    entry_filter = request.model_config.get("entry_filter")
+    if entry_filter is not None and (
+        entry_filter not in ("risk_p85", "risk_p90", "path_p15", "path_p10", "path_p2", "path_p1")
+        or mode != "profile_burst" or not flow_confirmation
+    ):
+        raise ValueError("Entry filter requires a supported risk or path percentile and hourly profile_burst with flow confirmation")
     daily_limit = request.model_config.get("one_entry_per_utc_day", mode != "body_volume")
     if type(daily_limit) is not bool:
         raise ValueError("one_entry_per_utc_day must be boolean")
+    long_only = request.model_config.get("long_only", False)
+    if type(long_only) is not bool:
+        raise ValueError("long_only must be boolean")
     setup_variant = request.model_config.get("setup_variant", "b")
     risk_management = request.model_config.get("risk_management", "none")
     if setup_variant not in ("a", "b") or risk_management not in ("none", "rm-a", "rm-b", "rm-c", "rm-d", "rm-e"):
         raise ValueError("Expected setup_variant a/b and risk_management none/rm-a/rm-b/rm-c/rm-d/rm-e")
     if mode != "profile_burst" and (setup_variant != "b" or risk_management != "none"):
         raise ValueError("Setup variants and risk management require profile_burst")
-    default_exit_hours = 48 if risk_management in ("rm-b", "rm-c") else 24
-    risk_exit_hours = request.model_config.get("risk_exit_hours", default_exit_hours)
-    if (type(risk_exit_hours) is not int or risk_exit_hours not in (24, 48)
-            or (risk_management not in ("rm-d", "rm-e") and risk_exit_hours != default_exit_hours)):
-        raise ValueError("risk_exit_hours must be 24/48 for rm-d/rm-e; existing RM exit clocks are fixed")
+    position_exit = request.model_config.get("position_exit", "baseline")
+    if position_exit not in ("baseline", "hourly-atr"):
+        raise ValueError("position_exit must be baseline or hourly-atr")
+    hourly_atr = position_exit == "hourly-atr"
+    position_sizing = request.model_config.get("position_sizing")
+    if position_sizing is not None and (
+        position_sizing not in ("initiative_1p5", "add_at_2r", "initiative_1p5_add_at_2r")
+        or mode != "profile_burst" or daily or hourly_atr
+    ):
+        raise ValueError("Position sizing requires an hourly profile_burst baseline exit")
+    initiative_sizing = position_sizing in ("initiative_1p5", "initiative_1p5_add_at_2r")
+    profit_add = position_sizing in ("add_at_2r", "initiative_1p5_add_at_2r")
+    if profit_add and risk_management not in ("rm-a", "rm-c", "rm-d", "rm-e"):
+        raise ValueError("Adding at +2R requires the doubled R stop ladder")
+    default_exit_hours = 336 if daily else 48 if risk_management in ("rm-b", "rm-c") else 24
+    risk_exit_hours = request.model_config.get("risk_exit_hours", None if hourly_atr else default_exit_hours)
+    if hourly_atr:
+        if (mode != "profile_burst" or daily or risk_management not in ("rm-a", "rm-c", "rm-d", "rm-e")
+                or risk_exit_hours is not None):
+            raise ValueError("Hourly ATR requires a 1H Burst RM-A/C/D/E setup and no risk_exit_hours")
+    elif daily:
+        if risk_management not in ("rm-a", "rm-d", "rm-e") or type(risk_exit_hours) is not int or risk_exit_hours != 336:
+            raise ValueError("Daily Burst supports rm-a/rm-d/rm-e with a 14-day full time exit")
+    else:
+        allowed_exits = (24, 48) if risk_management in ("rm-a", "rm-d", "rm-e") else (default_exit_hours,)
+        if type(risk_exit_hours) is not int or risk_exit_hours not in allowed_exits:
+            raise ValueError("risk_exit_hours must be 24/48 for rm-a/rm-d/rm-e; legacy RM exit clocks are fixed")
     default_lookback = 24 if mode == "profile_burst" else 12
-    lookback_hours = request.model_config.get("lookback_hours", default_lookback)
-    if mode == "profile_burst" and (type(lookback_hours) is not int or lookback_hours not in (12, 16, 24)):
-        raise ValueError("Profile burst uses a 12/16/24-hour profile and matching body/volume P85 baseline")
-    if mode == "profile_aggression" and lookback_hours != 12:
+    lookback_key = "lookback_days" if daily else "lookback_hours"
+    incompatible_key = "lookback_hours" if daily else "lookback_days"
+    if incompatible_key in request.model_config:
+        raise ValueError(f"{profile_timeframe} profile expects {lookback_key}")
+    lookback = request.model_config.get(lookback_key, default_lookback)
+    if type(lookback) is not int or lookback < 2:
+        raise ValueError(f"{lookback_key} must be an integer of at least 2")
+    if mode == "profile_burst" and lookback not in (12, 16, 24):
+        raise ValueError("Profile burst uses 12/16/24 completed candles for its profile and P85 baselines")
+    if mode == "profile_aggression" and lookback != 12:
         raise ValueError("Profile breakout uses a fixed 12-hour profile")
-    if type(lookback_hours) is not int or lookback_hours < 2:
-        raise ValueError("lookback_hours must be an integer of at least 2")
-    warmup_hours = 30 * 24 if mode == "profile_aggression" else lookback_hours + 1
+    lookback_hours = lookback * (bar_ms // hour_ms)
+    warmup_hours = 30 * 24 if mode == "profile_aggression" else lookback_hours + bar_ms // hour_ms
     warmup_ms = start_ms - warmup_hours * hour_ms
     minutes, cache = candle_cache([request.input], request.cache_dir, id_policy=request.id_policy)
     if cache["source_start_ms"] > warmup_ms or cache["source_end_ms"] < end_ms - 60_000:
         raise ValueError(f"Source must cover the UTC test window and {warmup_hours} hours of warm-up")
+    replay_end = min(end_ms, cache["source_end_ms"] + 1)
     timed_scale_out = (24 * hour_ms, 48 * hour_ms, 0.5) if mode == "profile_aggression" or risk_management == "rm-b" else None
     if mode != "body_volume":
         from indicator import volume_profile
         from model_development.observation_cache import digest
 
-        replay_end = min(end_ms, cache["source_end_ms"] + 1)
         profile_cache = {}
-        signals = _profile_signals(
-            request.input, minutes, start_ms, replay_end, burst=mode == "profile_burst",
-            cache_dir=request.cache_dir, cache_info=profile_cache, lookback_hours=lookback_hours,
-        )
+        if daily:
+            features = _daily_profile_features(
+                request, minutes, cache["source_start_ms"], start_ms, replay_end, lookback, profile_cache
+            )
+            signals = _burst_signals_from_features(features, replay_end, entry_window_ms=bar_ms)
+        else:
+            signals = _profile_signals(
+                request.input, minutes, start_ms, replay_end, burst=mode == "profile_burst",
+                cache_dir=request.cache_dir, cache_info=profile_cache, lookback_hours=lookback_hours,
+            )
         signals = [signal for signal in signals if signal["entry_eligible_timestamp_ms"] < replay_end]
         if setup_variant == "a":
-            features = pd.read_parquet(
-                Path(profile_cache["path"]) / "profile_features.parquet"
-            ).set_index("closing")
+            if not daily:
+                features = pd.read_parquet(Path(profile_cache["path"]) / "profile_features.parquet")
+            features = features.set_index("closing")
             stamps = minutes.timestamp_ms.to_numpy()
             selected = []
             for signal in signals:
                 closing = signal["feature_available_at_ms"]
-                index = np.searchsorted(stamps, closing - hour_ms, side="left") - 1
+                index = np.searchsorted(stamps, closing - bar_ms, side="left") - 1
                 if index < 0:
                     raise ValueError("Previous close unavailable for variation A")
                 previous_close = float(minutes.close.iloc[index])
@@ -850,14 +986,15 @@ def prepare_backtest(request):
             empty_hours=[stamp.isoformat() for stamp in candles.index[candles["close"].isna()]],
         )
 
-    flow_confirmation = request.model_config.get("flow_entry_confirmation", False)
-    if type(flow_confirmation) is not bool:
-        raise ValueError("flow_entry_confirmation must be boolean")
     flow_interpretation = request.model_config.get("flow_interpretation", "static")
     if flow_interpretation not in ("static", "dynamic"):
         raise ValueError("flow_interpretation must be static or dynamic")
     if flow_interpretation == "dynamic" and not flow_confirmation:
         raise ValueError("Dynamic flow requires flow_entry_confirmation")
+    if initiative_sizing and (
+        not flow_confirmation or flow_interpretation != "static" or not 0 < request.risk_fraction * 1.5 < 1
+    ):
+        raise ValueError("Initiative sizing requires static flow confirmation and valid boosted risk")
     flow_timeframes = request.model_config.get("flow_timeframes", "1m_5m")
     flow_pairs = {"1m_5m": (1, 5), "5m_10m": (5, 10), "3m_12m": (3, 12)}
     if flow_timeframes not in flow_pairs:
@@ -912,6 +1049,13 @@ def prepare_backtest(request):
                     origin="breakout close", failed_gate="wait for a new provisional confirmation",
                 ),
             )
+            if entry_filter is not None:
+                from model_development.models.quiet_breakout import strategy as quiet
+
+                signals, trace, details["entry_filter"] = quiet.filter_confirmed_entries(
+                    signals, trace, minutes, window_minutes, entry_filter,
+                )
+                details["code"][str(Path(quiet.__file__).resolve())] = digest(quiet.__file__)
         trace.to_parquet(request.output_dir / "orderflow.parquet", index=False)
         details["flow_observation"] = dict(
             path="orderflow.parquet", horizon_minutes=observation_minutes,
@@ -924,18 +1068,74 @@ def prepare_backtest(request):
             effort_comparison=f"Current {window_minutes} minutes versus preceding nonoverlapping {window_minutes} minutes",
         )
 
-    if risk_exit_hours == 48:
+    if long_only:
+        # Filter confirmed entries before portfolio occupancy and the daily entry cap.
+        confirmed_count = len(signals)
+        signals = [signal for signal in signals if signal["direction"] == "long"]
+        details.update(long_only=True, excluded_short_signals=confirmed_count - len(signals))
+
+    if initiative_sizing:
+        boosted_entries = 0
+        for signal in signals:
+            mechanisms = signal["confirmation_mechanisms"]
+            if "initiative_candidate" in mechanisms and "exhaustion_candidate" not in mechanisms:
+                signal["entry_risk_fraction"] = request.risk_fraction * 1.5
+                boosted_entries += 1
+        details["initiative_risk_sizing"] = dict(multiplier=1.5, boosted_intentions=boosted_entries)
+
+    if daily:
+        details.update(profile_timeframe="1d", lookback_days=lookback,
+                       percentile_lookback_days=lookback, final_exit_days=14,
+                       entry_clock="first observed trade in the next UTC daily candle")
+    risk_manager = rm_e_stop if risk_management == "rm-e" else rm_a_stop if risk_management != "none" else None
+    if profit_add:
+        from model_development.models.quiet_breakout import strategy as quiet
+
+        risk_manager = partial(quiet.stop_with_profit_add, stop_policy=risk_manager)
+        details["pyramid_add"] = dict(balance_mode="lock_1r", trigger_locked_r=1,
+                                      max_quantity_fraction=0.8, max_initial_risk_fraction=0.8)
+        details["code"][str(Path(quiet.__file__).resolve())] = digest(quiet.__file__)
+    exit_options = {}
+    if hourly_atr:
+        from model_development.models.burst_breakout_longer_trend import strategy as longer
+
+        first_hour = max(start_ms - 30 * 24 * hour_ms,
+                         (cache["source_start_ms"] + hour_ms - 1) // hour_ms * hour_ms)
+        if start_ms - first_hour < (longer.DAILY_ATR_WINDOW + 1) * hour_ms:
+            raise ValueError("Hourly ATR requires at least 15 warmup hours")
+        for signal in signals:
+            signal.pop("exit_after_fill_ms", None)
+            signal["force_exit_timestamp_ms"] = sys.maxsize
+        exit_actions = []
+        exit_options = dict(
+            position_boundaries=range(start_ms + hour_ms, replay_end, hour_ms),
+            position_decision=longer._atr_exit_policy(
+                minutes, first_hour, replay_end, exit_actions, bar_ms=hour_ms,
+            ),
+        )
+        risk_manager = None
+        details.update(position_exit=position_exit, exit_clock="hourly ATR stop only",
+                       risk_lock_milestones=None, atr_window_hours=longer.DAILY_ATR_WINDOW,
+                       atr_multiplier=longer.DAILY_ATR_MULTIPLIER, atr_seed_start_ms=first_hour,
+                       atr_convention=longer.atr_common.TECHNICAL_CONVENTION,
+                       position_exit_actions=exit_actions)
+        details["code"].update({
+            str(Path(module.__file__).resolve()): digest(module.__file__)
+            for module in (longer, longer.atr_indicator, longer.atr_common)
+        })
+    elif risk_exit_hours != 24:
+        exit_delay = risk_exit_hours * hour_ms
         for signal in signals:
             entry = signal["entry_eligible_timestamp_ms"]
-            signal["force_exit_timestamp_ms"] = entry + 48 * hour_ms
-            signal["exit_after_fill_ms"] = 48 * hour_ms
+            signal["force_exit_timestamp_ms"] = entry + exit_delay
+            signal["exit_after_fill_ms"] = exit_delay
 
     def validate_timing(signal):
         entry = signal["entry_eligible_timestamp_ms"]
         if flow_confirmation:
             expected = entry % (step_minutes * 60_000) == 0 and entry == signal["decision_timestamp_ms"]
         else:
-            expected = (entry % hour_ms == 0 if mode != "profile_aggression"
+            expected = (entry % bar_ms == 0 if mode != "profile_aggression"
                         else entry == signal["decision_timestamp_ms"] + 1)
         if entry_gate:
             start = signal["breakout_timestamp_ms"]
@@ -944,11 +1144,16 @@ def prepare_backtest(request):
             expected_gate = start + ((provisional - start) // gate_ms + 1) * gate_ms
             if entry != expected_gate or not start < provisional < entry <= start + hour_ms:
                 raise ValueError("Entry must follow its provisional confirmation at the strictly next gate")
-        final_delay = timed_scale_out[1] if timed_scale_out is not None else risk_exit_hours * hour_ms
-        if not expected or signal["force_exit_timestamp_ms"] != entry + final_delay:
+        if hourly_atr:
+            expected_exit = sys.maxsize
+        else:
+            final_delay = timed_scale_out[1] if timed_scale_out is not None else risk_exit_hours * hour_ms
+            expected_exit = entry + final_delay
+        if not expected or signal["force_exit_timestamp_ms"] != expected_exit:
             raise ValueError("Invalid breakout entry or exit deadline")
 
     return dict(
+        **exit_options,
         signals=signals,
         config=Config(request.initial_equity, request.risk_fraction,
                       request.fee_bps, request.max_leverage,
@@ -956,10 +1161,10 @@ def prepare_backtest(request):
                       tp1_fraction=0.1 if risk_management in ("rm-d", "rm-e") else None),
         start_day=start.date(),
         end_day=(end - pd.Timedelta(days=1)).date(),
-        replay_window=(start_ms, min(end_ms, cache["source_end_ms"] + 1)),
+        replay_window=(start_ms, replay_end),
         timing_validator=validate_timing,
         timed_scale_out=timed_scale_out,
-        risk_manager=rm_e_stop if risk_management == "rm-e" else rm_a_stop if risk_management != "none" else None,
+        risk_manager=risk_manager,
         one_entry_per_utc_day=daily_limit,
         metadata=dict(model_id="burst_breakout", timezone="UTC", mode=mode,
                       warmup_hours=warmup_hours, lookback_hours=lookback_hours,

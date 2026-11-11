@@ -5,9 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from live_trading.burst_runtime import run_stream
-from live_trading.live_model.burst_hype.strategy import Strategy as HypeBurst
-from live_trading.live_model.burst_uni.strategy import Strategy as UniBurst
+from live_trading.burst_runtime import NativeBurst, run_stream
 from utils.engine.adapters.burst_market import BurstMarketInput, trade_batch
 from utils.engine.contracts import make_event
 from utils.engine.execution.burst_futures import (
@@ -16,7 +14,7 @@ from utils.engine.execution.burst_futures import (
 from utils.engine.monitoring.alerts import inspect_target, load_config
 from test_futures_execution import Crash, FakeVenue, NOW
 
-CONTRACT = HypeBurst.CONTRACT
+CONTRACT = "BURST-NATIVE-EXECUTION-TEST"
 
 
 def translate(value):
@@ -128,6 +126,7 @@ def test_lost_initial_stop_ack_keeps_position_then_reconciles(env):
             s.set_meta(key, value)
     config = Path(__file__).resolve().parents[1] / "live_trading/deploy/burst-alerts.json"
     target = dict(load_config(config)["targets"][0], path=str(s.path))
+    s.set_meta("strategy_contract", target["performance_contract"])
     issues, read_ok = inspect_target(target, now[0])
     assert read_ok and {issue["code"] for issue in issues} == {"ORDER_UNRESOLVED", "STOP_UNCONFIRMED"}
     e.cycle(now[0], new_entries_ok=False)
@@ -176,7 +175,7 @@ def test_native_stop_fill_reports_actual_reason_and_pnl(env):
 
 def test_missing_history_and_open_position_skip_are_durable(env):
     e, s, _, now = env
-    model = HypeBurst(s, e)
+    model = NativeBurst(s, e)
     with s.transaction():
         assert model.setup(now[0]) is None
     assert s.db.execute("SELECT json_extract(payload, '$.reason') FROM audit").fetchone()[0] == "profile_warmup"
@@ -339,8 +338,8 @@ def test_bad_symbol_feed_does_not_stop_sibling_or_send_exit(portfolio, monkeypat
     hype.offer(dict(sample_id="burst-1", direction="long", initial_stop=990,
                     eligible_timestamp_ms=NOW, expires_timestamp_ms=NOW + 59_999), NOW)
     hype.cycle(NOW)
-    models = {"HYPEUSDT": HypeBurst(hype.s, hype),
-              "UNIUSDC": UniBurst(executors["UNIUSDC"].s, executors["UNIUSDC"])}
+    models = {"HYPEUSDT": NativeBurst(hype.s, hype),
+              "UNIUSDC": NativeBurst(executors["UNIUSDC"].s, executors["UNIUSDC"])}
     seconds = [0]
     monkeypatch.setattr("live_trading.burst_runtime.time.monotonic", lambda: seconds[0])
 
@@ -368,7 +367,7 @@ def test_bad_symbol_feed_does_not_stop_sibling_or_send_exit(portfolio, monkeypat
 
 def test_broker_batch_checkpoints_only_after_trade_cursor_commit(env):
     executor, store, _, clock = env
-    model = HypeBurst(store, executor)
+    model = NativeBurst(store, executor)
     broker = BurstMarketInput("nats://test", model)
     ticks = [dict(symbol="HYPEUSDT", agg_trade_id=i, timestamp_ms=clock[0]+i, price=1.0,
                   quantity=2.0, buy=True) for i in (1, 2)]
@@ -419,3 +418,65 @@ def test_partial_recovers_lost_ack_then_stops_at_breakeven(portfolio):
     assert not inj.s.active()
     close = json.loads(inj.s.db.execute("SELECT payload FROM audit WHERE kind='trade_closed'").fetchone()[0])
     assert close["pnl_asset"] == "USDT" and len(close["fill_ids"]) == 3
+
+def test_restart_with_open_position_and_cleared_excursion_keeps_native_stop(env):
+    e, s, v, now = env
+    open_position(env)
+    NativeBurst(s, e).reset_profile("test_unrecoverable_gap")
+    assert s.meta("live_excursion") == "null"
+    resumed = BurstFuturesExecutor(s, v, e.c)
+    resumed.cycle(now[0] + 1, new_entries_ok=False)
+    assert s.active()["state"] == "OPEN"
+    assert [role for role, _ in v.posts] == ["ENTRY", "STOP"]
+
+
+def test_broker_connect_timeout_returns_to_exit_and_heartbeat_loop(env, monkeypatch):
+    import asyncio
+    from types import ModuleType
+
+    executor, store, _, _ = env
+    errors = ModuleType("nats.errors")
+    errors.Error = type("NatsError", (Exception,), {})
+    monkeypatch.setitem(__import__("sys").modules, "nats.errors", errors)
+    monkeypatch.setattr("utils.engine.adapters.burst_market.BROKER_TIMEOUT_SECONDS", .01)
+
+    async def connect_forever(_url):
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr("utils.engine.adapters.burst_market.connect", connect_forever)
+    market = BurstMarketInput("nats://offline", NativeBurst(store, executor))
+    with pytest.raises(TimeoutError):
+        next(market.stream([executor.symbol]))
+
+
+def test_portfolio_uses_local_equity_and_distinct_native_accounts(portfolio, monkeypatch):
+    _, models, venue, _ = portfolio
+    original_read = venue.read
+    alias = ["account-a"]
+
+    def read(path, **params):
+        if path == "/fapi/v3/balance":
+            return [{"accountAlias": alias[0], "asset": "USDT"}]
+        return original_read(path, **params)
+
+    monkeypatch.setattr(venue, "read", read)
+    journals = {name: (model.s.path, model.c) for name, model in models.items()}
+    hype, inj, uni = models.values()
+    for model in (hype, inj):
+        burst_journals = {symbol: journals[symbol] for symbol in ("HYPEUSDT", "INJUSDT")}
+        CoordinatedBurstAccount(model, burst_journals, group="burst").bind_portfolio_account(NOW)
+    shared = CoordinatedBurstAccount(uni, {"UNIUSDC": journals["UNIUSDC"]}, group="quiet-core")
+    with pytest.raises(ValueError, match="portfolio_account_already_used_or_changed"):
+        shared.bind_portfolio_account(NOW)
+    alias[0] = "account-b"
+    shared.bind_portfolio_account(NOW)
+    for model in (hype, inj):
+        model.offer(dict(sample_id=model.symbol, direction="long", initial_stop=990,
+                         eligible_timestamp_ms=NOW, expires_timestamp_ms=NOW+59_999), NOW)
+        model.cycle(NOW)
+        plan = json.loads(model.s.active()["plan"])
+        assert Decimal(plan["equity_before_entry"]) == Decimal(100)
+        assert Decimal(plan["risk_budget"]) == Decimal(1)
+    assert hype.s.equity(100) < Decimal(100)
+    assert inj.s.equity(100) < Decimal(100)
+    assert uni.s.equity(100) == Decimal(100)

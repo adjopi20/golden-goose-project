@@ -237,6 +237,24 @@ def shuffle_trade_paths(returns, equity, *, simulations=500, seed=20260927):
     return paths
 
 
+def shuffled_performance_bands(paths):
+    """Mean and P95 for each prefix of a trade-shuffled equity path."""
+    wealth = paths[:, 1:] / paths[:, :1]
+    drawdown = 1 - paths[:, 1:] / np.maximum.accumulate(paths, axis=1)[:, 1:]
+    losing = paths[:, 1:] < paths[:, :-1]
+    current = np.zeros(len(paths), dtype=int)
+    longest = np.zeros_like(losing, dtype=int)
+    for column in range(losing.shape[1]):
+        current = np.where(losing[:, column], current + 1, 0)
+        longest[:, column] = current
+    return {name: np.column_stack((metric.mean(axis=0), np.quantile(metric, .95, axis=0))).tolist()
+            for name, metric in (
+                ("net_loss", np.maximum(0, 1 - wealth)),
+                ("drawdown", np.maximum.accumulate(drawdown, axis=1)),
+                ("loss_streak", np.maximum.accumulate(longest, axis=1)),
+            )}
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--config',required=True);p.add_argument('--output-dir')

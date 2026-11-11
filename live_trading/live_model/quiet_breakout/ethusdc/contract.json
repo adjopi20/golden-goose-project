@@ -1,0 +1,37 @@
+{
+  "schema": "operational_model_package_v1",
+  "model": "quiet_breakout",
+  "status": "packaged_not_activated",
+  "venue": "binance",
+  "product": "linear_quote_margined",
+  "symbol": "ETHUSDC",
+  "quantity_unit": "ETH",
+  "pnl_unit": "USDC",
+  "risk_fraction": 0.01,
+  "notional_equity_cap": 5,
+  "contract": "QUIET-ETH-STABLE-P85-P5-INIT15-RME24-LIVE-001",
+  "allocation_id": "quiet_breakout_ethusdc_stable",
+  "journal": "quiet_breakout_ethusdc_stable.sqlite",
+  "source_run": "model_development/models/quiet_breakout/runs/ethusdc_combined_v01_p85_after/run.json",
+  "source_run_sha256": "1b869cc3ee8918f5a8f3a110bf84df9fab7ceef27f69c43a6390fea7a38c9d9d",
+  "engine_release": {
+    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
+    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+  },
+  "strategy_sha256": "2a1c4cb9cd4cd6d715e39a18aa12ce257d2a7464490755b94618fcae9dbdf2c2",
+  "dependencies": {
+    "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
+    "live_trading/burst_runtime.py": "2695c5b3656b1371560637f518228eb2e7e28a08a3f0a70ed52f141a4239f558",
+    "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
+    "utils/engine/execution/burst_futures.py": "bd0917437ec6b2808c36cd9e26c94dbfc786dc11e7d9ca6bbf5d5d1a86f13007",
+    "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",
+    "live_trading/live_model/quiet_breakout/hypeusdt/strategy.py": "e983bf77374332c22a65a72469685efb28a352db4ab4cc9fbd1bc34bd20fe713",
+    "live_trading/live_model/quiet_breakout/position_addition.py": "d3ef366d2afbaf69764d4d5bed8cb78763a0213cc6e8731eeca70e104d7b6b45"
+  },
+  "model_files": {
+    "model_config.json": "089e3e033720e67fa13faa6b9d7f285671aca46d0647e65e6dc4fe39012dc74c"
+  },
+  "tags": [
+    "stabil"
+  ]
+}

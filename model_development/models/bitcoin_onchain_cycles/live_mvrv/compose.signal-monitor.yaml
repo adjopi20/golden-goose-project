@@ -1,10 +1,8 @@
 name: btc-mvrv-signals
 services:
   btc-mvrv-signals:
-    build:
-      context: .
-    image: golden-goose/btc-mvrv-dual:signals-20261017
-    entrypoint: ["python", "-m", "live_mvrv.signal_monitor"]
+    image: ${HYPE_BURST_IMAGE:?set the verified Git image tag}
+    entrypoint: ["python", "-m", "live_trading.live_model.btc_mvrv.strategy"]
     command: ["run"]
     restart: unless-stopped
     init: true
@@ -21,7 +19,7 @@ services:
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?Set the numeric recipient locally}
     volumes: ["signal_data:/data"]
     healthcheck:
-      test: ["CMD", "python", "-m", "live_mvrv.signal_monitor", "health"]
+      test: ["CMD", "python", "-m", "live_trading.live_model.btc_mvrv.strategy", "health"]
       interval: 1m
       timeout: 20s
       start_period: 15m
