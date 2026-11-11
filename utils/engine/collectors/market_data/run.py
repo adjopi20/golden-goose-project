@@ -35,6 +35,13 @@ def next_item(iterator):
         return True,None
 
 
+def repair_binance_gap(api, symbol, previous, incoming, *, live):
+    # A long repair holds the combined WebSocket and prevents fresh prints for every symbol.
+    if live and incoming["agg_trade_id"] - previous["agg_trade_id"] - 1 > 5000:
+        raise UnrecoverableGap(f"{symbol}: live repair exceeds 5000 aggregate trades")
+    return iter(api.repair(symbol, previous, incoming))
+
+
 def repair_batch(iterator):
     rows=[]
     for _ in range(500):
@@ -138,7 +145,9 @@ async def run(cfg, database, action):
                             prev = buffers[symbol][-1] if buffers[symbol] else (collector.market.state(symbol) or {}).get('cursor')
                             try:
                                 if prev:
-                                    repaired_iterator=iter(api.repair(symbol,prev,item))
+                                    repaired_iterator = repair_binance_gap(
+                                        api, symbol, prev, item, live=cfg["environment"] == "shared-market",
+                                    )
                                     while True:
                                         repaired=await asyncio.to_thread(repair_batch,repaired_iterator)
                                         if not repaired:

@@ -226,3 +226,23 @@ def test_binance_worker_run_startup_regression(tmp_path,monkeypatch):
     monkeypatch.setattr(worker,'BinancePublic',API)
     monkeypatch.setattr(sys,'argv',['paper_worker','--database',str(tmp_path/'legacy.sqlite'),'--action','run'])
     worker.main()
+
+
+def test_live_collector_records_large_gap_instead_of_blocking_combined_stream():
+    from utils.engine.adapters.binance_public import UnrecoverableGap
+    from utils.engine.collectors.market_data.run import repair_binance_gap
+
+    class Rest:
+        calls = []
+        def repair(self, symbol, previous, incoming):
+            self.calls.append(symbol)
+            return ()
+
+    api = Rest()
+    previous, incoming = {"agg_trade_id": 10}, {"agg_trade_id": 5012}
+    with pytest.raises(UnrecoverableGap, match="exceeds 5000"):
+        repair_binance_gap(api, "HYPEUSDT", previous, incoming, live=True)
+    assert api.calls == []
+    assert list(repair_binance_gap(api, "UNIUSDC", previous, {"agg_trade_id": 12}, live=True)) == []
+    assert list(repair_binance_gap(api, "HYPEUSDT", previous, incoming, live=False)) == []
+    assert api.calls == ["UNIUSDC", "HYPEUSDT"]
