@@ -15,9 +15,8 @@ from indicator.volume_profile import build_basic_volume_profile
 from live_trading.burst_runtime import HOUR, MINUTE, NativeBurst, report, run_stream
 from live_trading.burst_signals import assess_breakout_flow, confirm_flow_entries
 from live_trading.live_model.quiet_breakout.position_addition import PositionAddition, PositionAdditionVenue
-from utils.engine.adapters.binance_execution import FuturesOrders
 from utils.engine.adapters.binance_public import BinancePublic
-from utils.engine.execution.burst_futures import DAY, HOLD_MS, BurstFuturesExecutor, BurstFuturesStore
+from utils.engine.execution.burst_futures import DAY, HOLD_MS, BurstFuturesExecutor, BurstFuturesOrders, BurstFuturesStore
 from utils.engine.execution.futures_preflight import positive
 from utils.model_registry import verify_model
 
@@ -319,7 +318,7 @@ def run_worker(models, collateral, argv=None):
     config = model_type.execution_config(args.allocation, args.armed)
     if not (args.armed or args.preflight):
         config["allocation_id"] = "shadow:" + config["allocation_id"]
-    venue_type = PositionAdditionVenue if model_type.POSITION_ADDITION else FuturesOrders
+    venue_type = PositionAdditionVenue if model_type.POSITION_ADDITION else BurstFuturesOrders
     venue = venue_type(
         execution_enabled=args.armed, acknowledgement=os.getenv("BINANCE_PRODUCTION_ACK", ""),
         api_key_file=args.api_key_file, private_key_file=args.private_key_file, passphrase_file=args.passphrase_file,

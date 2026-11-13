@@ -54,6 +54,45 @@ account settings. The maintained research copy stays in
 restructured live packages. Package placement and service activation are
 separate steps.
 
+## Live execution checks
+
+Use the shared venue adapter and executor for entries, native stops, and exits.
+Keep signals, risk milestones, sizing and exit timing in the model policy.
+Before arming a new submodel or execution release, verify the pinned sources,
+native account identity, ownership of the symbol, supported position mode,
+margin settings, quantity and tick filters, and journal-to-broker positions
+and orders. Use a separate journal and a single execution writer per account
+and symbol. A feed failure must pause new entries while the executor continues
+reconciling native orders and managing exits.
+
+For Binance USD-M one-way mode, only one active close-position stop is
+allowed in the same direction. To tighten it, first confirm a native
+quantity-based reduce-only stop for the live position. Confirm the old stop
+is canceled, recheck exposure, then install and verify the replacement
+close-position stop before removing the guard. Verify response identity,
+trigger price, quantity and reduce-only or close-position flags. On rejection
+or lost response, retain the confirmed protector and reconcile the known
+client order ID. Record a lock only after the final stop is confirmed. Block
+position additions during the transition and require a verified close-position
+stop that covers the added size. Keep native protection through time-exit
+submission and cancel leftover orders after checking broker state.
+
+Persist intent and a deterministic client ID before each request. Treat a
+definitive venue rejection such as a STOP POST HTTP 400 with Binance -4130
+as terminal and retain the structured reason in audit. Query by client ID
+after a timeout, malformed response, or restart. A missing query response
+alone does not prove rejection or cancellation. Check fills and signed
+position before finalizing P&L, including fees and funding, and before
+admitting another trade. Keep unresolved-order and definitive stop-rejection
+alerts distinct.
+
+Regression tests for order lifecycle changes must reproduce the venue's order
+constraints and exercise both directions, partial exits, add races, broker
+rejection, lost acknowledgements, restart at each state change, and a stop
+firing while canceled. Verify the isolated image and perform read-only broker
+preflight before switching live workers. Use venue testnet to verify any new
+order semantics when available, and document the tested environment.
+
 ## Operational package placement — 2026-11-03
 
 This supersedes the earlier six-candidates-in-live placement. Research copies stay

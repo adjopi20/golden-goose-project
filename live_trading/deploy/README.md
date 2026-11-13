@@ -33,6 +33,16 @@ and also displays P95. The heading identifies model performance. A threshold
 crossing sends an alert only.
 
 
+ORDER_UNRESOLVED means a send, query or cancel needs reconciliation.
+STOP_REPLACEMENT_REJECTED identifies a rejected trailing update and points
+to the current protector and venue reason in the journal. Inspect the
+worker's STOP rows and Binance algo orders by client ID before making any
+manual change. An open session with an active guard stop can be recovered
+by the same worker and journal. During rollout or rollback, keep that worker
+on a version that understands guarded replacement until the session is
+reconciled. A native stop can remain active while the worker is restarted.
+
+
 ## Release order and secrets
 
 Use the source-only GitHub release branch and exact published commit as the

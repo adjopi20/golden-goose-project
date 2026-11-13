@@ -4,9 +4,8 @@ from decimal import Decimal
 import json
 import time
 
-from utils.engine.adapters.binance_execution import FuturesOrders
 from utils.engine.contracts import canonical_json
-from utils.engine.execution.burst_futures import CoordinatedBurstAccount, EntryAdmissionBusy
+from utils.engine.execution.burst_futures import BurstFuturesOrders, CoordinatedBurstAccount, EntryAdmissionBusy
 from utils.engine.execution.futures_preflight import number, positive, quantity_rules
 from utils.engine.execution.preny_futures import FuturesExecutor, TERMINAL, order_id, rounded
 
@@ -14,7 +13,7 @@ ADD_FRACTION = Decimal("0.8")
 ADD_WINDOW_MS = 59_999
 
 
-class PositionAdditionVenue(FuturesOrders):
+class PositionAdditionVenue(BurstFuturesOrders):
     def submit(self, role, params):
         return super().submit("ENTRY" if role == "ADD" else role, params)
 
@@ -32,7 +31,7 @@ class PositionAddition:
     def _trail_stop(self, session, plan, price):
         previous_lock = plan.get("risk_lock_r", -1)
         state = super()._trail_stop(session, plan, price)
-        if state == "protected" and price is not None and previous_lock < 1 <= plan.get("risk_lock_r", -1):
+        if state == "protected" and previous_lock < 1 <= plan.get("risk_lock_r", -1):
             mark = json.loads(self.s.meta("live_excursion", "null"))
             if mark and mark["setup_id"] == session["id"]:
                 trigger = dict(setup_id=session["id"], timestamp_ms=mark["timestamp_ms"],
@@ -86,9 +85,15 @@ class PositionAddition:
         deadline = min(trigger["timestamp_ms"] + ADD_WINDOW_MS, plan["force_exit_ms"] - 1)
         if now_ms > deadline or plan.get("risk_lock_r", -1) < 1:
             return
-        stop_id = order_id(session["id"], f'sl-{plan["risk_lock_r"]}')
-        stop_row = self.s.db.execute("SELECT * FROM orders WHERE client_id=?", (stop_id,)).fetchone()
-        if stop_row is None or stop_row["state"] != "NEW":
+        stop_ids = [order_id(session["id"], f'{prefix}-{plan["risk_lock_r"]}') for prefix in ("sl-v2", "sl")]
+        stop_row = self.s.db.execute("""
+            SELECT * FROM orders WHERE client_id IN (?,?) AND state='NEW'
+            AND error IS NULL AND cancel_pending=0 ORDER BY rowid DESC LIMIT 1
+        """, stop_ids).fetchone()
+        if stop_row is None or self.s.db.execute("""
+            SELECT 1 FROM orders WHERE session_id=? AND role='STOP' AND client_id LIKE '%-guard-%'
+            AND state IN ('PREPARED','SENDING','UNKNOWN','NEW','TRIGGERING','TRIGGERED')
+        """, (session["session"],)).fetchone():
             return
 
         expected = positive(plan["actual_entry_quantity"])
@@ -127,7 +132,7 @@ class PositionAddition:
         amount, other = self.position()
         if other or sign * amount != expected:
             return
-        observed_stop = self.drive(stop_id)
+        observed_stop = self.drive(stop_row["client_id"])
         if (observed_stop["state"] != "NEW" or observed_stop["error"]
                 or int(time.time() * 1000) > deadline):
             return
@@ -169,6 +174,8 @@ class PositionAddition:
 
         for row in self.s.db.execute("SELECT * FROM orders WHERE session_id=?", (session["session"],)).fetchall():
             if row["state"] in TERMINAL:
+                if row["role"] == "STOP":
+                    self.cancel(row)
                 continue
             if row["role"] == "ADD" and (row["state"] == "PREPARED" or now_ms > addition_plan["expires_ms"]):
                 self.cancel(row)

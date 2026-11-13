@@ -72,11 +72,30 @@ def inspect_mvrv(db, target, now):
     return issues, True
 
 
+def inspect_native_executor(target, now):
+    issues, valid = inspect_target(target, now)
+    if valid:
+        uri = Path(target["path"]).resolve().as_uri() + "?mode=ro"
+        with closing(sqlite3.connect(uri, uri=True, timeout=2)) as db:
+            latest = db.execute("""
+                SELECT o.state FROM orders o JOIN sessions s ON s.session=o.session_id
+                WHERE s.state='OPEN' AND o.role='STOP'
+                AND (o.client_id LIKE '%-guard-%' OR o.client_id LIKE '%-sl-v2-%')
+                AND o.state!='CANCELED' ORDER BY o.rowid DESC LIMIT 1
+            """).fetchone()
+        if latest and latest[0] == "REJECTED":
+            issues.append(issue("STOP_REPLACEMENT_REJECTED",
+                                "Binance menolak perpindahan stop. Cek level stop aktif dan jurnal.", 30, "WARNING"))
+    return issues, valid
+
+
 def inspect_engine(target, now):
     adapter = target.get("adapter")
-    if not adapter:
-        return inspect_target(target, now)
     try:
+        if not adapter:
+            if target["kind"] == "futures_executor":
+                return inspect_native_executor(target, now)
+            return inspect_target(target, now)
         uri = Path(target["path"]).resolve().as_uri() + "?mode=ro"
         with closing(sqlite3.connect(uri, uri=True, timeout=2)) as db:
             db.execute("PRAGMA query_only=ON")
@@ -88,7 +107,7 @@ def inspect_engine(target, now):
             metadata = dict(db.execute("SELECT key,value FROM metadata"))
             if target["heartbeat_key"] not in metadata:
                 return inspect_burst_legacy(db, metadata, target, now)
-        return inspect_target(target, now)
+        return inspect_native_executor(target, now)
     except (sqlite3.Error, OSError, ValueError, TypeError, KeyError, OverflowError, AttributeError):
         return [issue("DB_UNREADABLE", "Jurnal/status tidak dapat dibaca; periksa mount, disk dan proses.", 30)], False
 

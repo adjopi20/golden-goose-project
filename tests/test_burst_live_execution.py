@@ -1,3 +1,4 @@
+from contextlib import closing
 from decimal import Decimal
 import hashlib
 import json
@@ -6,12 +7,15 @@ from pathlib import Path
 import pytest
 
 from live_trading.burst_runtime import NativeBurst, run_stream
+from utils.engine.adapters.binance_execution import VenueError
+from utils.engine.adapters.binance_futures_readonly import PreflightError
 from utils.engine.adapters.burst_market import BurstMarketInput, trade_batch
 from utils.engine.contracts import make_event
 from utils.engine.execution.burst_futures import (
-    BurstFuturesExecutor, BurstFuturesStore, CoordinatedBurstAccount, SharedBurstAccount, HOLD_MS,
+    BurstFuturesExecutor, BurstFuturesOrders, BurstFuturesStore, CoordinatedBurstAccount, SharedBurstAccount, HOLD_MS,
 )
 from utils.engine.monitoring.alerts import inspect_target, load_config
+from utils.engine.monitoring.engine_alerts import inspect_engine
 from test_futures_execution import Crash, FakeVenue, NOW
 
 CONTRACT = "BURST-NATIVE-EXECUTION-TEST"
@@ -107,9 +111,139 @@ def test_uncertain_replacement_keeps_protection_then_reconciles(env):
     assert json.loads(s.active()["plan"]).get("risk_lock_r", -1) == -1
     assert len([x for x in v.orders.values() if x.get("algoStatus") == "NEW"]) == 2
     e.cycle(now[0])
-    assert len(v.cancels) == 1
-    assert len(v.posts) == 3
+    assert [cid.rsplit("-", 1)[-1] for cid in v.cancels] == ["initial", "1"]
+    assert len(v.posts) == 4
+    assert [params.get("reduceOnly") for role, params in v.posts if role == "STOP"] == [None, "true", None]
     assert json.loads(s.active()["plan"])["risk_lock_r"] == 1
+
+
+
+def advance_stop(env, price):
+    e, s, v, now = env
+    v.clock = now[0] = now[0] + 1000
+    s.set_meta("live_excursion", json.dumps(dict(setup_id="burst-1", timestamp_ms=now[0], price=price)))
+    e.cycle(now[0])
+
+
+def test_reconciles_only_recorded_legacy_rejection(env):
+    e, s, v, now = env
+    open_position(env, "short")
+    session = s.active()
+    legacy = e._stop_params("ggp-legacy-sl-0", -1, "1000")
+    old = e._prepare(session["session"], "STOP", dict(legacy, closePosition="true"))
+    s.db.execute("UPDATE orders SET state='UNKNOWN', error='native_order_not_found' WHERE client_id=?", (old,))
+    # A missing query by itself is still ambiguous and must prevent another submit.
+    advance_stop(env, 990)
+    assert s.db.execute("SELECT state FROM orders WHERE client_id=?", (old,)).fetchone()[0] == "UNKNOWN"
+    assert len(v.posts) == 2 and not v.cancels
+    s.audit("order_submit_error", dict(client_id=old, role="STOP", http_status=400,
+                                      venue_code=-4130, uncertain=True))
+    advance_stop(env, 990)
+    assert tuple(s.db.execute("SELECT state,error,cancel_pending FROM orders WHERE client_id=?", (old,)).fetchone()) == (
+        "REJECTED", None, 0)
+    assert json.loads(s.active()["plan"])["risk_lock_r"] == 0
+    assert all(cid != old for cid in v.cancels)
+    assert [order["triggerPrice"] for order in v.orders.values() if order.get("algoStatus") == "NEW"] == ["1000"]
+
+
+@pytest.mark.parametrize("crash_at", ["guard_ack", "cancel_ack", "replacement_ack", "guard_cancel_ack"])
+def test_stop_restart_always_has_a_native_protector(env, monkeypatch, crash_at):
+    e, s, v, now = env
+    open_position(env)
+    submit = v.submit
+    cancel = v.cancel
+
+    def submit_with_crash(role, params):
+        result = submit(role, params)
+        if role == "STOP" and (
+            (crash_at == "guard_ack" and "quantity" in params)
+            or (crash_at == "replacement_ack" and "-sl-v2-" in params["clientAlgoId"])
+        ):
+            raise Crash()
+        return result
+
+    def cancel_with_crash(cid, **kwargs):
+        assert any(key != cid and row.get("algoStatus") == "NEW" for key, row in v.orders.items())
+        result = cancel(cid, **kwargs)
+        if (crash_at == "cancel_ack" and cid.endswith("-initial")) or (
+            crash_at == "guard_cancel_ack" and "-guard-" in cid
+        ):
+            raise Crash()
+        return result
+
+    monkeypatch.setattr(v, "submit", submit_with_crash)
+    monkeypatch.setattr(v, "cancel", cancel_with_crash)
+    with pytest.raises(Crash):
+        advance_stop(env, 1020)
+    assert v.position and any(row.get("algoStatus") == "NEW" for row in v.orders.values())
+    s.set_meta("live_excursion", "null")
+    monkeypatch.setattr(v, "submit", submit)
+    monkeypatch.setattr(v, "cancel", cancel)
+    with closing(BurstFuturesStore(s.path, e.c)) as reopened:
+        resumed = BurstFuturesExecutor(reopened, v, e.c)
+        resumed.cycle(now[0], new_entries_ok=False)
+        assert json.loads(reopened.active()["plan"])["risk_lock_r"] == 1
+        assert not reopened.db.execute("SELECT 1 FROM orders WHERE cancel_pending OR error IS NOT NULL").fetchone()
+    assert [role for role, _ in v.posts] == ["ENTRY", "STOP", "STOP", "STOP"]
+    assert [row["triggerPrice"] for row in v.orders.values() if row.get("algoStatus") == "NEW"] == ["1010"]
+
+
+def test_old_stop_can_fill_during_cancel_without_another_submission(env):
+    e, s, v, now = env
+    open_position(env)
+    v.on_cancel = lambda cid: v.stop_out("989")
+    advance_stop(env, 1020)
+    advance_stop(env, 1020)
+    assert not v.position and s.active() is None
+    assert [role for role, _ in v.posts] == ["ENTRY", "STOP", "STOP"]
+    assert s.db.execute("SELECT reason FROM sessions").fetchone()[0] == "initial_stop"
+    assert not any(row.get("algoStatus") == "NEW" for row in v.orders.values())
+
+
+@pytest.mark.parametrize("reject_guard", [True, False])
+def test_stop_rejection_preserves_current_protector(env, monkeypatch, reject_guard):
+    e, s, v, now = env
+    open_position(env)
+    submit = v.submit
+
+    def rejected(role, params):
+        if role == "STOP" and ("quantity" in params) == reject_guard:
+            raise VenueError(400, -2022)
+        return submit(role, params)
+
+    monkeypatch.setattr(v, "submit", rejected)
+    advance_stop(env, 1020)
+    advance_stop(env, 1020)
+    assert v.position and json.loads(s.active()["plan"]).get("risk_lock_r", -1) == -1
+    protector, = [row for row in v.orders.values() if row.get("algoStatus") == "NEW"]
+    assert protector["closePosition"] == reject_guard
+    assert tuple(s.db.execute("SELECT state,error FROM orders WHERE state='REJECTED'").fetchone()) == ("REJECTED", None)
+    target = dict(id="test", label="test", path=str(s.path), kind="futures_executor",
+                  expected_metadata={"owner": "binance_futures_pilot"},
+                  heartbeat_key="worker_heartbeat_ms", max_age_seconds=90)
+    s.set_meta("worker_heartbeat_ms", now[0])
+    s.set_meta("worker_armed", 1)
+    issues, valid = inspect_engine(target, now[0])
+    assert valid and [item["code"] for item in issues] == ["STOP_REPLACEMENT_REJECTED"]
+
+
+
+def test_burst_adapter_stop_payload_and_rejection_classification(monkeypatch):
+    venue = BurstFuturesOrders()
+    params = dict(algoType="CONDITIONAL", symbol="UNIUSDC", side="BUY", positionSide="BOTH",
+                  type="STOP_MARKET", triggerPrice="5.877", workingType="CONTRACT_PRICE",
+                  reduceOnly="true", priceProtect="false", clientAlgoId="ggp-guard-0", quantity="5")
+
+    def rejected(method, path, request):
+        assert (method, path, request) == ("POST", "/fapi/v1/algoOrder", params)
+        raise VenueError(400, -4130, uncertain=True)
+
+    monkeypatch.setattr(venue, "_request", rejected)
+    with pytest.raises(VenueError) as caught:
+        venue.submit("STOP", params)
+    assert caught.value.code == -4130 and not caught.value.uncertain
+    with pytest.raises(PreflightError):
+        venue.submit("STOP", dict(params, closePosition="true"))
 
 
 def test_lost_initial_stop_ack_keeps_position_then_reconciles(env):

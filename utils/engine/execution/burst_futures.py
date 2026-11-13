@@ -3,11 +3,14 @@ from contextlib import ExitStack, closing, contextmanager, nullcontext
 from decimal import Decimal
 import hashlib
 import json
+import re
 import sqlite3
 import time
 from types import SimpleNamespace
 from uuid import uuid4
 
+from utils.engine.adapters.binance_execution import FuturesOrders, VenueError
+from utils.engine.adapters.binance_futures_readonly import PreflightError
 from utils.engine.contracts import canonical_json, content_hash
 from utils.engine.execution.futures_preflight import number, one, positive, quantity_rules
 from utils.engine.execution.preny_futures import FuturesExecutor, TERMINAL, order_id, rounded
@@ -15,7 +18,8 @@ from utils.engine.state.futures import FuturesStore
 
 DAY = 86_400_000
 HOLD_MS = 2 * DAY
-ACTIVE_STOPS = {"NEW", "TRIGGERING", "TRIGGERED"}
+STOP_TRIGGERING = {"TRIGGERING", "TRIGGERED"}
+UNCERTAIN_ORDERS = {"SENDING", "UNKNOWN"}
 
 
 def plan_entry(intention, spec, quote, equity, available, settings, *, partial=False, risk_fraction=Decimal("0.01")):
@@ -318,6 +322,31 @@ class CoordinatedBurstAccount(SharedBurstAccount):
         return reserved
 
 
+class BurstFuturesOrders(FuturesOrders):
+    def submit(self, role, params):
+        try:
+            if role == "STOP" and "quantity" in params:
+                required = {"algoType", "symbol", "side", "positionSide", "type", "triggerPrice",
+                            "workingType", "quantity", "reduceOnly", "priceProtect", "clientAlgoId"}
+                if (set(params) != required or
+                        tuple(params[k] for k in ("algoType", "positionSide", "type", "workingType",
+                                                  "reduceOnly", "priceProtect")) !=
+                        ("CONDITIONAL", "BOTH", "STOP_MARKET", "CONTRACT_PRICE", "true", "false") or
+                        params["side"] not in ("BUY", "SELL")):
+                    raise PreflightError("Invalid reduce-only protective stop template")
+                self.check_id(params["clientAlgoId"])
+                if not isinstance(params["symbol"], str) or not re.fullmatch(r"[A-Z0-9]{3,30}", params["symbol"]):
+                    raise PreflightError("Invalid instrument name")
+                positive(params["triggerPrice"])
+                positive(params["quantity"])
+                return self._request("POST", "/fapi/v1/algoOrder", params)
+            return super().submit(role, params)
+        except VenueError as error:
+            if role == "STOP" and (error.status, error.code) == (400, -4130):
+                raise VenueError(error.status, error.code, reason=error.reason) from None
+            raise
+
+
 class BurstFuturesExecutor(FuturesExecutor):
     """One symbol, native stop ladder and full exit 48h after fill."""
 
@@ -484,70 +513,198 @@ class BurstFuturesExecutor(FuturesExecutor):
     def entry_risk_fraction(self, intention):
         return Decimal("0.01")
 
+    def _validate_response(self, response, row):
+        params = json.loads(row["params"])
+        if row["role"] == "STOP" and "quantity" in params:
+            if (not isinstance(response, dict) or response.get("closePosition") is not False
+                    or response.get("reduceOnly") is not True
+                    or number(response["quantity"]) != positive(params["quantity"])):
+                raise ValueError("Native replacement guard differs from request")
+            # Reuse the shared validation of stop identity, trigger, side and status.
+            return super()._validate_response(dict(response, closePosition=True), row)
+        return super()._validate_response(response, row)
+
+    def drive(self, cid):
+        row = self.s.db.execute("SELECT * FROM orders WHERE client_id=?", (cid,)).fetchone()
+        if row["role"] != "STOP":
+            return super().drive(cid)
+        if row["state"] in UNCERTAIN_ORDERS and row["response"] is None:
+            rejection = self.s.db.execute("""
+                SELECT kind, payload FROM audit WHERE kind IN ('order_send_started', 'order_submit_error')
+                  AND json_extract(payload, '$.client_id')=? ORDER BY id DESC LIMIT 1
+            """, (cid,)).fetchone()
+            if rejection and rejection["kind"] == "order_submit_error":
+                detail = json.loads(rejection["payload"])
+                if (detail.get("http_status"), detail.get("venue_code")) == (400, -4130):
+                    with self.s.transaction():
+                        self.s.db.execute("UPDATE orders SET state='REJECTED', error=NULL, cancel_pending=0 "
+                                          "WHERE client_id=?", (cid,))
+                        self.s.audit("stop_rejection_reconciled", dict(client_id=cid, venue_code=-4130))
+                    return self.s.db.execute("SELECT * FROM orders WHERE client_id=?", (cid,)).fetchone()
+        row = super().drive(cid)
+        if row["state"] in TERMINAL and (row["error"] or row["cancel_pending"]):
+            self.cancel(row)
+            row = self.s.db.execute("SELECT * FROM orders WHERE client_id=?", (cid,)).fetchone()
+        return row
+
+    def cancel(self, row):
+        if row["role"] == "STOP" and row["state"] == "REJECTED" and row["response"] is None and row["error"]:
+            # The structured audit retains the definitive POST rejection.
+            with self.s.transaction():
+                self.s.db.execute("UPDATE orders SET error=NULL WHERE client_id=?", (row["client_id"],))
+        return super().cancel(row)
+
+    def _stop_params(self, cid, side, trigger):
+        return dict(algoType="CONDITIONAL", symbol=self.symbol, side="SELL" if side > 0 else "BUY",
+                    positionSide="BOTH", type="STOP_MARKET", triggerPrice=str(trigger),
+                    workingType="CONTRACT_PRICE", priceProtect="false", clientAlgoId=cid)
+
     def _trail_stop(self, session, plan, price):
         side = 1 if plan["direction"] == "long" else -1
-        desired = -1
-        if price is not None and "actual_entry_price" in plan:
-            entry = positive(plan["actual_entry_price"])
-            distance = abs(entry - positive(plan["stop"]))
-            reached = side * (positive(price) - entry) / distance
-            milestone = 2 if self.c.get("risk_management") == "rm-e" else 1
-            while reached >= milestone:
-                desired = 0 if milestone == 1 else milestone // 2
-                milestone *= 2
-        stop_rows = self.s.db.execute("SELECT * FROM orders WHERE session_id=? AND role='STOP' ORDER BY rowid",
-                                      (session["session"],)).fetchall()
-        if any(row["state"] == "FINISHED" for row in stop_rows):
+        stops = self.s.db.execute("SELECT * FROM orders WHERE session_id=? AND role='STOP' ORDER BY rowid",
+                                  (session["session"],)).fetchall()
+        if any(row["state"] == "FINISHED" for row in stops):
             return "trigger_finished"
-        if any(row["state"] in {"TRIGGERING", "TRIGGERED"} for row in stop_rows):
+        if any(row["state"] in STOP_TRIGGERING for row in stops):
             return "triggering"
-        lock = int(plan.get("risk_lock_r", -1))
-        confirmed = [int(row["client_id"].rsplit("-", 1)[1]) for row in stop_rows
-                     if row["state"] == "NEW" and not row["client_id"].endswith("-initial")]
-        desired = max(desired, lock, *confirmed) if confirmed else max(desired, lock)
-        if not stop_rows:
-            desired = -1
-        trigger = positive(plan["stop"])
-        if desired >= 0:
-            entry = positive(plan["actual_entry_price"])
-            distance = abs(entry - trigger)
-            trigger = rounded(entry + side * desired * distance, positive(plan["tick_size"]), up=side < 0)
-        suffix = "initial" if desired == -1 else str(desired)
-        cid = order_id(session["id"], "sl-" + suffix)
-        row = next((row for row in stop_rows if row["client_id"] == cid), None)
-        uncertain = {"SENDING", "UNKNOWN"}
-        if row is None and any(row["state"] in uncertain for row in stop_rows):
-            # Resolve an earlier submission before adding another native stop.
-            return "protected" if any(row["state"] == "NEW" for row in stop_rows) else "uncertain"
-        if row is None:
-            params = dict(algoType="CONDITIONAL", symbol=self.symbol, side="SELL" if side > 0 else "BUY",
-                          positionSide="BOTH", type="STOP_MARKET", triggerPrice=str(trigger), workingType="CONTRACT_PRICE",
-                          closePosition="true", priceProtect="false", clientAlgoId=cid)
-            row = self.drive(self._prepare(session["session"], "STOP", params))
-        elif row["state"] == "PREPARED":
-            row = self.drive(cid)
-        if row["state"] == "FINISHED":
-            return "trigger_finished"
-        if row["state"] in {"TRIGGERING", "TRIGGERED", "FINISHED"}:
-            return "triggering"
-        if row["state"] != "NEW":
-            if any(other["state"] == "NEW" and other["client_id"] != cid for other in stop_rows):
-                return "protected"
-            if row["state"] in uncertain or any(other["state"] in uncertain for other in stop_rows):
+
+        guard = next((row for row in stops if "-guard-" in row["client_id"] and row["state"] not in TERMINAL), None)
+        native = [row for row in stops if "-guard-" not in row["client_id"] and row["state"] == "NEW"]
+        pending = [row for row in stops if row["state"] in UNCERTAIN_ORDERS]
+        if guard is not None:
+            return self._replace_stop(session, plan, side, guard, native, pending)
+
+        if not native:
+            cid = order_id(session["id"], "sl-initial")
+            initial = next((row for row in stops if row["client_id"] == cid), None)
+            if pending:
                 return "uncertain"
-            return "unprotected"
-        if desired > lock:
+            if initial is None and not stops:
+                params = self._stop_params(cid, side, plan["stop"])
+                initial = self.drive(self._prepare(session["session"], "STOP", dict(params, closePosition="true")))
+            elif initial is not None and initial["state"] == "PREPARED":
+                initial = self.drive(cid)
+            if initial is None:
+                return "unprotected"
+            if initial["state"] == "FINISHED":
+                return "trigger_finished"
+            if initial["state"] in STOP_TRIGGERING:
+                return "triggering"
+            if initial["state"] in UNCERTAIN_ORDERS:
+                return "uncertain"
+            return "protected" if initial["state"] == "NEW" else "unprotected"
+
+        current = native[-1]
+        native_lock = -1 if current["client_id"].endswith("-initial") else int(current["client_id"].rsplit("-", 1)[1])
+        if not current["error"] and not current["cancel_pending"]:
+            self._record_stop_lock(session, plan, native_lock, current)
+        if pending or price is None or "actual_entry_price" not in plan:
+            return "protected"
+
+        entry = positive(plan["actual_entry_price"])
+        distance = abs(entry - positive(plan["stop"]))
+        if not distance:
+            return "protected"  # The fill-risk check owns this invalid entry.
+        reached = side * (positive(price) - entry) / distance
+        milestone = 2 if self.c.get("risk_management") == "rm-e" else 1
+        desired = -1
+        while reached >= milestone:
+            desired = 0 if milestone == 1 else milestone // 2
+            milestone *= 2
+        if desired <= max(int(plan.get("risk_lock_r", -1)), native_lock):
+            return "protected"
+
+        cid = order_id(session["id"], f"guard-{desired}")
+        if any(row["client_id"] == cid for row in stops):
+            return "protected"
+        amount, _ = self.position()
+        if side * amount <= 0:
+            return "uncertain"
+        trigger = rounded(entry + side * desired * distance, positive(plan["tick_size"]), up=side < 0)
+        if trigger <= 0:
+            return "protected"
+        params = self._stop_params(cid, side, trigger)
+        cid = self._prepare(session["session"], "STOP", dict(params, quantity=str(abs(amount)), reduceOnly="true"))
+        guard = self.s.db.execute("SELECT * FROM orders WHERE client_id=?", (cid,)).fetchone()
+        return self._replace_stop(session, plan, side, guard, native, pending)
+
+    def _replace_stop(self, session, plan, side, guard, native, pending):
+        if guard["state"] == "PREPARED":
+            guard = self.drive(guard["client_id"])
+        if guard["state"] == "FINISHED":
+            return "trigger_finished"
+        if guard["state"] in STOP_TRIGGERING:
+            return "triggering"
+        if guard["state"] in UNCERTAIN_ORDERS or guard["error"]:
+            return "uncertain"
+        if guard["state"] != "NEW":
+            return "protected" if native else "unprotected"
+
+        desired = int(guard["client_id"].rsplit("-", 1)[1])
+        cid = order_id(session["id"], f"sl-v2-{desired}")
+        replacement = next((row for row in native if row["client_id"] == cid), None)
+        if replacement is None:
+            if pending or guard["cancel_pending"]:
+                return "uncertain"
+            # Recheck exposure before giving up the close-all stop. Only this worker
+            # can increase the position, and scale-in waits for close-all protection.
+            amount, _ = self.position()
+            params = json.loads(guard["params"])
+            if side * amount <= 0 or abs(amount) > positive(params["quantity"]):
+                return "uncertain"
+            for previous in native:
+                if not self.cancel(previous):
+                    return "uncertain"
+                current = self.s.db.execute("SELECT state FROM orders WHERE client_id=?",
+                                            (previous["client_id"],)).fetchone()
+                if current["state"] in {"FINISHED", "FILLED"}:
+                    amount, _ = self.position()
+                    return "trigger_finished" if amount else "uncertain"
+            # The previous stop or guard can fill during cancel reconciliation.
+            guard = self.drive(guard["client_id"])
+            if guard["state"] == "FINISHED":
+                amount, _ = self.position()
+                return "trigger_finished" if amount else "uncertain"
+            if guard["state"] in STOP_TRIGGERING:
+                return "triggering"
+            if guard["state"] in UNCERTAIN_ORDERS or guard["error"]:
+                return "uncertain"
+            if guard["state"] != "NEW":
+                return "unprotected"
+            amount, _ = self.position()
+            if side * amount <= 0 or abs(amount) > positive(params["quantity"]):
+                return "uncertain"
+            replacement = self.s.db.execute("SELECT * FROM orders WHERE client_id=?", (cid,)).fetchone()
+            if replacement is None:
+                request = self._stop_params(cid, side, params["triggerPrice"])
+                cid = self._prepare(session["session"], "STOP", dict(request, closePosition="true"))
+            if replacement is None or replacement["state"] == "PREPARED":
+                replacement = self.drive(cid)
+        if replacement["state"] == "FINISHED":
+            return "trigger_finished"
+        if replacement["state"] in STOP_TRIGGERING:
+            return "triggering"
+        if replacement["state"] != "NEW" or replacement["error"] or replacement["cancel_pending"]:
+            return "uncertain"  # Leave the guard live while the replacement is unresolved or rejected.
+
+        if not self.cancel(guard):
+            return "uncertain"
+        guard_state = self.s.db.execute("SELECT state FROM orders WHERE client_id=?",
+                                        (guard["client_id"],)).fetchone()["state"]
+        if guard_state in {"FINISHED", "FILLED"}:
+            amount, _ = self.position()
+            return "trigger_finished" if amount else "uncertain"
+        self._record_stop_lock(session, plan, desired, replacement)
+        return "protected"
+
+    def _record_stop_lock(self, session, plan, desired, replacement):
+        if desired > int(plan.get("risk_lock_r", -1)):
             with self.s.transaction():
                 plan["risk_lock_r"] = desired
                 self.s.db.execute("UPDATE sessions SET plan=? WHERE session=?",
                                   (canonical_json(plan), session["session"]))
-                self.s.audit("stop_raised", dict(setup_id=session["id"], stop=str(trigger), locked_r=desired,
-                                                 native_client_id=cid))
-        # Both close-position stops can coexist until the tighter one is confirmed.
-        for other in stop_rows:
-            if other["client_id"] != cid and other["state"] == "NEW":
-                self.cancel(other)
-        return "protected"
+                self.s.audit("stop_raised", dict(setup_id=session["id"],
+                    stop=json.loads(replacement["params"])["triggerPrice"], locked_r=desired, native_client_id=replacement["client_id"]))
 
     def _skip(self, session, reason):
         with self.s.transaction():
@@ -655,6 +812,8 @@ class BurstFuturesExecutor(FuturesExecutor):
         orders = self.s.db.execute("SELECT * FROM orders WHERE session_id=?", (session["session"],)).fetchall()
         for row in orders:
             if row["state"] in TERMINAL:
+                if row["role"] == "STOP":
+                    self.cancel(row)
                 continue
             if row["role"] == "ENTRY" and row["state"] == "PREPARED" and (
                 not new_entries_ok or now_ms > p["expires_timestamp_ms"]

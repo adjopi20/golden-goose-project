@@ -10,8 +10,8 @@
   "capital_required": false,
   "strategy_sha256": "a7fba1a441a449b89272be354f6ac7aa197bb27bc3499c2a9ea719f37b715646",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261103_v3.json",
-    "sha256": "3ada9a4b42ef211c23fb5ad01694b6e38310d8c027e892e5329b40b18fdd66fe"
+    "path": "utils/engine/releases/shared_engine_20261113_v4.json",
+    "sha256": "869cbb591360956a2c47cb25f4c4d90297c890689d79746768833173a5660f4c"
   },
   "dependencies": {
     "utils/model_registry.py": "bb0ce739c0d9268890f9b81575006c2a1c4a571100a0e89847535e518bdca750",

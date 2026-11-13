@@ -17,11 +17,11 @@ from indicator.volume_profile import build_basic_volume_profile
 from live_trading.burst_signals import (
     _burst_signals_from_features, assess_breakout_flow, confirm_flow_entries,
 )
-from utils.engine.adapters.binance_execution import FuturesOrders, VenueError
+from utils.engine.adapters.binance_execution import VenueError
 from utils.engine.adapters.binance_futures_readonly import PreflightError
 from utils.engine.adapters.binance_public import BinancePublic, UnrecoverableGap
 from utils.engine.execution.burst_futures import (
-    BurstFuturesExecutor, BurstFuturesStore, CoordinatedBurstAccount, EntryAdmissionBusy, SharedBurstAccount, DAY,
+    BurstFuturesExecutor, BurstFuturesOrders, BurstFuturesStore, CoordinatedBurstAccount, EntryAdmissionBusy, SharedBurstAccount, DAY,
 )
 from utils.model_registry import verify_model
 
@@ -463,7 +463,7 @@ def main(argv=None):
             READS = PositionAdditionVenue.READS | {"/fapi/v3/balance"}
         venue_type = PortfolioVenue
     else:
-        venue_type = PositionAdditionVenue if Hype in selected else FuturesOrders
+        venue_type = PositionAdditionVenue if Hype in selected else BurstFuturesOrders
     venue = venue_type(execution_enabled=args.armed,
                           acknowledgement=os.getenv("BINANCE_PRODUCTION_ACK", ""),
                           api_key_file=args.api_key_file, private_key_file=args.private_key_file,

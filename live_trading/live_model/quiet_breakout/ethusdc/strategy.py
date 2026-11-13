@@ -12,10 +12,9 @@ from live_trading.burst_runtime import HOUR, report, run_stream
 from live_trading.live_model.quiet_breakout.hypeusdt.strategy import (
     BASE_RISK, NOTIONAL_CAP, QuietBreakout, QuietFuturesExecutor,
 )
-from utils.engine.adapters.binance_execution import FuturesOrders
 from utils.engine.adapters.binance_public import BinancePublic
 from utils.engine.contracts import canonical_json
-from utils.engine.execution.burst_futures import BurstFuturesStore
+from utils.engine.execution.burst_futures import BurstFuturesOrders, BurstFuturesStore
 from utils.engine.execution.futures_preflight import positive
 from utils.model_registry import verify_model
 
@@ -139,7 +138,7 @@ def main(argv=None):
     config = Strategy.execution_config(args.allocation_usdc, args.armed)
     if not (args.armed or args.preflight):
         config["allocation_id"] = "shadow:" + config["allocation_id"]
-    venue = FuturesOrders(
+    venue = BurstFuturesOrders(
         execution_enabled=args.armed, acknowledgement=os.getenv("BINANCE_PRODUCTION_ACK", ""),
         api_key_file=args.api_key_file, private_key_file=args.private_key_file, passphrase_file=args.passphrase_file,
     )

@@ -124,8 +124,16 @@ class FakeVenue:
         assert cid not in self.orders, 'duplicate submission'
         r = dict(symbol=p['symbol'], side=p['side'], positionSide='BOTH')
         if role == 'STOP':
+            if p.get('closePosition') == 'true' and any(
+                order.get('closePosition') and order['side'] == p['side']
+                and order.get('algoStatus') in ('NEW', 'TRIGGERING', 'TRIGGERED')
+                for order in self.orders.values()
+            ):
+                raise VenueError(400, -4130, uncertain=False)
             r.update(clientAlgoId=cid, algoId=self._new_id(), orderType='STOP_MARKET', algoStatus='NEW',
-                     workingType='CONTRACT_PRICE', closePosition=True, priceProtect=False, triggerPrice=p['triggerPrice'], actualOrderId='')
+                     workingType='CONTRACT_PRICE', closePosition=p.get('closePosition') == 'true',
+                     reduceOnly=p.get('reduceOnly') == 'true', quantity=p.get('quantity', '0'),
+                     priceProtect=False, triggerPrice=p['triggerPrice'], actualOrderId='')
         else:
             r.update(clientOrderId=cid, orderId=self._new_id(), type=p['type'], origQty=p['quantity'], executedQty='0',
                      avgPrice='0', status='NEW', reduceOnly=p.get('reduceOnly') == 'true', price=p.get('price', '0'), timeInForce=p.get('timeInForce', 'GTC'))
@@ -159,7 +167,9 @@ class FakeVenue:
         stop = next(r for r in self.orders.values() if r.get('algoStatus') == 'NEW')
         cid = 'native-stop-child'
         child = dict(symbol='ETHUSDC', side=stop['side'], positionSide='BOTH', clientOrderId=cid,
-                     orderId=self._new_id(), type='MARKET', origQty=str(abs(self.position)), executedQty='0',
+                     orderId=self._new_id(), type='MARKET',
+                     origQty=str(abs(self.position) if stop['closePosition'] else min(abs(self.position), D(stop['quantity']))),
+                     executedQty='0',
                      avgPrice='0', status='NEW', reduceOnly=True)
         self.orders[cid] = child
         self.fill(cid, price=price)
