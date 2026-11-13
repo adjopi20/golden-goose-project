@@ -25,7 +25,7 @@
     "utils/engine/execution/burst_futures.py": "77fd05cd6a927a197a7198aeac6e70dd45eecba32e9560ff5640fa507ad6ad71",
     "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",
     "live_trading/live_model/quiet_breakout/hypeusdt/strategy.py": "23396e12e0e8dae891d59e83b4809ccf6b6e3e5f31ae5eb6d67eeee08b53f9f5",
-    "live_trading/live_model/quiet_breakout/position_addition.py": "74b806596e46db89a3bbd8bfac21e9ffc5e97fa015b31d153f8b632e6be41ee8"
+    "live_trading/live_model/quiet_breakout/position_addition.py": "025aac869253c0a32a56a426430091a0b0a50197b7ff82fe5177d8be8381f42a"
   },
   "model_config": {
     "mode": "profile_burst",

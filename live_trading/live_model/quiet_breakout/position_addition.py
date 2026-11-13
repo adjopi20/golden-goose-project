@@ -228,6 +228,9 @@ class PositionAddition:
                     > Decimal(addition_plan["notional_cap"])):
                 return self._exit(session, amount, "actual_add_fill_exceeds_risk_or_notional_cap")
 
+        # A still-live add could increase exposure beyond a quantity-based guard.
+        if addition["state"] not in TERMINAL:
+            return
         trade = json.loads(self.s.meta("live_excursion", "null"))
         if trade and trade["setup_id"] == session["id"] and trade["timestamp_ms"] >= plan["first_fill_ms"]:
             protection = self._trail_stop(session, plan, trade["price"])

@@ -426,6 +426,28 @@ def test_one_add_uses_confirmed_native_stop_and_common_deadline(tmp_path, monkey
         store.close()
 
 
+def test_pending_add_keeps_close_all_protection_until_final_quantity(tmp_path, monkeypatch):
+    executor, store, _, lane, clock = open_addition_lane(tmp_path, monkeypatch, TailDependent)
+    try:
+        advance_addition(executor, store, lane, clock, TailDependent)
+        lane.initial_fill = Decimal("0.001")
+        executor.cycle(clock[0])
+        add = store.db.execute("SELECT * FROM orders WHERE role='ADD'").fetchone()
+        assert add["state"] == "PARTIALLY_FILLED"
+        lane.clock = clock[0] = clock[0] + 1000
+        store.set_meta("live_excursion", json.dumps(dict(setup_id=TailDependent.ALLOCATION_ID,
+                       timestamp_ms=clock[0], agg_trade_id=12, price=1040)))
+        executor.cycle(clock[0])
+        assert json.loads(store.active()["plan"])["risk_lock_r"] == 1
+        assert sum(role == "STOP" for role, _ in lane.posts) == 3
+        lane.fill(add["client_id"], price="1020")
+        executor.cycle(clock[0])
+        assert json.loads(store.active()["plan"])["risk_lock_r"] == 2
+        assert sum(role == "STOP" for role, _ in lane.posts) == 5
+    finally:
+        store.close()
+
+
 @pytest.mark.parametrize("outcome", ["lost_ack", "stop_race", "slippage"])
 def test_add_reconciliation_and_exit_guards(tmp_path, monkeypatch, outcome):
     executor, store, venue, lane, clock = open_addition_lane(tmp_path, monkeypatch, TailDependent)
