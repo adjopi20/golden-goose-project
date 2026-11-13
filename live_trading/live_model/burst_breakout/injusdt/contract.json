@@ -13,16 +13,16 @@
   "quantity_unit": "INJ",
   "pnl_unit": "USDT",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261113_v5.json",
-    "sha256": "3c291cd712ec1b3feb7bbcc0fbfb9c2759e7a73bd80ba9711bde10fd5d46b52c"
+    "path": "utils/engine/releases/shared_engine_20261113_v6.json",
+    "sha256": "d752863525fd2b8c841113301bd35810c8eed53d376c4b49c528add740a1b4f0"
   },
   "strategy_sha256": "c50db8f10161a576325836909ad8c61a442db231f298c54dd64c15b37bc00c6d",
   "dependencies": {
     "live_trading/live_model/burst_breakout/policy.py": "77d705b0dc436903a41bb5b1165981937bd99846867fd6e6892afaef5043cb86",
-    "live_trading/burst_runtime.py": "7506f21d01407f251482ce09e4016e9bb4a35b6a46c9ef7cb9f5e2e0819d6a86",
+    "live_trading/burst_runtime.py": "2f8144edfea961a5775510f0382cf4bd161ab6679684b2020dcd0bad1a0b02e1",
     "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
     "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
-    "utils/engine/execution/burst_futures.py": "77fd05cd6a927a197a7198aeac6e70dd45eecba32e9560ff5640fa507ad6ad71",
+    "utils/engine/execution/burst_futures.py": "e443b997856b68f3f6c4c611e802bac30753540e63322364e3f771b9b48e065e",
     "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",
     "live_trading/live_model/quiet_breakout/hypeusdt/strategy.py": "23396e12e0e8dae891d59e83b4809ccf6b6e3e5f31ae5eb6d67eeee08b53f9f5",
     "live_trading/live_model/quiet_breakout/position_addition.py": "025aac869253c0a32a56a426430091a0b0a50197b7ff82fe5177d8be8381f42a"

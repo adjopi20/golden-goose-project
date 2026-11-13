@@ -562,7 +562,16 @@ def test_hmac_signs_get_submit_and_cancel_without_leaking_secret(tmp_path):
                                 newOrderRespType='RESULT'))
     client.cancel('ggp-hmac-entry', symbol='ETHUSDC')
 
-    assert len(http.calls) == 3
+    http.payload = {"uid": 123456}
+    assert client.account_uid() == 123456
+    assert http.calls[-1][0] == 'https://api.binance.com/api/v3/account'
+    with pytest.raises(ValueError, match='not allowed'):
+        client.get('/api/v3/account')
+    http.payload = {"uid": True}
+    with pytest.raises(ValueError, match='UID missing or invalid'):
+        client.account_uid()
+
+    assert len(http.calls) == 5
     for _, options in http.calls:
         fields = dict(options.get('data') or options['params'])
         signature = fields.pop('signature')

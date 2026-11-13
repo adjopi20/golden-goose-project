@@ -91,10 +91,21 @@ class BinanceFuturesReadOnly:
     def get(self, path, **parameters):
         if path not in self.PUBLIC | self.PRIVATE:
             raise PreflightError('Endpoint not allowed by read-only preflight')
+        return self._get(self.BASE, path, parameters, signed=path in self.PRIVATE)
+
+    def account_uid(self):
+        result = self._get('https://api.binance.com', '/api/v3/account',
+                           {'omitZeroBalances': 'true'}, signed=True)
+        uid = result.get('uid') if isinstance(result, dict) else None
+        if type(uid) is not int or uid <= 0:
+            raise PreflightError('Binance account UID missing or invalid')
+        return uid
+
+    def _get(self, base, path, parameters, *, signed):
         if any(k in parameters for k in ('signature', 'timestamp', 'recvWindow')):
             raise PreflightError('Caller cannot override signing parameters')
         params, headers = dict(parameters), {}
-        if path in self.PRIVATE:
+        if signed:
             self.load_credentials()
             if self.offset is None:
                 raise PreflightError('Synchronize server time before authenticated reads')
@@ -102,7 +113,7 @@ class BinanceFuturesReadOnly:
             params['signature'] = self._signature(params)
             headers['X-MBX-APIKEY'] = self._key
         try:
-            response = self.http.get(self.BASE + path, params=params, headers=headers,
+            response = self.http.get(base + path, params=params, headers=headers,
                                      timeout=(5, 15), allow_redirects=False)
         except requests.RequestException:
             # requests exceptions may contain a signed URL. Never display them.

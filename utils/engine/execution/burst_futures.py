@@ -183,33 +183,39 @@ class CoordinatedBurstAccount(SharedBurstAccount):
         executor.shared_account = self
 
     def bind_portfolio_account(self, now_ms):
-        """Bind three collateral groups to three distinct native account aliases."""
-        self.venue.load_credentials()
+        """Bind each collateral group to the unique UID returned by Binance."""
+        uid = self.venue.account_uid()
+        identity = hashlib.sha256(str(uid).encode()).hexdigest()
         key = hashlib.sha256(self.venue._key.encode()).hexdigest()
-        balances = self.venue.read("/fapi/v3/balance")
-        if not isinstance(balances, list) or not balances:
-            raise ValueError("portfolio_account_alias_unavailable")
-        aliases = {row.get("accountAlias") for row in balances}
-        if len(aliases) != 1:
-            raise ValueError("portfolio_account_alias_ambiguous")
-        alias = aliases.pop()
-        if not isinstance(alias, str) or not alias:
-            raise ValueError("portfolio_account_alias_unavailable")
-        identity = hashlib.sha256(alias.encode()).hexdigest()
         store = self.local.s
-        if (store.meta("key_hash", key), store.meta("portfolio_account_alias", identity)) != (key, identity):
+        stored_key = store.meta("key_hash")
+        if stored_key not in (None, key) or store.meta("portfolio_account_uid", identity) != identity:
             raise ValueError("portfolio_journal_account_changed")
         index = store.path.with_name("portfolio-accounts.sqlite")
         with closing(sqlite3.connect(index, timeout=5)) as db, db:
-            db.execute("CREATE TABLE IF NOT EXISTS accounts (name TEXT PRIMARY KEY, alias TEXT UNIQUE NOT NULL)")
-            db.execute("INSERT OR IGNORE INTO accounts VALUES (?,?)", (self.group, identity))
-            pinned = db.execute("SELECT alias FROM accounts WHERE name=?", (self.group,)).fetchone()
+            db.execute("BEGIN IMMEDIATE")
+            db.execute("CREATE TABLE IF NOT EXISTS account_uids (name TEXT PRIMARY KEY, uid_hash TEXT UNIQUE NOT NULL)")
+            pinned = db.execute("SELECT uid_hash FROM account_uids WHERE name=?", (self.group,)).fetchone()
+            if pinned is None:
+                if self.group != "burst" and not db.execute(
+                    "SELECT 1 FROM account_uids WHERE name='burst'"
+                ).fetchone():
+                    raise ValueError("portfolio_burst_uid_must_be_bound_first")
+                # The legacy alias was shared across subaccounts. The existing key
+                # fingerprint proves continuity for the first bind of a live group.
+                legacy_index = db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='accounts'").fetchone()
+                if legacy_index and stored_key is None and db.execute(
+                    "SELECT 1 FROM accounts WHERE name=?", (self.group,)
+                ).fetchone():
+                    raise ValueError("portfolio_uid_migration_requires_bound_journal")
+                db.execute("INSERT OR IGNORE INTO account_uids VALUES (?,?)", (self.group, identity))
+                pinned = db.execute("SELECT uid_hash FROM account_uids WHERE name=?", (self.group,)).fetchone()
             if pinned is None or pinned[0] != identity:
                 raise ValueError("portfolio_account_already_used_or_changed")
         with store.transaction():
             store.set_meta("key_hash", key)
             store.set_meta("worker_symbol", self.local.symbol)
-            store.set_meta("portfolio_account_alias", identity)
+            store.set_meta("portfolio_account_uid", identity)
             store.set_meta("coordinated_account", "1")
             if store.meta("funding_start_ms") is None:
                 store.set_meta("funding_start_ms", now_ms)
@@ -242,8 +248,8 @@ class CoordinatedBurstAccount(SharedBurstAccount):
                         continue  # The peer has created a fresh journal and has not bound its account yet.
                     if (peer.meta("key_hash") != key or peer.meta("worker_symbol") != symbol
                             or peer.meta("config_hash") != content_hash(frozen)
-                            or (self.group and peer.meta("portfolio_account_alias")
-                                != store.meta("portfolio_account_alias"))):
+                            or (self.group and peer.meta("portfolio_account_uid") is not None
+                                and peer.meta("portfolio_account_uid") != store.meta("portfolio_account_uid"))):
                         raise ValueError("peer_journal_identity_mismatch")
                     self.executors[symbol] = SimpleNamespace(symbol=symbol, s=peer)
                     if peer.asset == store.asset and active:

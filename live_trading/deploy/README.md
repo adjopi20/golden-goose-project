@@ -68,7 +68,9 @@ mode 0600. Give each Binance key Futures permission and restrict it to the
 Biznet egress IP. Keep one-way and single-asset mode, and isolated margin with
 auto-add disabled on each assigned symbol. Fund each group only with the
 collateral needed for its assets. The workers check distinct native
-account aliases and use their own virtual 100-unit starting balances.
+account UIDs and use their own virtual 100-unit starting balances. The
+first UID bind for the existing Burst group uses a previously bound Burst
+journal and its matching API key.
 
 Enable the burst, quiet-core and quiet-tail Compose profiles independently
 as their accounts pass preflight. Run the matching worker with --preflight

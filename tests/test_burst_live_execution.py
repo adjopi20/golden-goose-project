@@ -585,25 +585,35 @@ def test_broker_connect_timeout_returns_to_exit_and_heartbeat_loop(env, monkeypa
 
 def test_portfolio_uses_local_equity_and_distinct_native_accounts(portfolio, monkeypatch):
     _, models, venue, _ = portfolio
-    original_read = venue.read
-    alias = ["account-a"]
-
-    def read(path, **params):
-        if path == "/fapi/v3/balance":
-            return [{"accountAlias": alias[0], "asset": "USDT"}]
-        return original_read(path, **params)
-
-    monkeypatch.setattr(venue, "read", read)
+    uid = [1001]
+    monkeypatch.setattr(venue, "account_uid", lambda: uid[0], raising=False)
     journals = {name: (model.s.path, model.c) for name, model in models.items()}
     hype, inj, uni = models.values()
+    index = hype.s.path.with_name("portfolio-accounts.sqlite")
+    from contextlib import closing
+    import hashlib
+    import sqlite3
+
+    with closing(sqlite3.connect(index)) as db, db:
+        db.execute("CREATE TABLE accounts (name TEXT PRIMARY KEY, alias TEXT UNIQUE NOT NULL)")
+        db.execute("INSERT INTO accounts VALUES ('burst', 'shared-legacy-alias')")
+    legacy = CoordinatedBurstAccount(hype, {"HYPEUSDT": journals["HYPEUSDT"]}, group="burst")
+    with pytest.raises(ValueError, match="portfolio_uid_migration_requires_bound_journal"):
+        legacy.bind_portfolio_account(NOW)
+    for model in (hype, inj):
+        model.s.set_meta("key_hash", hashlib.sha256(venue._key.encode()).hexdigest())
+        model.s.set_meta("portfolio_account_alias", "shared-legacy-alias")
     for model in (hype, inj):
         burst_journals = {symbol: journals[symbol] for symbol in ("HYPEUSDT", "INJUSDT")}
         CoordinatedBurstAccount(model, burst_journals, group="burst").bind_portfolio_account(NOW)
     shared = CoordinatedBurstAccount(uni, {"UNIUSDC": journals["UNIUSDC"]}, group="quiet-core")
     with pytest.raises(ValueError, match="portfolio_account_already_used_or_changed"):
         shared.bind_portfolio_account(NOW)
-    alias[0] = "account-b"
+    uid[0] = 1002
     shared.bind_portfolio_account(NOW)
+    uid[0] = 1003
+    with pytest.raises(ValueError, match="portfolio_journal_account_changed"):
+        shared.bind_portfolio_account(NOW)
     for model in (hype, inj):
         model.offer(dict(sample_id=model.symbol, direction="long", initial_stop=990,
                          eligible_timestamp_ms=NOW, expires_timestamp_ms=NOW+59_999), NOW)

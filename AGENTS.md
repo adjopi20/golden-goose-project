@@ -8,7 +8,7 @@ historical live journals. This section supersedes older live-stage lists.
 Use one Binance worker and journal per submodel. Use three verified Futures
 accounts: Burst HYPE/INJ/UNI, Quiet core HYPE Stable/ETH/UNI, and Quiet HYPE
 Tail. A Binance symbol appears at most once per account so exchange-native
-close-position stops have a single owner. The native account alias must be
+close-position stops have a single owner. The Binance account UID must be
 distinct between groups. Each trading journal starts at 100 of its quote
 asset and compounds its own realized fills, fees and funding. The current
 collateral balance and exchange quantity/notional limits cap executable

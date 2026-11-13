@@ -463,9 +463,7 @@ def main(argv=None):
         database = args.database if package is Hype or args.shadow_symbol else args.database.with_name(package.DATABASE)
         specs[package.SYMBOL] = (database, config, package)
     if group:
-        class PortfolioVenue(PositionAdditionVenue):
-            READS = PositionAdditionVenue.READS | {"/fapi/v3/balance"}
-        venue_type = PortfolioVenue
+        venue_type = PositionAdditionVenue
     else:
         venue_type = PositionAdditionVenue if Hype in selected else BurstFuturesOrders
     venue = venue_type(execution_enabled=args.armed,
