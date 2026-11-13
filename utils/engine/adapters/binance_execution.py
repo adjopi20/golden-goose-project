@@ -1,9 +1,7 @@
 """Narrow USD-M order adapter. Disarmed by default; no account-setting endpoints."""
-import base64
 from decimal import Decimal, InvalidOperation
 import re
 import time
-from urllib.parse import urlencode
 
 import requests
 
@@ -58,7 +56,7 @@ class FuturesOrders(BinanceFuturesReadOnly):
         if self.offset is None:
             raise PreflightError('Synchronize server time before execution')
         fields = dict(params, timestamp=int(time.time() * 1000) + self.offset, recvWindow=5000)
-        fields['signature'] = base64.b64encode(self._signer.sign(urlencode(fields).encode('ascii'))).decode('ascii')
+        fields['signature'] = self._signature(fields)
         try:
             r = self.http.request(method, self.BASE + path,
                                   params=fields if method != 'POST' else None,
@@ -74,8 +72,10 @@ class FuturesOrders(BinanceFuturesReadOnly):
         if r.status_code != 200 or (code is not None and code < 0):
             # Only unambiguous venue rejections are safe to classify as not accepted.
             rejected = {-1013, -1100, -1102, -1111, -2019, -2021, -2022, -4003, -4004, -4005}
-            reason = safe_venue_reason(payload.get('msg') if isinstance(payload, dict) else None,
-                                       (self._key, fields['signature']))
+            sensitive = (self._key, fields['signature'])
+            if self.hmac_secret_file is not None:
+                sensitive += (self._signer.decode('ascii'),)
+            reason = safe_venue_reason(payload.get('msg') if isinstance(payload, dict) else None, sensitive)
             raise VenueError(r.status_code, code, uncertain=method != 'GET' and code not in rejected, reason=reason)
         if not isinstance(payload, (dict, list)):
             raise VenueError(r.status_code, uncertain=method != 'GET')

@@ -382,13 +382,17 @@ def main(argv=None):
     parser.add_argument("--market-nats-url")
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--api-key-file", type=Path)
-    parser.add_argument("--private-key-file", type=Path)
+    signer = parser.add_mutually_exclusive_group()
+    signer.add_argument("--private-key-file", type=Path)
+    signer.add_argument("--hmac-secret-file", type=Path)
     parser.add_argument("--passphrase-file", type=Path)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--armed", action="store_true")
     mode.add_argument("--preflight", action="store_true")
     parser.add_argument("--duration", type=int)
     args = parser.parse_args(argv)
+    if args.passphrase_file and not args.private_key_file:
+        parser.error("--passphrase-file requires --private-key-file")
     if args.report:
         report(args.database)
         return 0
@@ -409,7 +413,7 @@ def main(argv=None):
         parser.error("Duration is only supported for a positive disarmed smoke test")
     if args.shadow_symbol and (
         not args.market_nats_url or args.armed or args.preflight or args.portfolio or args.api_key_file
-        or args.private_key_file or args.passphrase_file
+        or args.private_key_file or args.hmac_secret_file or args.passphrase_file
     ):
         parser.error("JetStream shadow requires one symbol and a broker URL without live credentials")
     if args.live_symbol and (args.portfolio or not (args.armed or args.preflight)):
@@ -419,8 +423,8 @@ def main(argv=None):
         parser.error("Armed execution requires one coordinated model")
     if args.market_nats_url and not (args.shadow_symbol or coordinated):
         parser.error("A broker URL requires a single-symbol worker")
-    if (args.armed or args.preflight) and not all((args.api_key_file, args.private_key_file)):
-        parser.error("Live preflight and execution require external Ed25519 secret mounts")
+    if (args.armed or args.preflight) and not (args.api_key_file and (args.private_key_file or args.hmac_secret_file)):
+        parser.error("Live preflight and execution require external Binance credential files")
     specs = {}
     packages = {p.SYMBOL: p for p in (Hype, Inj, Uni)}
     selected = list(packages.values()) if args.portfolio else [packages[args.shadow_symbol or args.live_symbol or Hype.SYMBOL]]
@@ -467,7 +471,7 @@ def main(argv=None):
     venue = venue_type(execution_enabled=args.armed,
                           acknowledgement=os.getenv("BINANCE_PRODUCTION_ACK", ""),
                           api_key_file=args.api_key_file, private_key_file=args.private_key_file,
-                          passphrase_file=args.passphrase_file)
+                          passphrase_file=args.passphrase_file, hmac_secret_file=args.hmac_secret_file)
     if args.armed and not venue.armed:
         parser.error("Server real-money acknowledgement is required for execution")
     public = BinancePublic()

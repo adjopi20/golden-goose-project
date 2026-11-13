@@ -15,13 +15,13 @@
   "source_run": "model_development/models/quiet_breakout/runs/ethusdc_combined_v01_p85_after/run.json",
   "source_run_sha256": "1b869cc3ee8918f5a8f3a110bf84df9fab7ceef27f69c43a6390fea7a38c9d9d",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261113_v4.json",
-    "sha256": "869cbb591360956a2c47cb25f4c4d90297c890689d79746768833173a5660f4c"
+    "path": "utils/engine/releases/shared_engine_20261113_v5.json",
+    "sha256": "3c291cd712ec1b3feb7bbcc0fbfb9c2759e7a73bd80ba9711bde10fd5d46b52c"
   },
   "strategy_sha256": "d2eda25407de44b5b87c03a436d659d0d5ddbeba9ec9a77b6273931ee60a5b92",
   "dependencies": {
     "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
-    "live_trading/burst_runtime.py": "f43a1b3fdaf2cd3c23d9da5a0c6d0c7adb295a67ecb3fe0bad90cc90ff626a96",
+    "live_trading/burst_runtime.py": "7506f21d01407f251482ce09e4016e9bb4a35b6a46c9ef7cb9f5e2e0819d6a86",
     "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
     "utils/engine/execution/burst_futures.py": "77fd05cd6a927a197a7198aeac6e70dd45eecba32e9560ff5640fa507ad6ad71",
     "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",

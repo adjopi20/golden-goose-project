@@ -124,10 +124,8 @@ services:
       - /data/quiet_breakout_stable.sqlite
       - --api-key-file
       - /run/account-secrets/api-key
-      - --private-key-file
-      - /run/account-secrets/ed25519.pem
-      - --passphrase-file
-      - /run/account-secrets/passphrase
+      - --hmac-secret-file
+      - /run/account-secrets/hmac-secret
       - --market-nats-url
       - nats://nats:4222
       - --armed
@@ -144,10 +142,8 @@ services:
       - /data/quiet_breakout_ethusdc_stable.sqlite
       - --api-key-file
       - /run/account-secrets/api-key
-      - --private-key-file
-      - /run/account-secrets/ed25519.pem
-      - --passphrase-file
-      - /run/account-secrets/passphrase
+      - --hmac-secret-file
+      - /run/account-secrets/hmac-secret
       - --market-nats-url
       - nats://nats:4222
       - --armed
@@ -164,10 +160,8 @@ services:
       - /data/quiet_breakout_uniusdc_stable_position_addition.sqlite
       - --api-key-file
       - /run/account-secrets/api-key
-      - --private-key-file
-      - /run/account-secrets/ed25519.pem
-      - --passphrase-file
-      - /run/account-secrets/passphrase
+      - --hmac-secret-file
+      - /run/account-secrets/hmac-secret
       - --market-nats-url
       - nats://nats:4222
       - --armed
@@ -184,10 +178,8 @@ services:
       - /data/quiet_breakout_tail_dependent_position_addition.sqlite
       - --api-key-file
       - /run/account-secrets/api-key
-      - --private-key-file
-      - /run/account-secrets/ed25519.pem
-      - --passphrase-file
-      - /run/account-secrets/passphrase
+      - --hmac-secret-file
+      - /run/account-secrets/hmac-secret
       - --market-nats-url
       - nats://nats:4222
       - --armed
@@ -233,10 +225,8 @@ services:
       - UNIUSDC
       - --api-key-file
       - /run/account-secrets/api-key
-      - --private-key-file
-      - /run/account-secrets/ed25519.pem
-      - --passphrase-file
-      - /run/account-secrets/passphrase
+      - --hmac-secret-file
+      - /run/account-secrets/hmac-secret
     healthcheck:
       <<: *health
       test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit-quiet-core.sqlite", "--keys", "worker_heartbeat_ms"]
@@ -252,10 +242,8 @@ services:
       - HYPEUSDT
       - --api-key-file
       - /run/account-secrets/api-key
-      - --private-key-file
-      - /run/account-secrets/ed25519.pem
-      - --passphrase-file
-      - /run/account-secrets/passphrase
+      - --hmac-secret-file
+      - /run/account-secrets/hmac-secret
     healthcheck:
       <<: *health
       test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit-quiet-tail.sqlite", "--keys", "worker_heartbeat_ms"]

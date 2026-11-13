@@ -3,7 +3,7 @@
 !utils/**/
 !utils/**/*.py
 !utils/engine/deploy/requirements-paper.txt
-!utils/engine/releases/shared_engine_20261113_v4.json
+!utils/engine/releases/shared_engine_20261113_v5.json
 !indicator/
 !indicator/**/
 !indicator/**/*.py

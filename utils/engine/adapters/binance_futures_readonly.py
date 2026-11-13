@@ -1,5 +1,6 @@
 """Allowlisted Binance USD-M GETs only. No order, cancel, or account mutation API."""
 import base64
+import hmac
 from pathlib import Path
 import re
 import time
@@ -30,7 +31,11 @@ class BinanceFuturesReadOnly:
                '/fapi/v1/openOrders', '/fapi/v1/openAlgoOrders',
                '/fapi/v1/symbolConfig', '/fapi/v1/commissionRate'}
 
-    def __init__(self, *, api_key_file=None, private_key_file=None, passphrase_file=None, session=None, api_key=None):
+    def __init__(self, *, api_key_file=None, private_key_file=None, passphrase_file=None,
+                 hmac_secret_file=None, session=None, api_key=None):
+        if hmac_secret_file is not None and (private_key_file is not None or passphrase_file is not None):
+            raise PreflightError('Choose one Binance signing method per account')
+        self.hmac_secret_file = hmac_secret_file
         self.api_key_file = api_key_file
         self._provided_key = api_key
         self.private_key_file = private_key_file
@@ -53,6 +58,12 @@ class BinanceFuturesReadOnly:
             raise PreflightError('API key file must contain the API key as plain text') from None
         if not re.fullmatch(r'[A-Za-z0-9]{16,512}', key):
             raise PreflightError('Invalid API key file; do not paste a private key into it')
+        if self.hmac_secret_file is not None:
+            secret = secret_bytes(self.hmac_secret_file, 1024).strip()
+            if not re.fullmatch(rb'[A-Za-z0-9]{16,512}', secret):
+                raise PreflightError('Invalid Binance HMAC secret file')
+            self._key, self._signer = key, secret
+            return
         pem = secret_bytes(self.private_key_file, 65536)
         password = None
         if self.passphrase_file:
@@ -68,8 +79,14 @@ class BinanceFuturesReadOnly:
         except (ValueError, TypeError, UnsupportedAlgorithm):
             raise PreflightError('Cannot load private PEM; check key type and passphrase mount') from None
         if not isinstance(signer, Ed25519PrivateKey):
-            raise PreflightError('This pilot requires an Ed25519 private key; RSA/HMAC are not assumed')
+            raise PreflightError('The PEM signing key must be Ed25519')
         self._key, self._signer = key, signer
+
+    def _signature(self, fields):
+        payload = urlencode(fields).encode('ascii')
+        if self.hmac_secret_file is not None:
+            return hmac.digest(self._signer, payload, 'sha256').hex()
+        return base64.b64encode(self._signer.sign(payload)).decode('ascii')
 
     def get(self, path, **parameters):
         if path not in self.PUBLIC | self.PRIVATE:
@@ -82,8 +99,7 @@ class BinanceFuturesReadOnly:
             if self.offset is None:
                 raise PreflightError('Synchronize server time before authenticated reads')
             params.update(timestamp=int(time.time() * 1000) + self.offset, recvWindow=5000)
-            payload = urlencode(params)
-            params['signature'] = base64.b64encode(self._signer.sign(payload.encode('ascii'))).decode('ascii')
+            params['signature'] = self._signature(params)
             headers['X-MBX-APIKEY'] = self._key
         try:
             response = self.http.get(self.BASE + path, params=params, headers=headers,

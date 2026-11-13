@@ -1,5 +1,6 @@
 from copy import deepcopy
 import base64
+import hmac
 from datetime import date, timedelta
 from decimal import Decimal as D
 import json
@@ -541,6 +542,43 @@ def test_adapter_signed_post_is_gated_and_never_retried(tmp_path):
         with pytest.raises(ValueError):client.submit('ENTRY',dict(payload,quantity=bad))
     assert len(calls)==2
     with pytest.raises(ValueError):client.cancel('manual-order',symbol='ETHUSDC')
+
+
+def test_hmac_signs_get_submit_and_cancel_without_leaking_secret(tmp_path):
+    from utils.engine.monitoring.binance_audit import BinanceAuditReads
+
+    secret = b'LocalSyntheticHmacSecret1234'
+    path = tmp_path / 'hmac-secret'
+    path.write_bytes(secret + b'\n')
+    http = FakeHTTP(payload={'orderId': 1})
+    http.request = lambda method, url, **kw: http.get(url, **kw)
+    config = dict(api_key='A'*64, hmac_secret_file=path, session=http)
+    client = FuturesOrders(**config, execution_enabled=True, acknowledgement='I_UNDERSTAND_REAL_MONEY')
+    audit = BinanceAuditReads(**config)
+    client.offset = audit.offset = 0
+    audit.get('/fapi/v1/allOrders', symbol='ETHUSDC')
+    client.submit('ENTRY', dict(symbol='ETHUSDC', side='BUY', positionSide='BOTH',
+                                type='MARKET', quantity='.01', newClientOrderId='ggp-hmac-entry',
+                                newOrderRespType='RESULT'))
+    client.cancel('ggp-hmac-entry', symbol='ETHUSDC')
+
+    assert len(http.calls) == 3
+    for _, options in http.calls:
+        fields = dict(options.get('data') or options['params'])
+        signature = fields.pop('signature')
+        assert signature == hmac.new(secret, urlencode(fields).encode('ascii'), 'sha256').hexdigest()
+        assert options['headers'] == {'X-MBX-APIKEY': 'A'*64}
+    http.status = 400
+    http.payload = {'code': -1022, 'msg': 'Rejected ' + secret.decode()}
+    with pytest.raises(VenueError) as caught:
+        client.read('/fapi/v1/openOrders')
+    assert caught.value.reason == 'Rejected [redacted]'
+
+    disarmed = FuturesOrders(**config)
+    with pytest.raises(ValueError, match='mutation is OFF'):
+        disarmed.cancel('ggp-hmac-entry', symbol='ETHUSDC')
+    with pytest.raises(ValueError, match='Choose one'):
+        FuturesOrders(**config, private_key_file=path)
 
 
 @pytest.mark.parametrize('message', [None, {'msg':'bad'}, 'x'*1025,

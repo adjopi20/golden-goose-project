@@ -148,7 +148,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)
     parser.add_argument("--api-key-file", type=Path)
-    parser.add_argument("--private-key-file", type=Path)
+    signer = parser.add_mutually_exclusive_group()
+    signer.add_argument("--private-key-file", type=Path)
+    signer.add_argument("--hmac-secret-file", type=Path)
     parser.add_argument("--passphrase-file", type=Path)
     parser.add_argument("--symbol", action="append")
     parser.add_argument("--since", type=date.fromisoformat)
@@ -157,12 +159,14 @@ def main(argv=None):
     mode.add_argument("--report", action="store_true")
     parser.add_argument("--journal", type=Path, action="append", default=[])
     args = parser.parse_args(argv)
+    if args.passphrase_file and not args.private_key_file:
+        parser.error("--passphrase-file requires --private-key-file")
     if args.report:
         with closing(sqlite3.connect(args.database.resolve().as_uri() + "?mode=ro", uri=True)) as db:
             for row in compare_journals(db, args.journal):
                 print(json.dumps(row, allow_nan=False))
         return 0
-    if not args.symbol or not args.api_key_file or not args.private_key_file:
+    if not args.symbol or not args.api_key_file or not (args.private_key_file or args.hmac_secret_file):
         parser.error("Specify account mounts and at least one --symbol")
     stop = Event()
     signal.signal(signal.SIGTERM, lambda *_: stop.set())
@@ -170,7 +174,7 @@ def main(argv=None):
     os.umask(0o077)
     symbols = sorted(set(args.symbol))
     client = BinanceAuditReads(api_key_file=args.api_key_file, private_key_file=args.private_key_file,
-                               passphrase_file=args.passphrase_file)
+                               passphrase_file=args.passphrase_file, hmac_secret_file=args.hmac_secret_file)
     with closing(client), closing(sqlite3.connect(args.database, timeout=5)) as db:
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if tables - {"metadata", "events"}:

@@ -60,12 +60,12 @@ two directories on Biznet for the new account groups.
 - QUIET_TAIL_SECRETS points to
   /home/adjopi20/.config/golden-goose/quiet-tail/futures
 
-Each directory holds api-key, ed25519.pem and passphrase. The private key
-and passphrase stay on Biznet. Docker mounts the directory read-only under
-/run/account-secrets. Give the server user with UID 1000 access, with mode
-0700 for the directory and 0600 for files. Use the Ed25519 public key when
-registering each API key on Binance, with Futures permission and a Biznet
-IP allowlist. Keep one-way and single-asset mode, and isolated margin with
+Quiet directories hold api-key and hmac-secret as separate plain-text files.
+Enter their values directly on Biznet. The Burst profile uses api-key,
+ed25519.pem and passphrase. Docker mounts credentials read-only under
+/run/account-secrets. Use UID 1000 ownership, directory mode 0700 and file
+mode 0600. Give each Binance key Futures permission and restrict it to the
+Biznet egress IP. Keep one-way and single-asset mode, and isolated margin with
 auto-add disabled on each assigned symbol. Fund each group only with the
 collateral needed for its assets. The workers check distinct native
 account aliases and use their own virtual 100-unit starting balances.

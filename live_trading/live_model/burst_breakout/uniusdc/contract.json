@@ -13,13 +13,13 @@
   "quantity_unit": "UNI",
   "pnl_unit": "USDC",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261113_v4.json",
-    "sha256": "869cbb591360956a2c47cb25f4c4d90297c890689d79746768833173a5660f4c"
+    "path": "utils/engine/releases/shared_engine_20261113_v5.json",
+    "sha256": "3c291cd712ec1b3feb7bbcc0fbfb9c2759e7a73bd80ba9711bde10fd5d46b52c"
   },
   "strategy_sha256": "c93c5c6370c596874a446748c0f4108682480391fe382f71571665e07352c4a8",
   "dependencies": {
     "live_trading/live_model/burst_breakout/policy.py": "77d705b0dc436903a41bb5b1165981937bd99846867fd6e6892afaef5043cb86",
-    "live_trading/burst_runtime.py": "f43a1b3fdaf2cd3c23d9da5a0c6d0c7adb295a67ecb3fe0bad90cc90ff626a96",
+    "live_trading/burst_runtime.py": "7506f21d01407f251482ce09e4016e9bb4a35b6a46c9ef7cb9f5e2e0819d6a86",
     "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
     "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
     "utils/engine/execution/burst_futures.py": "77fd05cd6a927a197a7198aeac6e70dd45eecba32e9560ff5640fa507ad6ad71",

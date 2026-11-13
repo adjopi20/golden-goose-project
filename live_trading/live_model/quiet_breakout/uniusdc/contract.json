@@ -10,13 +10,13 @@
   "risk_fraction": 0.01,
   "notional_equity_cap": 5,
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261113_v4.json",
-    "sha256": "869cbb591360956a2c47cb25f4c4d90297c890689d79746768833173a5660f4c"
+    "path": "utils/engine/releases/shared_engine_20261113_v5.json",
+    "sha256": "3c291cd712ec1b3feb7bbcc0fbfb9c2759e7a73bd80ba9711bde10fd5d46b52c"
   },
   "strategy_sha256": "d3810c431a7517d095eff15f9b5855cda6480eabaab49ee36c55e540787fcf09",
   "dependencies": {
     "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
-    "live_trading/burst_runtime.py": "f43a1b3fdaf2cd3c23d9da5a0c6d0c7adb295a67ecb3fe0bad90cc90ff626a96",
+    "live_trading/burst_runtime.py": "7506f21d01407f251482ce09e4016e9bb4a35b6a46c9ef7cb9f5e2e0819d6a86",
     "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
     "utils/engine/execution/burst_futures.py": "77fd05cd6a927a197a7198aeac6e70dd45eecba32e9560ff5640fa507ad6ad71",
     "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",
