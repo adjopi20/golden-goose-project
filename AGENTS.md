@@ -93,6 +93,26 @@ firing while canceled. Verify the isolated image and perform read-only broker
 preflight before switching live workers. Use venue testnet to verify any new
 order semantics when available, and document the tested environment.
 
+## Live execution incident learning — 2026-11-15
+
+Before developing or changing a live model, read
+`docs/operations/LIVE_EXECUTION_LESSONS.md`. Apply its error-classification,
+reconciliation, peer-account and regression rules to all seven live models,
+especially any model with ADD/pyramiding. Strategy-specific policies must not
+fork venue fill parsing or recovery mechanics. ENTRY, ADD and shared margin
+must use the same validated execution-fill source; a FILLED order response
+need not contain avgPrice. Never substitute a quote or zero for an execution.
+
+For every live bug fixed, append evidence, root cause or explicit uncertainty,
+affected models/account peers, recovery behavior, fix, regression tests, and
+remaining limitations to that incident-learning record in the same change.
+Distinguish process recovery from trade/setup recovery: a cleared worker_error
+can follow a skipped pending entry. Do not claim a generic retry fixes a
+persistent schema assumption or that one VenueError diagnosis explains every
+venue failure. Never log secrets, signed URLs, raw account responses or unfiltered
+exception text to improve diagnostics. Keep historical facts and proposed work
+separate from implemented and deployed changes.
+
 ## Operational package placement — 2026-11-03
 
 This supersedes the earlier six-candidates-in-live placement. Research copies stay

@@ -506,7 +506,8 @@ def test_expired_add_trigger_does_not_submit(tmp_path, monkeypatch):
         store.close()
 
 
-def test_selected_burst_rm_e_add_reconciles_before_peer_entry(tmp_path, monkeypatch):
+@pytest.mark.parametrize("missing_avg_price", [False, True])
+def test_selected_burst_rm_e_add_reconciles_before_peer_entry(tmp_path, monkeypatch, missing_avg_price):
     from live_trading.live_model.burst_breakout.hypeusdt.strategy import Strategy as BurstHype
     from live_trading.live_model.burst_breakout.injusdt.strategy import Strategy as BurstInj
     from utils.engine.execution.burst_futures import CoordinatedBurstAccount
@@ -578,6 +579,12 @@ def test_selected_burst_rm_e_add_reconciles_before_peer_entry(tmp_path, monkeypa
         assert resumed.s.db.execute("SELECT COUNT(*) FROM fills").fetchone()[0] == 3
         assert resumed.s.equity(0) == lane.wallet - Decimal(200)
         assert [role for role, _ in lane.posts].count("ADD") == 1
+        if missing_avg_price:
+            add = resumed._addition_order(resumed.s.active())
+            response = json.loads(add["response"])
+            response.pop("avgPrice")
+            resumed.s.db.execute("UPDATE orders SET response=? WHERE client_id=?",
+                                 (json.dumps(response), add["client_id"]))
         inj.cycle(clock[0])
         assert inj.s.active()["state"] == "OPEN"
         peer_plan = json.loads(inj.s.active()["plan"])
