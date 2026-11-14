@@ -22,6 +22,24 @@ STOP_TRIGGERING = {"TRIGGERING", "TRIGGERED"}
 UNCERTAIN_ORDERS = {"SENDING", "UNKNOWN"}
 
 
+def reconciled_order_fills(store, row):
+    """Read an order's actual fills; never infer execution price from a quote."""
+    native = json.loads(row["response"] or "{}")
+    oid = native.get("orderId")
+    if not oid:
+        return None
+    fills = store.db.execute(
+        "SELECT quantity,price,payload FROM fills WHERE order_id=? AND session_id=?",
+        (str(oid), row["session_id"]),
+    ).fetchall()
+    quantity = sum((positive(fill["quantity"]) for fill in fills), Decimal(0))
+    if not fills or quantity != number(native.get("executedQty", "0")):
+        return None
+    price = sum((positive(fill["quantity"]) * positive(fill["price"]) for fill in fills), Decimal(0)) / quantity
+    first = min(json.loads(fill["payload"])["time"] for fill in fills)
+    return quantity, price, first
+
+
 def plan_entry(intention, spec, quote, equity, available, settings, *, partial=False, risk_fraction=Decimal("0.01")):
     rules = quantity_rules(spec)
     long = intention["direction"] == "long"
@@ -317,13 +335,17 @@ class CoordinatedBurstAccount(SharedBurstAccount):
                     raise EntryAdmissionBusy("peer_position_margin_unverified")
                 actual = positive(plan["actual_entry_price"]) * positive(plan["actual_entry_quantity"])
                 addition = member.s.db.execute(
-                    "SELECT response FROM orders WHERE session_id=? AND role='ADD'", (active["session"],),
+                    "SELECT * FROM orders WHERE session_id=? AND role='ADD'", (active["session"],),
                 ).fetchone()
                 if addition is not None:
                     order = json.loads(addition["response"] or "{}")
                     filled = number(order.get("executedQty", "0"))
                     if filled:
-                        actual += filled * positive(order["avgPrice"])
+                        summary = reconciled_order_fills(member.s, addition)
+                        if summary is None:
+                            raise EntryAdmissionBusy("peer_add_fills_not_complete")
+                        quantity, price, _ = summary
+                        actual += quantity * price
                 reserved += max(actual, positive(plan["notional"])) / positive(plan["entry_leverage"])
         return reserved
 
@@ -869,15 +891,11 @@ class BurstFuturesExecutor(FuturesExecutor):
                 self.cancel(entry)
             return
         self.sync_fills(entry)
-        native = json.loads(entry["response"] or "{}")
-        oid = str(native.get("orderId", ""))
-        fills = [json.loads(row["payload"]) for row in self.s.db.execute("SELECT payload FROM fills WHERE order_id=?", (oid,))]
-        qty = sum((positive(fill["qty"]) for fill in fills), Decimal(0))
-        if qty != number(native.get("executedQty", "0")) or not fills:
+        summary = reconciled_order_fills(self.s, entry)
+        if summary is None:
             return
+        qty, price, first = summary
         if "actual_entry_price" not in plan:
-            price = sum((positive(f["qty"])*positive(f["price"]) for f in fills), Decimal(0)) / qty
-            first = min(f["time"] for f in fills)
             risk = qty * abs(price - positive(plan["stop"]))
             plan.update(actual_entry_price=str(price), actual_entry_quantity=str(qty), first_fill_ms=first,
                         force_exit_ms=first+HOLD_MS, actual_initial_price_risk=str(risk),

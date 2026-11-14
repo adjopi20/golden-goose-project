@@ -4,8 +4,9 @@ from decimal import Decimal
 import json
 import time
 
+from utils.engine.adapters.binance_execution import VenueError
 from utils.engine.contracts import canonical_json
-from utils.engine.execution.burst_futures import BurstFuturesOrders, CoordinatedBurstAccount, EntryAdmissionBusy
+from utils.engine.execution.burst_futures import BurstFuturesOrders, CoordinatedBurstAccount, EntryAdmissionBusy, reconciled_order_fills
 from utils.engine.execution.futures_preflight import number, positive, quantity_rules
 from utils.engine.execution.preny_futures import FuturesExecutor, TERMINAL, order_id, rounded
 
@@ -220,8 +221,18 @@ class PositionAddition:
             return self._exit(session, amount, "stop_left_unclosed_quantity")
         if protection in {"triggering", "uncertain"}:
             return
+        summary = None
+        fill_error = None
         if filled:
-            fill_price = positive(native["avgPrice"])
+            summary = reconciled_order_fills(self.s, addition)
+            if summary is None:
+                try:
+                    self.sync_fills(addition)
+                except VenueError as error:
+                    fill_error = error
+                summary = reconciled_order_fills(self.s, addition)
+        if summary is not None:
+            _, fill_price, _ = summary
             distance = sign * (fill_price - Decimal(addition_plan["stop"]))
             if (distance <= 0 or filled * distance > Decimal(addition_plan["risk_cap"])
                     or (Decimal(addition_plan["base_remaining"]) + filled) * fill_price
@@ -230,6 +241,8 @@ class PositionAddition:
 
         # A still-live add could increase exposure beyond a quantity-based guard.
         if addition["state"] not in TERMINAL:
+            if filled and summary is None:
+                raise ValueError("position_addition_fills_not_complete") from fill_error
             return
         trade = json.loads(self.s.meta("live_excursion", "null"))
         if trade and trade["setup_id"] == session["id"] and trade["timestamp_ms"] >= plan["first_fill_ms"]:
@@ -238,3 +251,6 @@ class PositionAddition:
                 self._exit(session, amount, "protective_stop_not_confirmed")
             elif protection == "trigger_finished":
                 self._exit(session, amount, "stop_left_unclosed_quantity")
+
+        if filled and summary is None:
+            raise ValueError("position_addition_fills_not_complete") from fill_error

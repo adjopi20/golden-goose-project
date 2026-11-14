@@ -382,9 +382,10 @@ def open_addition_lane(tmp_path, monkeypatch, model_type, sign=1):
 
 
 def advance_addition(executor, store, lane, clock, model_type, *, sign=1):
-    if model_type is UniStable:
+    if model_type.RISK_MANAGEMENT in ("rm-d", "rm-e"):
         tp = next(row for row in lane.orders.values() if row.get("type") == "LIMIT")
-        lane.fill(tp["clientOrderId"], maker=True)
+        if tp["status"] != "FILLED":
+            lane.fill(tp["clientOrderId"], maker=True)
     lane.clock = clock[0] = NOW + 5000
     mark = dict(setup_id=model_type.ALLOCATION_ID, timestamp_ms=clock[0], agg_trade_id=10,
                 price=1000 + sign * 20)
@@ -599,3 +600,111 @@ def test_selected_burst_sizing_uses_pinned_base_risk(mechanisms, multiplier):
         assert executor.entry_risk_fraction(dict(confirmation_mechanisms=mechanisms, entry_risk_fraction=.99)) == (
             Decimal(base_risk) * multiplier
         )
+
+
+@pytest.mark.parametrize("model_id", [
+    "burst_hypeusdt_16h_f_p1_initiative_add",
+    "quiet_breakout_tail_dependent_position_addition",
+    "quiet_breakout_uniusdc_stable_position_addition",
+])
+@pytest.mark.parametrize("sign", [1, -1])
+def test_missing_add_avg_price_recovers_and_closes(tmp_path, monkeypatch, model_id, sign):
+    from live_trading.burst_runtime import portfolio_models
+    _, model_type, factory = portfolio_models()[model_id]
+    executor, store, venue, lane, clock = open_addition_lane(tmp_path, monkeypatch, model_type, sign)
+    executor = factory(store, venue, executor.c)
+    try:
+        advance_addition(executor, store, lane, clock, model_type, sign=sign)
+        submit = lane.submit
+
+        def without_average(role, params):
+            response = submit(role, params)
+            if role == "ADD":
+                response.pop("avgPrice", None)
+                lane.orders[response["clientOrderId"]].pop("avgPrice", None)
+            return response
+
+        monkeypatch.setattr(lane, "submit", without_average)
+        executor.cycle(clock[0])
+        add = store.db.execute("SELECT * FROM orders WHERE role='ADD'").fetchone()
+        assert add["state"] == "FILLED" and "avgPrice" not in json.loads(add["response"])
+        # Reopen the journal as on a worker restart, preserving native orders.
+        config, path = executor.c, tmp_path / model_type.DATABASE
+        store.close()
+        store = BurstFuturesStore(path, config)
+        resumed = factory(store, venue, config)
+        mark = dict(setup_id=model_type.ALLOCATION_ID, timestamp_ms=clock[0],
+                    agg_trade_id=12, price=1000 + sign * 40)
+        store.set_meta("live_excursion", json.dumps(mark))
+        resumed.cycle(clock[0], new_entries_ok=False)
+        assert json.loads(store.active()["plan"])["risk_lock_r"] == 2
+        assert sum(role == "ADD" for role, _ in lane.posts) == 1
+        lane.clock = clock[0] = NOW + HOLD_MS
+        resumed.cycle(clock[0], new_entries_ok=False)
+        resumed.cycle(clock[0], new_entries_ok=False)
+        assert lane.position == 0 and store.active() is None
+        assert lane.stop_at_close == [True]
+    finally:
+        store.close()
+
+
+def test_delayed_add_fills_keep_trailing_and_time_exit(tmp_path, monkeypatch):
+    executor, store, venue, lane, clock = open_addition_lane(tmp_path, monkeypatch, TailDependent)
+    try:
+        advance_addition(executor, store, lane, clock, TailDependent)
+        lane.hide_fills = True
+        with pytest.raises(ValueError, match="position_addition_fills_not_complete"):
+            executor.cycle(clock[0])
+        store.set_meta("live_excursion", json.dumps(dict(setup_id=TailDependent.ALLOCATION_ID,
+                       timestamp_ms=clock[0], agg_trade_id=12, price=1040)))
+        with pytest.raises(ValueError, match="position_addition_fills_not_complete"):
+            executor.cycle(clock[0], new_entries_ok=False)
+        assert json.loads(store.active()["plan"])["risk_lock_r"] == 2
+        lane.clock = clock[0] = NOW + HOLD_MS
+        executor.cycle(clock[0], new_entries_ok=False)
+        assert lane.position == 0 and lane.stop_at_close == [True]
+        lane.hide_fills = False
+        executor.cycle(clock[0], new_entries_ok=False)
+        assert store.active() is None
+        assert sum(role == "ADD" for role, _ in lane.posts) == 1
+    finally:
+        store.close()
+
+
+def test_add_margin_uses_weighted_fills_and_defers_incomplete_history(tmp_path, monkeypatch):
+    from utils.engine.execution.burst_futures import (
+        CoordinatedBurstAccount, EntryAdmissionBusy, reconciled_order_fills,
+    )
+    executor, store, _, lane, clock = open_addition_lane(tmp_path, monkeypatch, TailDependent)
+    try:
+        advance_addition(executor, store, lane, clock, TailDependent)
+        lane.initial_fill = Decimal("0.001")
+        executor.cycle(clock[0])
+        add = executor._addition_order(store.active())
+        lane.quote_price = Decimal("1021")
+        lane.fill(add["client_id"])
+        lane.orders[add["client_id"]].pop("avgPrice")
+        executor.cycle(clock[0])
+        add = executor._addition_order(store.active())
+        qty, price, _ = reconciled_order_fills(store, add)
+        fills = store.db.execute("SELECT quantity,price FROM fills WHERE order_id=?",
+                                (str(json.loads(add["response"])["orderId"]),)).fetchall()
+        assert len(fills) == 2
+        assert price == sum(Decimal(f["quantity"]) * Decimal(f["price"]) for f in fills) / qty
+        assert Decimal("1020") < price < Decimal("1021")
+        plan = json.loads(store.active()["plan"])
+        plan["entry_leverage"] = 5
+        store.db.execute("UPDATE sessions SET plan=? WHERE session=?",
+                         (json.dumps(plan), store.active()["session"]))
+        account = object.__new__(CoordinatedBurstAccount)
+        account.local = executor
+        account.executors = {executor.symbol: executor}
+        expected = max(Decimal(plan["actual_entry_price"]) * Decimal(plan["actual_entry_quantity"])
+                       + qty * price, Decimal(plan["notional"])) / 5
+        assert account._reserved_margin(store.asset, include_local=True) == expected
+        store.db.execute("DELETE FROM fills WHERE order_id=? AND quantity=?",
+                         (str(json.loads(add["response"])["orderId"]), str(fills[0]["quantity"])))
+        with pytest.raises(EntryAdmissionBusy, match="peer_add_fills_not_complete"):
+            account._reserved_margin(store.asset, include_local=True)
+    finally:
+        store.close()

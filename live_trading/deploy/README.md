@@ -77,3 +77,22 @@ as their accounts pass preflight. Run the matching worker with --preflight
 instead of --armed to check the broker settings without sending orders.
 A fresh worker needs native market warmup before a signal can become eligible.
 Start BTC MVRV via its own signal-monitor Compose template and signal volume.
+
+
+## ADD fill reconciliation — 2026-11-15
+
+The shared engine now derives ENTRY and ADD execution prices from the journal's
+Binance trade fills, matched by order and session. A complete quantity must match
+executedQty before the weighted price is used for addition-risk checks or shared
+margin reservation. A missing avgPrice in a FILLED submission response is not an
+execution failure. Reuse existing fills on restart; never resubmit a terminal ADD.
+Incomplete ADD fills defer new shared-account admission. Native stop reconciliation,
+trailing updates for a terminal ADD, and time/flat exits remain available while
+fill history catches up. No quote price or zero-price fallback is permitted.
+
+Offline regression includes all three ADD variants in both directions, persisted
+response recovery without avgPrice, weighted partial fills, incomplete peer margin,
+late fill history, and native protection through time exit. Existing order-race,
+rejection, lost-acknowledgement and stop-replacement regression remains required.
+The legacy paper package pin failures in test_frozen_models also reproduce on the
+unmodified e30af19 baseline; they are outside this seven-model live release.
