@@ -1,0 +1,182 @@
+# Optional overlay for compose.yaml. Only use on the same NATS project/volume.
+x-shadow: &shadow
+  image: ${GG_PRIVATE_SHADOW_IMAGE:?build and verify the shadow image}
+  profiles: [private-shadow]
+  entrypoint: ["python", "-m", "utils.engine.adapters.binance_private_stream"]
+  init: true
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ["/tmp:size=8m"]
+  logging:
+    driver: local
+    options: {max-size: "5m", max-file: "2"}
+
+x-manager: &manager
+  <<: *shadow
+  networks: [broker, outbound]
+  group_add: ["${GG_BINANCE_REST_GID:-19901}"]
+
+x-consumer: &consumer
+  <<: *shadow
+  networks: [broker]
+
+x-init: &init
+  <<: *shadow
+  profiles: [private-shadow-init]
+  restart: "no"
+  networks: [broker]
+
+x-observed: &observed
+  type: bind
+  source: ${GG_PRIVATE_OBSERVED_DIR:?set the existing journal directory}
+  target: /observed
+  read_only: true
+  bind: {create_host_path: false}
+
+x-budget: &budget
+  type: bind
+  source: ${GG_BINANCE_REST_BUDGET_DIR:?set the existing shared limiter directory}
+  target: /rest-budget
+  bind: {create_host_path: false}
+
+services:
+  nats:
+    env_file: ["${GG_PRIVATE_NATS_ENV_FILE:?set the external NATS credentials env file}"]
+    volumes:
+      - ./nats.private.conf:/etc/nats/nats.conf:ro
+  private-burst-manager:
+    <<: *manager
+    command: ["manager","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: private-burst
+      BINANCE_REST_ACCOUNT: burst
+    volumes:
+      - *observed
+      - private_burst_manager:/data
+      - *budget
+      - type: bind
+        source: ${GG_PRIVATE_BURST_BINANCE_DIR:?set read-only Binance credential directory}
+        target: /run/binance
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/burst.manager
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+  private-burst-consumer:
+    <<: *consumer
+    command: ["consumer","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    volumes:
+      - *observed
+      - private_burst_consumer:/data
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/burst.consumer
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+  private-burst-init:
+    <<: *init
+    command: ["init","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    volumes:
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/burst.init
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+  private-quiet-core-manager:
+    <<: *manager
+    command: ["manager","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}","--hmac"]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: private-quiet-core
+      BINANCE_REST_ACCOUNT: quiet-core
+    volumes:
+      - *observed
+      - private_quiet_core_manager:/data
+      - *budget
+      - type: bind
+        source: ${GG_PRIVATE_QUIET_CORE_BINANCE_DIR:?set read-only Binance credential directory}
+        target: /run/binance
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/quiet-core.manager
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+  private-quiet-core-consumer:
+    <<: *consumer
+    command: ["consumer","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    volumes:
+      - *observed
+      - private_quiet_core_consumer:/data
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/quiet-core.consumer
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+  private-quiet-core-init:
+    <<: *init
+    command: ["init","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    volumes:
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/quiet-core.init
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+  private-quiet-tail-manager:
+    <<: *manager
+    command: ["manager","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}","--hmac"]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: private-quiet-tail
+      BINANCE_REST_ACCOUNT: quiet-tail
+    volumes:
+      - *observed
+      - private_quiet_tail_manager:/data
+      - *budget
+      - type: bind
+        source: ${GG_PRIVATE_QUIET_TAIL_BINANCE_DIR:?set read-only Binance credential directory}
+        target: /run/binance
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/quiet-tail.manager
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+  private-quiet-tail-consumer:
+    <<: *consumer
+    command: ["consumer","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    volumes:
+      - *observed
+      - private_quiet_tail_consumer:/data
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/quiet-tail.consumer
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+  private-quiet-tail-init:
+    <<: *init
+    command: ["init","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    volumes:
+      - type: bind
+        source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/quiet-tail.init
+        target: /run/nats/password
+        read_only: true
+        bind: {create_host_path: false}
+
+volumes:
+  private_burst_manager:
+  private_burst_consumer:
+  private_quiet_core_manager:
+  private_quiet_core_consumer:
+  private_quiet_tail_manager:
+  private_quiet_tail_consumer:

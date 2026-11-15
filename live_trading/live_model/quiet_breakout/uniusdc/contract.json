@@ -10,8 +10,8 @@
   "risk_fraction": 0.01,
   "notional_equity_cap": 5,
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261115_v9.json",
-    "sha256": "36fa85ccf06c54dbb31c5ea38a6cab5bb6c24d1da2db502fc4fe038dde4ddd7a"
+    "path": "utils/engine/releases/shared_engine_20261115_v10.json",
+    "sha256": "bab099765963a7677debbeda0013bb9c4277d69dd8300fb0b7575292d187dc31"
   },
   "strategy_sha256": "d3810c431a7517d095eff15f9b5855cda6480eabaab49ee36c55e540787fcf09",
   "dependencies": {

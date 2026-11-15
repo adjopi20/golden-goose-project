@@ -13,8 +13,8 @@
   "quantity_unit": "HYPE",
   "pnl_unit": "USDT",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261115_v9.json",
-    "sha256": "36fa85ccf06c54dbb31c5ea38a6cab5bb6c24d1da2db502fc4fe038dde4ddd7a"
+    "path": "utils/engine/releases/shared_engine_20261115_v10.json",
+    "sha256": "bab099765963a7677debbeda0013bb9c4277d69dd8300fb0b7575292d187dc31"
   },
   "strategy_sha256": "a851d9df0527ed8bee238213c872ed0b6daa3f43846ed7522d0471532616e87b",
   "dependencies": {

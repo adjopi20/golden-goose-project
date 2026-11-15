@@ -24,6 +24,8 @@ GET_WEIGHT = {
 
 
 def request_weight(method, path, params):
+    if path == "/fapi/v1/listenKey" and method in {"POST", "PUT"}:
+        return 1
     if method == "GET":
         if path in GET_WEIGHT:
             return GET_WEIGHT[path]
@@ -166,7 +168,7 @@ class RestBudget:
     def reserve(self, method, path, params, *, background=False):
         weight = request_weight(method, path, params)
         product = "spot" if path.startswith("/api/") else "futures"
-        orders = method == "POST"
+        orders = method == "POST" and path != "/fapi/v1/listenKey"
         while self._pending_observations:
             if not self._write_observation(*self._pending_observations[0]):
                 raise RestDeferred("coordinator_response_pending", 1)

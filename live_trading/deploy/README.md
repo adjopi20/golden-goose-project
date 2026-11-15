@@ -174,3 +174,99 @@ configured worker labels are recorded.
 
 See the [VPS rollout and recovery record](../../docs/operations/LIVE_EXECUTION_LESSONS.md#vps-rollout-and-recovery-record-2026-11-15-wib)
 for deployed commits, final worker modes, and validation observed on the server.
+
+## Binance private user-data shadow
+
+The shadow overlay uses the existing NATS server. The base public configuration
+stays the default. Burst, Quiet Core and Quiet Tail have separate NATS accounts
+with no imports or exports. Publisher, consumer and provisioning credentials
+are distinct. The publisher can write its event subject. The consumer can pull
+its durable, acknowledge messages and read its stream/consumer status.
+
+NATS 2.12.12 disables JetStream in the implicit global account (`$G`) when
+explicit accounts opt in. The overlay sends existing unauthenticated public
+clients to `GG_PUBLIC` using `no_auth_user`. Plan a separate maintenance window
+for this broker cutover:
+
+1. Pause the public publishers and consumers at a recorded checkpoint. Record
+   stream sequence ranges and durable ACK floors. Use the NATS CLI to run
+   `nats backup stream <stream> <backup-directory> --consumers` for each file-backed
+   public stream. Keep the existing broker volume and original config available
+   for rollback. Check free disk capacity for both stored copies and backups.
+2. Restart the same broker with the overlay, retaining the Compose project and
+   volume. While clients stay paused, restore each snapshot into `GG_PUBLIC`
+   using `nats backup restore stream <backup-directory>` against that broker.
+   The unauthenticated NATS connection selects `GG_PUBLIC` in this overlay.
+3. Verify subjects, sequence ranges, durable ACK floors and the public
+   publish/pull path before resuming. Use the existing public feed recovery
+   procedure for any gaps during downtime. If restore or validation fails,
+   restart with the original config and volume before resuming publishers.
+   After writes resume, rollback needs a new checkpoint and reconciliation.
+   Provision private streams only after the public path is healthy.
+
+See the [NATS stream backup and restore guide](https://docs.nats.io/learn/backup-recovery/stream-backup-restore).
+
+Build the shadow image with utils/engine/deploy/Dockerfile.burst-live and keep
+the established Compose base file first when rendering it with the
+private_shadow.compose.yaml overlay in utils/engine/deploy/market_feed.
+Set GG_PRIVATE_SHADOW_IMAGE and GG_PRIVATE_RELEASE_SHA256 to the verified
+image and v10 manifest digest. Point GG_PRIVATE_OBSERVED_DIR at the journal
+directory and GG_BINANCE_REST_BUDGET_DIR at the existing coordinator, with
+the same GID and budget settings. The observed journal bind is read-only.
+Each consumer owns a separate shadow SQLite volume. Never mount its volume
+over a trading journal.
+
+Supply the broker's external GG_PRIVATE_NATS_ENV_FILE with
+GG_PUBLIC_NATS_FALLBACK_PASSWORD and unique high-entropy
+GG_PRIVATE_{BURST,QUIET_CORE,QUIET_TAIL}_{MANAGER,CONSUMER,INIT} passwords.
+Supply matching files named <account>.<role> in GG_PRIVATE_PASSWORD_DIR,
+readable only by the intended user, and read-only Binance credential
+directories via GG_PRIVATE_{BURST,QUIET_CORE,QUIET_TAIL}_BINANCE_DIR.
+Burst expects the current Ed25519 layout and the Quiet groups expect HMAC.
+Use exchange keys restricted to data access. The manager verifies the signed
+UID against the journal binding on every new session. The audit must also be
+attributed to that binding through the matching worker key hash. The manager
+can use a distinct read-only key for the same UID. Keep broker access on the
+trusted internal network, or configure TLS when crossing that boundary.
+
+Use the three private-<account>-init services once to provision the fixed
+GG_PRIVATE_V1 stream and gg_shadow_v1 durable inside each account. Existing
+configurations must match the expected stream and consumer policy. Then the
+private-shadow profile adds one manager and one consumer per account.
+The manager uses the routed private WebSocket, renews its listen key at 30
+minutes, checks ping/pong independently of account activity, and reconnects
+on expiration, connection loss or planned rotation before 24 hours. It
+verifies UID and obtains a budgeted position/open-order/conditional-order
+snapshot on connect. It refreshes that snapshot roughly every 15 minutes at
+background priority to recover the current view after overlap or gaps. It
+never calls a trading endpoint or deletes the account's listen key.
+
+Each account retains at most 50,000 messages, 32 MiB and 24 hours in its
+JetStream namespace. Saturation rejects new publications. Missing heartbeat
+or a stream sequence gap makes coverage incomplete. A new verified REST
+baseline can recover the present view. Earlier missed events stay
+unverified. The consumer stores a receipt before acknowledging, applies
+fills once by account/symbol/trade identity, and tracks algo and child
+order identities separately. Conflicts are diagnosed rather than applied as
+new fills. A changed stream generation requires an explicitly fresh shadow
+database and a new baseline. The consumer bounds local evidence retention to
+two days and reports connection liveness, pending deliveries, timestamp lag,
+snapshot overlap, REST comparison coverage and mismatch status. Late audit
+evidence is treated as provisional. A persistent mismatch requires comparable
+evidence to advance over at least two minutes.
+
+Before reducing polling, collect a representative shadow observation that
+includes flat and open positions, ENTRY/ADD/exit, partial fills, stop trigger
+and child completion, venue and broker disconnects, restart before and after
+ACK, and quiet-account periods. Confirm account and order attribution, zero
+duplicate fills, explained mismatches, restored state after gaps, and measured
+latency/backlog. Wallet balance updates are recorded as evidence. The current
+audit does not contain a comparable wallet balance checkpoint. REST snapshots
+are sequential reads, so an overlapping event or stale audit interval prevents
+a state-match claim. No polling or live trade logic is changed by this phase.
+
+Official references:
+- [Binance USD-M connection and supported private events](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/user-data-streams)
+- [Binance listen-key REST endpoints and weights](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/user-data-streams)
+- [Binance event field definitions](https://pkg.go.dev/github.com/binance/binance-connector-go/clients/derivativestradingusdsfutures/src/websocketstreams/models)
+- [NATS account isolation](https://docs.nats.io/learn/security/accounts-and-multitenancy)

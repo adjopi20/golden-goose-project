@@ -308,3 +308,33 @@ still applies, including the roughly 60-second ADD trigger window. Check the
 effective Compose override and running command at handoff so the pause does not
 persist unintentionally. Use the [deployment runbook](../../live_trading/deploy/README.md#shared-binance-rest-budget-rollout-and-rollback)
 for the live readiness checks and rollback procedure.
+
+## Private user-data stream shadow implementation (2026-11-15 WIB)
+
+During source preparation the seven workers, three audits and Binance
+collector were all verified on VPS release 63b6ba7. The alerts image was
+cfa6d84 and the broker was NATS 2.12.12. The private stream implementation
+is a separate opt-in package in the shared engine. It is not deployed.
+
+The manager uses listen-key REST start and renewal through the shared
+background limiter and verifies the account binding before opening the
+private WebSocket. Each account publishes normalized events to a separate
+NATS account on the existing broker instance. The shadow consumer compares
+durable receipts with read-only worker journals and audit snapshots. Its
+state, backlog and mismatch status never control live trading.
+
+NATS 2.12.12 does not expose the old global JetStream namespace once
+explicit accounts opt in. A local NATS test verified a snapshot/restore
+into the named public account, including the durable consumer ACK floor
+and the next published sequence. Production commissioning needs a separately
+scheduled broker cutover. The existing public configuration stays in use
+until then.
+
+An algo finish may represent a filled or canceled child. Keep the parent
+algo and actual child IDs separate, and use order trade events plus audit and
+journal fills as execution evidence. A quiet account can be connected. Check
+pong-derived heartbeat, consumer lag, recovery baseline, and advancing audit
+coverage separately. A snapshot after a gap establishes a new current view.
+It cannot make the missing streaming interval complete. For commissioning
+and evidence required before changing REST polling, see the
+[private shadow runbook](../../live_trading/deploy/README.md#binance-private-user-data-shadow).

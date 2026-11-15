@@ -1,3 +1,5 @@
 # Package and engine manifests verify the original Python and JSON bytes.
 *.py -text
 *.json -text
+utils/engine/deploy/market_feed/nats.private.conf text eol=lf
+utils/engine/deploy/market_feed/private_shadow.compose.yaml text eol=lf
