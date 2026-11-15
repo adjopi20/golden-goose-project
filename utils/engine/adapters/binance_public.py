@@ -7,6 +7,8 @@ import time
 import requests
 from websockets.sync.client import connect
 
+from utils.engine.adapters.binance_rest_budget import RestBudget, RestReadThrottled
+
 
 class UnrecoverableGap(RuntimeError):
     pass
@@ -24,23 +26,45 @@ def normalize(row, symbol):
                 price=price, quantity=quantity, buy=not row["m"])
 
 
+def validate_markets(get, symbols):
+    markets = {r["symbol"]:r for r in get("/fapi/v1/exchangeInfo")["symbols"]}
+    for symbol in symbols:
+        r = markets.get(symbol, {})
+        if r.get("status") != "TRADING" or r.get("contractType") != "PERPETUAL":
+            raise ValueError(f"Unavailable USD-M perpetual: {symbol}")
+    return {s:{k:markets[s][k] for k in ("symbol", "baseAsset", "quoteAsset", "marginAsset")}
+            for s in symbols}
+
+
 class BinancePublic:
     base = "https://fapi.binance.com"
 
-    def __init__(self):
+    def __init__(self, *, budget=None):
         self.http = requests.Session()
+        self.budget = budget if budget is not None else RestBudget()
         self.next_request = 0.
 
     def get(self, path, **params):
         # <=60 requests/minute, including 20-weight aggTrade repair requests.
         for attempt in range(1, 4):
             time.sleep(max(0, self.next_request-time.monotonic()))
+            ticket = self.budget.acquire("GET", path, params, background=True)
             self.next_request = time.monotonic()+1
             try:
-                response = self.http.get(self.base+path, params=params, timeout=(10, 20))
+                response = self.http.get(self.base+path, params=params, timeout=(10, 20), allow_redirects=False)
+                try:
+                    payload = response.json()
+                except ValueError:
+                    self.budget.observe(ticket, response)
+                    response.raise_for_status()
+                    raise
+                self.budget.observe(ticket, response, payload)
                 response.raise_for_status()
-                return response.json()
+                if isinstance(payload, dict) and payload.get("code") in (-1003, -1015):
+                    raise RestReadThrottled("venue_throttled_read", 1)
+                return payload
             except (requests.Timeout, requests.ConnectionError) as exc:
+                self.budget.transport_failure(ticket)
                 error = exc
             except requests.HTTPError as exc:
                 # Do not hide access restrictions, IP bans or rate limiting.
@@ -58,13 +82,7 @@ class BinancePublic:
         return int(self.get("/fapi/v1/time")["serverTime"])
 
     def validate_markets(self, symbols):
-        markets = {r["symbol"]:r for r in self.get("/fapi/v1/exchangeInfo")["symbols"]}
-        for symbol in symbols:
-            r = markets.get(symbol, {})
-            if r.get("status") != "TRADING" or r.get("contractType") != "PERPETUAL":
-                raise ValueError(f"Unavailable USD-M perpetual: {symbol}")
-        return {s:{k:markets[s][k] for k in ("symbol", "baseAsset", "quoteAsset", "marginAsset")}
-                for s in symbols}
+        return validate_markets(self.get, symbols)
 
     def minute_history(self, symbol, start_ms, end_ms):
         """Completed native candles only. Base volume and taker-buy base volume."""

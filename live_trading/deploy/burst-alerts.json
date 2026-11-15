@@ -19,7 +19,9 @@
       },
       "heartbeat_key": "worker_heartbeat_ms",
       "max_age_seconds": 90,
-      "performance_contract": "BURST-HYPEUSDT-16H-B-3M12M-RME48-P1-LIVE-002"
+      "performance_contract": "BURST-HYPEUSDT-16H-B-3M12M-RME48-P1-LIVE-002",
+      "freshness_key": "last_reconciliation_ms",
+      "freshness_max_age_seconds": 90
     },
     {
       "id": "burst-inj",
@@ -36,7 +38,9 @@
       },
       "heartbeat_key": "worker_heartbeat_ms",
       "max_age_seconds": 90,
-      "performance_contract": "BURST-INJUSDT-24H-B-5M10M-RME48-P15-LIVE-002"
+      "performance_contract": "BURST-INJUSDT-24H-B-5M10M-RME48-P15-LIVE-002",
+      "freshness_key": "last_reconciliation_ms",
+      "freshness_max_age_seconds": 90
     },
     {
       "id": "burst-uni",
@@ -53,7 +57,9 @@
       },
       "heartbeat_key": "worker_heartbeat_ms",
       "max_age_seconds": 90,
-      "performance_contract": "BURST-UNIUSDC-12H-B-1M5M-RMA48-P10-LIVE-002"
+      "performance_contract": "BURST-UNIUSDC-12H-B-1M5M-RMA48-P10-LIVE-002",
+      "freshness_key": "last_reconciliation_ms",
+      "freshness_max_age_seconds": 90
     },
     {
       "id": "btc-mvrv",
@@ -77,8 +83,10 @@
       "expected_metadata": {
         "owner": "binance_broker_audit"
       },
-      "heartbeat_key": "worker_heartbeat_ms",
-      "max_age_seconds": 240
+      "heartbeat_key": "process_heartbeat_ms",
+      "max_age_seconds": 240,
+      "freshness_key": "coverage_through_ms",
+      "freshness_max_age_seconds": 300
     },
     {
       "id": "hype-quiet-stable",
@@ -95,7 +103,9 @@
       },
       "heartbeat_key": "worker_heartbeat_ms",
       "max_age_seconds": 90,
-      "performance_contract": "QUIET-HYPE-STABLE-P5-INIT15-LIVE-001"
+      "performance_contract": "QUIET-HYPE-STABLE-P5-INIT15-LIVE-001",
+      "freshness_key": "last_reconciliation_ms",
+      "freshness_max_age_seconds": 90
     },
     {
       "id": "eth-quiet-stable",
@@ -112,7 +122,9 @@
       },
       "heartbeat_key": "worker_heartbeat_ms",
       "max_age_seconds": 90,
-      "performance_contract": "QUIET-ETH-STABLE-P85-P5-INIT15-RME24-LIVE-001"
+      "performance_contract": "QUIET-ETH-STABLE-P85-P5-INIT15-RME24-LIVE-001",
+      "freshness_key": "last_reconciliation_ms",
+      "freshness_max_age_seconds": 90
     },
     {
       "id": "uni-quiet-stable",
@@ -129,7 +141,9 @@
       },
       "heartbeat_key": "worker_heartbeat_ms",
       "max_age_seconds": 90,
-      "performance_contract": "QUIET-UNI-STABLE-P85-P5-INIT15-RME48-ADD-LIVE-001"
+      "performance_contract": "QUIET-UNI-STABLE-P85-P5-INIT15-RME48-ADD-LIVE-001",
+      "freshness_key": "last_reconciliation_ms",
+      "freshness_max_age_seconds": 90
     },
     {
       "id": "hype-quiet-tail",
@@ -146,7 +160,9 @@
       },
       "heartbeat_key": "worker_heartbeat_ms",
       "max_age_seconds": 90,
-      "performance_contract": "QUIET-HYPE-TAIL-P5-INIT15-ADD-LIVE-002"
+      "performance_contract": "QUIET-HYPE-TAIL-P5-INIT15-ADD-LIVE-002",
+      "freshness_key": "last_reconciliation_ms",
+      "freshness_max_age_seconds": 90
     },
     {
       "id": "binance-broker-audit-quiet-core",
@@ -157,8 +173,10 @@
       "expected_metadata": {
         "owner": "binance_broker_audit"
       },
-      "heartbeat_key": "worker_heartbeat_ms",
-      "max_age_seconds": 240
+      "heartbeat_key": "process_heartbeat_ms",
+      "max_age_seconds": 240,
+      "freshness_key": "coverage_through_ms",
+      "freshness_max_age_seconds": 300
     },
     {
       "id": "binance-broker-audit-quiet-tail",
@@ -169,8 +187,10 @@
       "expected_metadata": {
         "owner": "binance_broker_audit"
       },
-      "heartbeat_key": "worker_heartbeat_ms",
-      "max_age_seconds": 240
+      "heartbeat_key": "process_heartbeat_ms",
+      "max_age_seconds": 240,
+      "freshness_key": "coverage_through_ms",
+      "freshness_max_age_seconds": 300
     }
   ]
 }

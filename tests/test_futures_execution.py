@@ -339,10 +339,15 @@ def test_expiry_before_network_send_and_small_geometry(env):
         plan_order(intent(initial_stop=100.),v.spec,v.get('/fapi/v1/ticker/bookTicker'),equity='200',available='200',leverage=5,max_notional='100000')
 
 
-def test_source_health_loss_skips_pending_not_open_exit(env):
+def test_source_health_loss_defers_pending_then_expires_without_historical_entry(env):
     s,v,e,clock = env
-    e.offer(intent(),NOW); e.cycle(NOW,new_entries_ok=False)
+    e.offer(intent(),NOW)
+    e.cycle(NOW,new_entries_ok=False)
+    assert not v.posts and s.active()['state'] == 'PENDING'
+    clock[0] = intent()['expires_timestamp_ms'] + 1
+    e.cycle(clock[0],new_entries_ok=True)
     assert not v.posts and s.active() is None
+    assert s.db.execute("SELECT reason FROM sessions").fetchone()[0] == 'entry_expired'
 
 
 def test_key_rotation_fails_before_any_new_mutation(env):

@@ -127,3 +127,123 @@ with REST reconciliation, and preserve a bounded priority path for protection/ex
 Test 429 recovery, cross-worker cooldown, uncertain submissions and pending setup
 outcomes before deployment. Do not globally sleep the execution loop and thereby
 suspend position safety checks.
+
+
+## Shared Binance REST budget: baseline evidence and local fix (2026-11-15 WIB)
+
+**Evidence.** Read-only VPS inspection found all seven workers on
+`b901f9c7e2464a5d1ac2002895b500827bdcd07d` (the ADD fill fix), but the
+collector and audits were on older images. On 2026-11-14 UTC a public `time`
+GET returned HTTP 200 at 19:59:22, :26, :30 and :34 with
+`X-MBX-USED-WEIGHT-1M` of **901, 1140, 1254 and 1453**. This is +552 weight
+over 12 seconds in the same venue minute, of which three units were our later
+samples. A separate public `exchangeInfo` confirmed 2400 weight per minute,
+300 orders per 10 seconds and 1200 orders per minute. Two-hour log counts:
+15 worker lines and 38 audit lines matched 429/-1003 (17 quiet-core, 13
+quiet-tail, 8 Burst). These are log lines, not counted requests. Existing logs
+do not expose complete per-endpoint traffic or successful-response headers.
+The public samples measure aggregate IP usage, not attribution, a peak, or
+post-fix performance. No signed API probes and no server changes were made.
+
+**Inventory.** Weights were checked against the Binance [USD-M limits](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/general-info),
+[trade](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/trade),
+[account](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/account),
+[market data](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-usd-s-m-futures/api/rest-api/market-data)
+and [Spot account](https://developers.binance.com/en/docs/catalog/core-trading-spot-trading/api/rest-api/account)
+docs. Futures routes below use `/fapi/v1/` except where indicated.
+
+| Callers | Endpoints and weight | Baseline frequency |
+| --- | --- | --- |
+| Seven account workers: Burst HYPE/INJ/UNI, Quiet core HYPE/ETH/UNI, Quiet Tail HYPE | GET `v3/positionRisk` 5, `order` / `algoOrder` 1 each, `userTrades` 5 per page | Roughly every 2 s during an active session. Lifecycle plus the final sweep could query the same order multiple times. Closed sessions are not continuously polled. |
+| Same workers, order mutations | POST `order` / `algoOrder` 0 IP and 1 each in the two account order windows; DELETE 1 IP | On entry, ADD, protection, TP, close or cancel, with same-ID reconciliation after uncertainty. |
+| Same workers, admission and maintenance | `v3/account`, `accountConfig`, `symbolConfig` 5 each; `openOrders` / `openAlgoOrders` 1 with symbol, 40 without; `exchangeInfo` 1; `ticker/bookTicker` 2 with symbol, 5 without; `income` 30 per page; `time` 1; Spot `/api/v3/account` 20 in its own window | Startup, fresh entry/ADD or settlement. Time sync ~1/min/worker; scheduled funding ~1/min/active worker, plus admission and close. Spot UID at portfolio startup. Standalone Pre-NY preflight also allowlists `commissionRate` (20); it wasn't an active portfolio poll. |
+| Broker audits: Burst, quiet-core and quiet-tail | `userTrades`, `allOrders`, `allAlgoOrders` 5/page/symbol; `income` 30/page/account; account-wide `v3/positionRisk` 5, `openOrders` 40, `openAlgoOrders` 40, `time` 1 | Every 60 s plus capture duration. 161+161+131 = **453 weight per round** before pagination; baseline reread three days on every pass. |
+| Binance collector / public repair | `exchangeInfo` and `time` 1 each; `aggTrades` 20/page; `klines` 1/2/5/10 (limit <100/<500/≤1000/>1000) | Startup, warm-up and gaps; WebSocket is ordinary trade delivery. Old client paces HTTP at one call per second; gap repair could add up to about 1200 weight/min on its own. Active market consumers read NATS, which sends no Binance REST. |
+| Engine monitor / MVRV | No Binance requests | Monitor reads journals; MVRV uses Coin Metrics and Telegram. |
+
+At 30 cycles/min, each active worker with one position, one STOP query and
+one recurring entry-fill query could use ~330 weight/min for those reads alone;
+if a second fill call recurs each cycle, ~480. For seven simultaneously active
+workers plus audit that is ~2760–3810 weight/min before funding, extra orders,
+pagination or a public gap. This is a stress estimate, not a diagnosis that all
+seven were active, nor that each worker made this exact mix. Request limits
+such as 1000 rows, 48h aggTrade retention, and per-route history time bounds
+remain pagination/validation rules. The docs for active routes did not list an
+additional per-IP 5-minute cap for these routes; do not apply the cap documented
+for other statistical/funding endpoints to this `aggTrades` or `income` route.
+Binance documents the `bookTicker` weight header as inaccurate; charge the route,
+but ignore its header.
+
+**Local fix.** Shared host SQLite records an atomic reservation before each
+HTTP attempt, including retries and pages. Defaults: Futures 1920/min, Spot UID
+4800/min, and 240/960 orders per 10s/minute per verified account group, with
+a 70% admission ceiling for background/audit/collector and new ENTRY/ADD.
+Reconciliation, position checks, native protection and exits may use the last
+30% but still honor the hard caps and venue cooldown. Known -1015 scopes to the
+account's order submissions; -1003 scopes to the product; unclassified 429
+or 418 scopes to the egress IP. Use Retry-After or explicit venue ban expiry
+when available; absent information, default to 60s for 429 and up to 3 days for
+418. Local denied requests return immediately. Loop checks are staggered and
+bounded; HTTP exceptions after transmission remain uncertain and reconcile by
+the journaled client ID. No trade rules, fill pricing, or risk limits from the
+ADD fix were replaced.
+
+Ordinary terminal fill reads stop only when the scoped journal contains the
+full executed quantity in validated native trades. Repeated reads of the same
+order revision within one cycle coalesce; any incomplete fill can be fetched
+again on the next cycle. Conditional children still reconcile separately, and
+close finalization verifies native executed quantities, balanced fills, fees
+and funding. The final sweep no longer runs after a failed safety pass.
+Transient admission failure retains the original setup; a proven-unsent plan
+is discarded to recheck its quote, margin and stop before submission. Expiry
+and permanent blocks have separate reasons. Audit polls every 120–130s with a
+10-minute overlap and the prior 3-day overlap daily; a gap starts at the last
+committed coverage minus overlap. Only a complete multi-page capture advances
+coverage. Long gaps can exceed Binance retention and require manual review.
+Process heartbeat advances independently; stale capture or active lifecycle
+reconciliation still alerts. No market claim is made off local tests.
+
+**Verification.** 172 targeted local tests passed. Both Compose templates rendered
+successfully with synthetic environment values. Tests simulate reservations between independent
+processes, UTC windows and headers, restart and unavailable/locked storage,
+priority, 429/418, ambiguous POST, setup expiry, delayed/partial fills, stop
+recovery, closes, audit gap/freshness and all seven Compose bindings. Existing
+ADD and peer collateral regressions use the original `b901f9c` behavior.
+This Windows checkout independently reproduced **12 failures and 1 pass** in
+the complete historical Burst paper package suite at the unchanged baseline;
+the same 12 tests fail with v8, due to the untouched v3 release pin. This wider
+count does not supersede the earlier six reported from a smaller selection.
+See the [deployment runbook](../../live_trading/deploy/README.md) for operation,
+recovery, rollout and rollback.
+
+## Next phase: private USD-M state streams (design only)
+
+Run one manager for each verified account UID, using its own credentials.
+Normalize and publish account-scoped events on restricted NATS JetStream
+subjects. Consumers checkpoint only after updating their journals. Deduplicate
+fills by account/symbol/order/trade ID and order and algo updates by native
+identity plus venue event time and status; account deltas are idempotent by
+transaction/asset/position identity. Retain client ID / algo ID / child order
+ID linkage. Enforce a bounded durable backlog and never publish key material,
+listen keys, signed requests or unconstrained raw account messages.
+
+Binance documents [USD-M private events](https://developers.binance.com/en/docs/products/derivatives-trading-usds-futures/user-data-streams):
+`ORDER_TRADE_UPDATE` for order lifecycle and fills, `ACCOUNT_UPDATE` for changed
+balances/positions, `ALGO_UPDATE` for conditional state and child identity, and
+`CONDITIONAL_ORDER_TRIGGER_REJECT` for a rejected trigger. An algo trigger or
+finish is not evidence of the child's fill, commission or flat position.
+Ordering applies within an event type on one connection; event timestamps do
+not prove gapless cross-type coverage. Use socket health, ping/pong, listen-key
+renewal and planned reconnect before the venue's 24h disconnect. A quiet account
+can be healthy. Publish separate timestamps for transport liveness, checkpoint
+and successful reconciliation.
+
+On connection loss, restart, out-of-order conflict or a JetStream sequence
+gap, pause ENTRY/ADD. Reopen and buffer events, obtain budgeted REST position,
+open standard/algo orders, targeted uncertain-order and trade/funding
+snapshots, and replay/deduplicate buffered events before calling state complete.
+Keep protection and exit using authoritative reconciliation, and retain REST
+for submission, unknown orders, child/fee/funding validation, periodic checks
+and recovery. Reduce individual polls only after comparing the private stream
+against REST/account journals in shadow mode, including partial stop children
+and disconnects. No private stream code is included in this patch.

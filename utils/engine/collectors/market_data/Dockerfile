@@ -16,6 +16,7 @@ COPY utils/engine/state/base.py /app/utils/engine/state/base.py
 COPY utils/engine/monitoring/service_health.py /app/utils/engine/monitoring/service_health.py
 COPY utils/engine/adapters/__init__.py /app/utils/engine/adapters/__init__.py
 COPY utils/engine/adapters/binance_public.py /app/utils/engine/adapters/binance_public.py
+COPY utils/engine/adapters/binance_rest_budget.py /app/utils/engine/adapters/binance_rest_budget.py
 COPY utils/engine/adapters/lighter.py /app/utils/engine/adapters/lighter.py
 COPY utils/engine/adapters/lighter_public.py /app/utils/engine/adapters/lighter_public.py
 COPY utils/engine/deploy/market_feed/binance.json /app/config/

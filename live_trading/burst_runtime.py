@@ -3,6 +3,7 @@ import argparse
 from contextlib import ExitStack, closing
 from decimal import Decimal
 import json
+import random
 import os
 import sqlite3
 import sys
@@ -17,9 +18,10 @@ from indicator.volume_profile import build_basic_volume_profile
 from live_trading.burst_signals import (
     _burst_signals_from_features, assess_breakout_flow, confirm_flow_entries,
 )
+from utils.engine.adapters.binance_rest_budget import RestDeferred
 from utils.engine.adapters.binance_execution import VenueError
-from utils.engine.adapters.binance_futures_readonly import PreflightError
-from utils.engine.adapters.binance_public import BinancePublic, UnrecoverableGap
+from utils.engine.adapters.binance_futures_readonly import PreflightError, background_reads
+from utils.engine.adapters.binance_public import BinancePublic, UnrecoverableGap, validate_markets
 from utils.engine.execution.burst_futures import (
     BurstFuturesExecutor, BurstFuturesOrders, BurstFuturesStore, CoordinatedBurstAccount, EntryAdmissionBusy, SharedBurstAccount, DAY,
 )
@@ -233,7 +235,10 @@ def run_stream(models, venue, public, *, duration=None):
     last_live_ms = dict.fromkeys(models, 0)
     feed_errors = {}
     cycle_errors = {}
-    transient = (OSError, TimeoutError, ConnectionClosed, VenueError, PreflightError)
+    transient = (OSError, TimeoutError, ConnectionClosed, VenueError, PreflightError, RestDeferred)
+    cycle_interval = 2 + random.uniform(0, .5)
+    sync_interval = 60 + random.uniform(0, 5)
+    next_management = dict.fromkeys(models, started)
 
     def heartbeat(*, force=False):
         nonlocal last_heartbeat
@@ -254,16 +259,30 @@ def run_stream(models, venue, public, *, duration=None):
                                   worker_error=error, public_cursor=model.get("public_cursor"))), flush=True)
         last_heartbeat = time.monotonic()
 
-    def manage(*, allow_entry):
+    def manage(*, allow_entry, force=False):
         if not venue.armed:
             return
         for symbol, model in models.items():
+            if not force and time.monotonic() < next_management[symbol]:
+                continue
             try:
                 now = int(time.time() * 1000)
-                can_enter = (allow_entry and symbol not in cycle_errors and symbol not in feed_errors
+                can_enter = (model.executor.c.get("accept_new_entries", True) and allow_entry
+                             and symbol not in cycle_errors and symbol not in feed_errors
                              and 0 <= now - last_live_ms[symbol] <= 10_000)
                 model.executor.cycle(now, new_entries_ok=can_enter)
-                cycle_errors.pop(symbol, None)
+                if cycle_errors.pop(symbol, None) == "execution_rest_deferred":
+                    with model.store.transaction():
+                        model.store.set_meta("last_rest_deferral", "")
+            except RestDeferred as error:
+                cycle_errors[symbol] = "execution_rest_deferred"
+                # Keep the actual safety loop short; a rejected reservation does no HTTP.
+                # Sample logs once when entering deferral and keep per-attempt DB metrics.
+                if model.store.meta("last_rest_deferral") != error.reason:
+                    print(json.dumps(dict(event="rest_deferred", symbol=symbol, reason=error.reason)), flush=True)
+                with model.store.transaction():
+                    model.store.set_meta("last_rest_deferral", error.reason)
+                next_management[symbol] = time.monotonic() + min(error.delay, 5) + random.uniform(.15, .8)
             except (ValueError, TypeError, KeyError, ArithmeticError, *transient) as error:
                 cycle_errors[symbol] = "execution_" + type(error).__name__
                 with model.store.transaction():
@@ -283,7 +302,7 @@ def run_stream(models, venue, public, *, duration=None):
             try:
                 for missing in public.repair(symbol, previous, trade):
                     model.ingest(missing, int(time.time() * 1000), allow_entry=False)
-                    if time.monotonic() - last_cycle >= 2:
+                    if time.monotonic() - last_cycle >= cycle_interval:
                         manage(allow_entry=True)
                         last_cycle = time.monotonic()
                     heartbeat()
@@ -291,13 +310,16 @@ def run_stream(models, venue, public, *, duration=None):
                 model.reset_profile("unrecoverable_public_gap")
         now = int(time.time() * 1000)
         fresh = -1000 <= now - trade["timestamp_ms"] <= 10_000
-        model.ingest(trade, now, allow_entry=fresh and symbol not in cycle_errors)
+        # A genuine live print may create a pending intent while admission is
+        # paused; manage() still requires a clean reconciliation before sending.
+        model.ingest(trade, now, allow_entry=fresh and (
+            symbol not in cycle_errors or cycle_errors[symbol] == "execution_rest_deferred"))
         if fresh:
             last_live_ms[symbol] = now
             feed_errors.pop(symbol, None)
 
     heartbeat(force=True)
-    manage(allow_entry=False)
+    manage(allow_entry=False, force=True)
     heartbeat(force=True)
     while duration is None or time.monotonic() - started < duration:
         try:
@@ -312,10 +334,15 @@ def run_stream(models, venue, public, *, duration=None):
                         with models[symbol].store.transaction():
                             models[symbol].store.audit("feed_error", dict(symbol=symbol,
                                                                           error_type=type(error).__name__))
-                if time.monotonic() - last_sync >= 60 and venue.armed:
-                    venue.sync_time()
+                if time.monotonic() - last_sync >= sync_interval and venue.armed:
                     last_sync = time.monotonic()
-                if venue.armed and time.monotonic() - last_cycle >= 2:
+                    try:
+                        venue.sync_time()
+                    except (PreflightError, RestDeferred):
+                        # Keep managing with the last valid offset; exchanges reject
+                        # out-of-window signatures. Do not reset the public cursor.
+                        last_sync -= sync_interval - (5 + random.uniform(0, 3))
+                if venue.armed and time.monotonic() - last_cycle >= cycle_interval:
                     # An idle feed can manage exits, but only a recent print permits an entry.
                     manage(allow_entry=True)
                     last_cycle = time.monotonic()
@@ -388,9 +415,13 @@ def main(argv=None):
     parser.add_argument("--passphrase-file", type=Path)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--armed", action="store_true")
+    parser.add_argument("--manage-only", action="store_true",
+                        help="Keep native reconciliation and exits on; pause new ENTRY and ADD")
     mode.add_argument("--preflight", action="store_true")
     parser.add_argument("--duration", type=int)
     args = parser.parse_args(argv)
+    if args.manage_only and not args.armed:
+        parser.error("--manage-only requires --armed")
     if args.passphrase_file and not args.private_key_file:
         parser.error("--passphrase-file requires --private-key-file")
     if args.report:
@@ -462,6 +493,9 @@ def main(argv=None):
             config["allocation_id"] = "shadow:" + config["allocation_id"]
         database = args.database if package is Hype or args.shadow_symbol else args.database.with_name(package.DATABASE)
         specs[package.SYMBOL] = (database, config, package)
+    if args.manage_only:
+        for _, config, _ in specs.values():
+            config["accept_new_entries"] = False
     if group:
         venue_type = PositionAdditionVenue
     else:
@@ -472,10 +506,12 @@ def main(argv=None):
                           passphrase_file=args.passphrase_file, hmac_secret_file=args.hmac_secret_file)
     if args.armed and not venue.armed:
         parser.error("Server real-money acknowledgement is required for execution")
+    if group and (not os.getenv("BINANCE_REST_BUDGET_DB") or venue.budget.account != group):
+        parser.error("Portfolio workers require their account group and a shared BINANCE_REST_BUDGET_DB")
     public = BinancePublic()
     try:
         with ExitStack() as stores:
-            markets = None if args.shadow_symbol else public.validate_markets(list(specs))
+            markets = None if args.shadow_symbol else validate_markets(venue.get, list(specs))
             models = {}
             for symbol, (database, config, package) in specs.items():
                 if markets is not None and markets[symbol]["marginAsset"] != config.get("margin_asset", "USDT"):
@@ -504,14 +540,14 @@ def main(argv=None):
                         model.executor.account_mode()
                         model.executor.market_settings()
                         model.executor.shared_account.bind_portfolio_account(now)
-                    if model.store.active():
-                        if args.preflight:
+                    if model.store.active() or args.manage_only:
+                        if args.preflight and model.store.active():
                             raise ValueError("preflight_requires_flat_ledger")
                     elif coordinated:
                         try:
-                            with model.executor.shared_account.admission():
+                            with model.executor.shared_account.admission(), background_reads():
                                 model.executor.entry_guard(now)
-                        except EntryAdmissionBusy:
+                        except (EntryAdmissionBusy, RestDeferred):
                             if args.preflight or model.store.meta("coordinated_account") is None:
                                 raise
                     elif not args.portfolio or args.preflight:

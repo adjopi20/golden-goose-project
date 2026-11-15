@@ -96,3 +96,70 @@ late fill history, and native protection through time exit. Existing order-race,
 rejection, lost-acknowledgement and stop-replacement regression remains required.
 The legacy paper package pin failures in test_frozen_models also reproduce on the
 unmodified e30af19 baseline; they are outside this seven-model live release.
+
+
+## Shared Binance REST budget: rollout and rollback
+
+The portfolio Compose template and the Binance collector template require
+`GG_BINANCE_REST_BUDGET_DIR` to point to the **same local, persistent** Linux
+host directory. Set `GG_BINANCE_REST_GID` (default 19901) consistently. With all
+services off this path initially, provision a setgid directory (mode 2770,
+group = shared numeric GID) and an empty `binance.sqlite` file (0660, same
+group). Verify both container users (worker UID 1000; collector UID 10001)
+can create SQLite sidecars and update the file. Do not truncate an existing DB.
+Do not use NFS or independent volumes. Do not run out-of-band Binance REST
+tools on this host during cutover unless they use this file. A second egress
+host would need a different coordinator design.
+
+Reservations use SQLite rollback journaling and a 75ms lock wait. No lock spans
+HTTP. A restart or crash retains reservations and venue cooldown; unanswered
+attempts keep a 30s timeout allowance on top of their rolling window. Venue
+headers raise the estimate (which may conservatively count concurrent
+in-flight work twice); they cannot lower it in a window. A missing/inaccessible
+DB, contention timeout, or conflicting process configuration produces a
+deferral with no HTTP. If a response cannot be recorded even after bounded
+retries, the client backs off locally. As with any shared storage failure,
+a cooldown that never reached disk cannot be recovered by other clients; check
+the log, keep admission paused, and wait for the venue ban to expire before
+restoring service. Native accepted stops are held at Binance throughout.
+
+Set the same `GG_BINANCE_REST_FUTURES_1M` in both Compose projects; a new
+database defaults to 1920, with 1344 available to background work. If changing
+caps later, coordinate all clients and update `rest_config` in place with
+clients stopped and positions safely protected; retain cooldown and reservations.
+The metrics table keeps roughly 24h by UTC minute/service/method/endpoint:
+`reserved` count and weight, header maxima, `http_429`/`http_418`, transport
+unknown, cooldown and deferral count/wait. `reserved` can include a crashed
+attempt before it reached the wire; `http_*` is an observed response. Only the
+route and configured worker labels are recorded.
+
+1. Review and publish the exact commit; build from it and verify all package
+   pins, rendered Compose mounts, UID/GID access, and coordinator behavior
+   without trading. Save original image digests and configuration. Inventory
+   existing positions, native stop (including guard/child state), pending orders
+   and account identity read-only. Do not cut over a lane with an unresolved
+   mutation, a stop replacement in flight, or an imminent time exit without
+   resolving it under the current version first.
+2. Pause/replace the old audits first to relieve background load; keep
+   monitor and native stops running. Roll the collector without dropping
+   its volume or NATS checkpoints; check that coverage is fresh. Canary one
+   worker at a time with `--armed --manage-only`, the same journal and account,
+   never two writers for a symbol. Confirm the exact native position, protector,
+   fill attribution and exit timer before moving to peers. Mixed old/new
+   versions cannot share the local counter, so keep audit load off and watch
+   venue headers and 429 during this short period.
+3. Once seven lanes and the collector reconcile, restore audits with the
+   new heartbeat/freshness config and deploy the matching monitor config.
+   Check operation for several venue minutes, including DB deferrals,
+   `CAPTURE_STALE`, `RECONCILIATION_STALE`, unconfirmed stops and header
+   headroom. Remove `--manage-only` only after current coverage, no unknown
+   mutations and operator review. The original setup deadlines remain in force.
+4. Roll back a failing lane one at a time to its saved **b901f9c** image
+   (contains the ADD fix) and exact original command/mounts. Quiesce the
+   replacement writer, keep and reconcile the latest journal/position/STOPs,
+   and verify the old worker actually takes over. Keep the low-priority audits
+   paused if the old image would overload the IP. Restore the old monitor
+   config when restoring old audits. Never reset/relabel account data, replay
+   pending POSTs, or cancel existing protective stops just to roll back.
+   If still banned or protection is unclear, native protection alone is not
+   evidence that a timed or manual exit is available; follow operator recovery.

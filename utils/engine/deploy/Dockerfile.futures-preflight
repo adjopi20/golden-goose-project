@@ -11,6 +11,7 @@ COPY utils/engine/__init__.py /app/utils/engine/__init__.py
 COPY utils/engine/execution/futures_preflight.py /app/utils/engine/execution/futures_preflight.py
 COPY utils/engine/adapters/__init__.py /app/utils/engine/adapters/__init__.py
 COPY utils/engine/adapters/binance_futures_readonly.py /app/utils/engine/adapters/binance_futures_readonly.py
+COPY utils/engine/adapters/binance_rest_budget.py /app/utils/engine/adapters/binance_rest_budget.py
 COPY model_development/models/trend_following_preny_profile_15m/legacy/deploy/pilot.ethusdc.preflight.json /app/config/pilot.json
 USER preflight
 ENTRYPOINT ["python", "-m", "utils.engine.execution.futures_preflight"]

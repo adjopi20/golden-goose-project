@@ -624,3 +624,64 @@ def test_portfolio_uses_local_equity_and_distinct_native_accounts(portfolio, mon
     assert hype.s.equity(100) < Decimal(100)
     assert inj.s.equity(100) < Decimal(100)
     assert uni.s.equity(100) == Decimal(100)
+
+
+def test_budget_defers_unsent_entry_and_protection_without_freezing_valid_setup(env, monkeypatch):
+    from utils.engine.adapters.binance_rest_budget import RestDeferred
+
+    e, s, v, now = env
+    submit = v.submit
+    gate = {"ENTRY", "STOP"}
+    seen = []
+
+    def submit_or_defer(role, params):
+        seen.append((role, params.get("newClientOrderId")))
+        if role in gate:
+            raise RestDeferred("weight_budget", 1)
+        return submit(role, params)
+
+    monkeypatch.setattr(v, "submit", submit_or_defer)
+    deadline = now[0] + 10_000
+    e.offer(dict(sample_id="budget", direction="long", initial_stop=990,
+                 eligible_timestamp_ms=now[0], expires_timestamp_ms=deadline), now[0])
+    with pytest.raises(RestDeferred):
+        e.cycle(now[0])
+    assert s.active()["state"] == "PENDING"
+    assert not v.posts and not s.db.execute("SELECT 1 FROM orders").fetchone()
+    e.cycle(now[0], new_entries_ok=False)
+    assert s.active()["state"] == "PENDING" and len(seen) == 1
+
+    gate.remove("ENTRY")
+    now[0] += 2_000
+    with pytest.raises(RestDeferred):
+        e.cycle(now[0])
+    assert seen[0][1] == seen[1][1]  # original setup; newly sized, stable client ID
+    assert s.db.execute("SELECT state FROM orders WHERE role='STOP'").fetchone()[0] == "PREPARED"
+    assert [r for r, _ in v.posts] == ["ENTRY"]
+    gate.clear()
+    e.cycle(now[0], new_entries_ok=False)
+    assert s.active()["state"] == "OPEN"
+    assert [r for r, _ in v.posts] == ["ENTRY", "STOP"]
+    assert s.meta("last_reconciliation_ms") == str(now[0])
+
+
+def test_completed_terminal_fill_reads_are_not_repeated(env, monkeypatch):
+    e, s, v, now = env
+    read = v.read
+    fills_calls = []
+
+    def count(path, **params):
+        if path == "/fapi/v1/userTrades":
+            fills_calls.append(params["orderId"])
+        return read(path, **params)
+
+    monkeypatch.setattr(v, "read", count)
+    e.offer(dict(sample_id="budget", direction="long", initial_stop=990,
+                 eligible_timestamp_ms=now[0], expires_timestamp_ms=now[0]+10_000), now[0])
+    e.cycle(now[0])
+    assert len(fills_calls) == 1
+    for _ in range(3):
+        now[0] += 2000
+        e.cycle(now[0])
+    assert len(fills_calls) == 1
+    assert s.db.execute("SELECT count(*) FROM fills").fetchone()[0] == 1

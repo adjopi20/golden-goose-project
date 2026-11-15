@@ -11,6 +11,7 @@ import requests
 from websockets.exceptions import ConnectionClosed
 
 from utils.engine.adapters.binance_public import BinancePublic, UnrecoverableGap
+from utils.engine.adapters.binance_rest_budget import RestDeferred
 from utils.engine.adapters.lighter_public import LighterPublic, INTERNAL_SYMBOLS
 from utils.engine.collectors.market_data.broker import connect, initialize, flush_outbox
 from utils.engine.collectors.market_data.collector import Collector
@@ -175,7 +176,7 @@ async def run(cfg, database, action):
                             collector.prune(int(time.time()*1000))
                             last_prune = time.monotonic()
                     iterator.close()
-                except (ConnectionClosed,TimeoutError,OSError,requests.RequestException,ValueError) as exc:
+                except (ConnectionClosed,TimeoutError,OSError,requests.RequestException,ValueError,RestDeferred) as exc:
                     await flush()
                     print(json.dumps(dict(state='FEED_DISCONNECTED',venue=cfg['venue'],error=type(exc).__name__,retry_seconds=delay)),flush=True)
                     await asyncio.sleep(delay)

@@ -7,6 +7,7 @@ COPY indicator/volume_profile.py /app/indicator/volume_profile.py
 COPY utils/engine/execution/paper_manager.py /app/utils/engine/execution/paper_manager.py
 COPY utils/engine/state/base.py /app/utils/engine/state/base.py
 COPY utils/engine/adapters/binance_public.py /app/utils/engine/adapters/binance_public.py
+COPY utils/engine/adapters/binance_rest_budget.py /app/utils/engine/adapters/binance_rest_budget.py
 COPY utils/engine/adapters/paper_execution.py /app/utils/engine/adapters/paper_execution.py
 COPY model_development/models/mean_reversion_by_volume_profile/paper_v33/ /app/models/mean_reversion_by_volume_profile/paper_v33/
 RUN python -m unittest discover -s model_development/models/mean_reversion_by_volume_profile/paper_v33 -p test_worker.py

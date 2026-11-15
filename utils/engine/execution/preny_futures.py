@@ -7,8 +7,9 @@ import time
 from zoneinfo import ZoneInfo
 
 from utils.engine.contracts import canonical_json, validate_intention
-from utils.engine.adapters.binance_execution import VenueError
-from utils.engine.adapters.binance_futures_readonly import PreflightError
+from utils.engine.adapters.binance_execution import VenueError, submission_deadline
+from utils.engine.adapters.binance_futures_readonly import PreflightError, background_reads
+from utils.engine.adapters.binance_rest_budget import RestDeferred, RestReadThrottled
 from utils.engine.execution.futures_preflight import number, one, positive, quantity_rules
 
 TERMINAL = {'FILLED', 'CANCELED', 'EXPIRED', 'EXPIRED_IN_MATCH', 'REJECTED', 'FINISHED'}
@@ -216,6 +217,7 @@ class FuturesExecutor:
     def drive(self, cid):
         row = self.s.db.execute('SELECT * FROM orders WHERE client_id=?', (cid,)).fetchone()
         if row['state'] == 'PREPARED':
+            deadline = None
             if row['role'] == 'ENTRY':
                 source = self.s.db.execute('SELECT intention FROM sessions WHERE session=?', (row['session_id'],)).fetchone()
                 deadline = json.loads(source[0])['expires_timestamp_ms']
@@ -223,15 +225,33 @@ class FuturesExecutor:
                     with self.s.transaction():
                         self.s.db.execute("UPDATE orders SET state='REJECTED',error='entry_expired_before_send' WHERE client_id=?", (cid,))
                     return self.s.db.execute('SELECT * FROM orders WHERE client_id=?', (cid,)).fetchone()
+            elif row['role'] == 'ADD':
+                deadline = json.loads(self.s.meta('position_addition_plan'))['expires_ms']
             # A crash after this commit is UNKNOWN, even if the HTTP call never began.
             with self.s.transaction():
                 self.s.db.execute("UPDATE orders SET state='SENDING' WHERE client_id=?", (cid,))
                 self.s.audit('order_send_started', dict(client_id=cid, role=row['role'], server_offset_ms=self.v.offset))
             started = time.perf_counter_ns()
             try:
-                response = self.v.submit(row['role'], json.loads(row['params']))
+                with submission_deadline(deadline):
+                    response = self.v.submit(row['role'], json.loads(row['params']))
                 duration = (time.perf_counter_ns() - started) / 1000000
                 self._accept(row, response, source='submit', request_duration_ms=duration)
+            except RestReadThrottled:
+                raise  # Only a pre-transmission deferral can undo SENDING.
+            except RestDeferred:
+                with self.s.transaction():
+                    if row['role'] in ('ENTRY', 'ADD'):
+                        # No HTTP happened. Release the slot and reprice/recheck the
+                        # original setup/ADD trigger on the next eligible cycle.
+                        self.s.db.execute('DELETE FROM orders WHERE client_id=? AND state=?', (cid, 'SENDING'))
+                        if row['role'] == 'ENTRY':
+                            self.s.db.execute("UPDATE sessions SET plan=NULL,state='PENDING' WHERE session=?",
+                                              (row['session_id'],))
+                    else:
+                        self.s.db.execute("UPDATE orders SET state='PREPARED' WHERE client_id=?", (cid,))
+                    self.s.audit('order_send_deferred', dict(client_id=cid, role=row['role']))
+                raise
             except VenueError as e:
                 with self.s.transaction():
                     self.s.db.execute('UPDATE orders SET state=?,error=? WHERE client_id=?',
@@ -289,6 +309,16 @@ class FuturesExecutor:
         native = json.loads(row['response'])
         oid = native.get('actualOrderId') if row['role'] == 'STOP' else native.get('orderId')
         if not oid: return
+        if row['role'] != 'STOP' and row['state'] in TERMINAL and 'executedQty' in native:
+            found = sum((number(r[0]) for r in self.s.db.execute(
+                'SELECT quantity FROM fills WHERE order_id=? AND session_id=?',
+                (str(oid), row['session_id']))), Decimal(0))
+            if found == number(native['executedQty']):
+                return  # Terminal native quantity and validated trade receipts agree.
+        query = (row['session_id'], str(oid), row['state'], native.get('executedQty'))
+        sampled = getattr(self, '_cycle_fill_queries', None)
+        if sampled is not None and query in sampled:
+            return
         rows = self.v.read('/fapi/v1/userTrades', symbol=self.symbol, orderId=oid, limit=1000)
         if not isinstance(rows, list) or len(rows) >= 1000:
             raise ValueError('Fill pagination limit/schema requires review; never silently truncate')
@@ -308,6 +338,9 @@ class FuturesExecutor:
                 if inserted.rowcount:
                     self.s.audit('fill_first_observed', dict(fill_id=identity, client_id=row['client_id'],
                                  role=row['role'], native_fill_time_ms=t.get('time'), server_offset_ms=self.v.offset))
+
+        if sampled is not None:
+            sampled.add(query)  # Same native revision only, until the end of this cycle.
 
     def accounting(self, now_ms):
         if self.s.meta('initial_wallet') is None: return
@@ -400,15 +433,23 @@ class FuturesExecutor:
             self.v.load_credentials()
             if hashlib.sha256(self.v._key.encode()).hexdigest() != self.s.meta('key_hash'):
                 raise ValueError('API key changed during lifecycle; reviewed recovery required')
+        self._cycle_fill_queries = set()
         try:
             self._cycle(now_ms, new_entries_ok=new_entries_ok)
-        finally:
-            # Do not let fee/history reporting delay native protection or time exit.
+            # Run fee collection only after the lifecycle, and never mask a failed safety
+            # operation. Mandatory attribution for entry/ADD/close remains in the lifecycle.
             if self.v.armed:
                 active = self.s.active()
                 if active:
                     for r in self.s.db.execute('SELECT * FROM orders WHERE session_id=?', (active['session'],)).fetchall():
                         self.sync_fills(r)
+                if not active or (active['state'] != 'PENDING' and not self.s.db.execute(
+                    "SELECT 1 FROM orders WHERE session_id=? AND (state IN ('SENDING','UNKNOWN') OR error IS NOT NULL)",
+                    (active['session'],)).fetchone()):
+                    with self.s.transaction():
+                        self.s.set_meta('last_reconciliation_ms', int(time.time() * 1000))
+        finally:
+            self._cycle_fill_queries = None
 
     def _cycle(self, now_ms, *, new_entries_ok=True):
         session = self.s.active()
@@ -420,11 +461,16 @@ class FuturesExecutor:
         p = json.loads(session['intention'])
         if session['state'] == 'PENDING':
             if now_ms < p['eligible_timestamp_ms']: return
-            if now_ms > p['expires_timestamp_ms'] or self.s.meta('entries_blocked') or not new_entries_ok:
-                with self.s.transaction(): self.s.session_state(session['session'], 'SKIPPED', 'expired_or_review_blocked')
+            reason = ('entry_expired' if now_ms > p['expires_timestamp_ms'] else
+                      'entries_review_blocked' if self.s.meta('entries_blocked') else None)
+            if reason:
+                with self.s.transaction(): self.s.session_state(session['session'], 'SKIPPED', reason)
                 return
-            spec, available, settings = self.entry_guard(now_ms)
-            quote = self.quote(now_ms)
+            if not new_entries_ok:
+                return
+            with background_reads():
+                spec, available, settings = self.entry_guard(now_ms)
+                quote = self.quote(now_ms)
             plan = plan_order(p, spec, quote, equity=self.s.equity(self.c['initial_equity']), available=available,
                               leverage=settings['leverage'], max_notional=settings['maxNotionalValue'])
             plan['entry_quote'] = dict(bid=quote['bidPrice'], ask=quote['askPrice'], native_time_ms=quote['time'],
@@ -438,9 +484,11 @@ class FuturesExecutor:
             plan = json.loads(session['plan'])
         for row in self.s.db.execute('SELECT * FROM orders WHERE session_id=?', (session['session'],)).fetchall():
             # Refresh exits/recovery first; PREPARED orders are submitted only by their owning lifecycle stage.
-            if row['state'] == 'PREPARED' and row['role'] == 'ENTRY' and not new_entries_ok:
+            if row['state'] == 'PREPARED' and row['role'] == 'ENTRY':
                 with self.s.transaction():
-                    self.s.db.execute("UPDATE orders SET state='REJECTED',error='source_stale_before_send' WHERE client_id=?", (row['client_id'],))
+                    self.s.db.execute('DELETE FROM orders WHERE client_id=?', (row['client_id'],))
+                    self.s.db.execute("UPDATE sessions SET plan=NULL,state='PENDING' WHERE session=?", (row['session_id'],))
+                return  # Revalidate a prepared entry left by restart before any submit.
             elif row['state'] != 'PREPARED' or row['role'] in ('ENTRY', 'CLOSE'):
                 self.drive(row['client_id'])
         entry = self.s.db.execute("SELECT * FROM orders WHERE session_id=? AND role='ENTRY'", (session['session'],)).fetchone()

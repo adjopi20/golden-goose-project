@@ -383,3 +383,54 @@ def test_broker_archive_links_fills_and_does_not_adopt_external_orders(ledger, t
         assert report["unattributed"]["linked_order"] is None
         assert db.execute("SELECT COUNT(*) FROM events WHERE kind='trade'").fetchone()[0] == 2
         assert s.db.execute("SELECT COUNT(*) FROM fills").fetchone()[0] == 1
+
+
+def test_audit_heartbeat_alive_with_stale_capture_and_gap_recovery(tmp_path):
+    from contextlib import closing
+    from utils.engine.adapters.binance_rest_budget import RestDeferred
+    from utils.engine.monitoring.alerts import inspect_target
+    from utils.engine.monitoring.binance_audit import DAY, capture
+
+    path = tmp_path / "audit.sqlite"
+    since = NOW - 7 * DAY
+    bounds = []
+
+    class ReadOnly:
+        _key = "test-only"
+        fail = False
+
+        def load_credentials(self):
+            pass
+
+        def get(self, endpoint, **params):
+            if "startTime" in params:
+                bounds.append(params["startTime"])
+            if self.fail and endpoint.endswith("openAlgoOrders"):
+                raise RestDeferred("weight_budget", 1)
+            return []
+
+    client = ReadOnly()
+    with closing(sqlite3.connect(path)) as db:
+        db.executescript("""CREATE TABLE metadata(key TEXT PRIMARY KEY,value TEXT);
+            CREATE TABLE events(kind TEXT,symbol TEXT,native_id TEXT,payload TEXT,observed_ms INTEGER,
+            PRIMARY KEY(kind,symbol,native_id,payload));""")
+        capture(db, client, ["ETHUSDC"], since, NOW)
+        bounds.clear()
+        now = NOW + 9 * 60_000
+        with db:
+            db.execute("INSERT INTO metadata VALUES ('process_heartbeat_ms',?)", (now,))
+        client.fail = True
+        with pytest.raises(RestDeferred):
+            capture(db, client, ["ETHUSDC"], since, now)
+        assert min(bounds) == NOW - 10 * 60_000
+        assert int(dict(db.execute("SELECT * FROM metadata"))["coverage_through_ms"]) == NOW
+        target = dict(path=path, kind="heartbeat", expected_metadata={"owner": "binance_broker_audit"},
+                      heartbeat_key="process_heartbeat_ms", max_age_seconds=90,
+                      freshness_key="coverage_through_ms", freshness_max_age_seconds=300)
+        issues, readable = inspect_target(target, now)
+        assert readable and [i["code"] for i in issues] == ["CAPTURE_STALE"]
+        client.fail = False
+        bounds.clear()
+        capture(db, client, ["ETHUSDC"], since, NOW + DAY)
+        assert min(bounds) == NOW - 3 * DAY
+        assert int(dict(db.execute("SELECT * FROM metadata"))["coverage_through_ms"]) == NOW + DAY

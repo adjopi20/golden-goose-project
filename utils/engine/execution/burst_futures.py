@@ -10,7 +10,8 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 from utils.engine.adapters.binance_execution import FuturesOrders, VenueError
-from utils.engine.adapters.binance_futures_readonly import PreflightError
+from utils.engine.adapters.binance_futures_readonly import PreflightError, background_reads
+from utils.engine.adapters.binance_rest_budget import RestDeferred
 from utils.engine.contracts import canonical_json, content_hash
 from utils.engine.execution.futures_preflight import number, one, positive, quantity_rules
 from utils.engine.execution.preny_futures import FuturesExecutor, TERMINAL, order_id, rounded
@@ -502,7 +503,14 @@ class BurstFuturesExecutor(FuturesExecutor):
         super().cycle(now_ms, new_entries_ok=new_entries_ok)
         if (self.v.armed and isinstance(self.shared_account, CoordinatedBurstAccount) and self.s.active()
                 and now_ms - int(self.s.meta("funding_scan_ms", "0")) >= 60_000):
-            self.scan_funding(now_ms)
+            # The periodic refresh may defer; close-time accounting and
+            # admission refresh still require their own complete venue reads.
+            try:
+                with background_reads():
+                    self.scan_funding(now_ms)
+            except RestDeferred as error:
+                if error.reason != "weight_budget":
+                    raise  # An actual venue/coordinator failure still pauses entry.
 
     def scan_funding(self, now_ms):
         if self.s.meta("funding_start_ms") is None:
@@ -804,13 +812,17 @@ class BurstFuturesExecutor(FuturesExecutor):
         if session["state"] == "PENDING":
             if now_ms < p["eligible_timestamp_ms"]:
                 return
-            if now_ms > p["expires_timestamp_ms"] or not new_entries_ok or self.s.meta("entries_blocked"):
-                return self._skip(session, "stale_or_entries_paused")
+            if now_ms > p["expires_timestamp_ms"]:
+                return self._skip(session, "entry_expired")
+            if self.s.meta("entries_blocked"):
+                return self._skip(session, "entries_review_blocked")
+            if not new_entries_ok:
+                return
             if self.s.meta("last_entry_day") == str(now_ms // DAY):
                 return self._skip(session, "one_entry_per_utc_day")
             coordinated = isinstance(self.shared_account, CoordinatedBurstAccount)
             try:
-                with self.shared_account.admission() if coordinated else nullcontext():
+                with (self.shared_account.admission() if coordinated else nullcontext()), background_reads():
                     spec, available, settings, equity = self.entry_guard(now_ms)
                     plan = plan_entry(p, spec, self.quote(now_ms), equity, available, settings,
                                       partial=self.c.get("risk_management") in ("rm-d", "rm-e"),
@@ -843,10 +855,11 @@ class BurstFuturesExecutor(FuturesExecutor):
                 if row["role"] == "STOP":
                     self.cancel(row)
                 continue
-            if row["role"] == "ENTRY" and row["state"] == "PREPARED" and (
-                not new_entries_ok or now_ms > p["expires_timestamp_ms"]
-            ):
-                self.cancel(row)
+            if row["role"] == "ENTRY" and row["state"] == "PREPARED":
+                with self.s.transaction():
+                    self.s.db.execute("DELETE FROM orders WHERE client_id=?", (row["client_id"],))
+                    self.s.db.execute("UPDATE sessions SET plan=NULL,state='PENDING' WHERE session=?", (row["session_id"],))
+                return  # Revalidate a prepared entry left by restart before any submit.
             elif row["state"] != "PREPARED" or row["role"] in {"ENTRY", "CLOSE"}:
                 self.drive(row["client_id"])
         entry = self.s.db.execute("SELECT * FROM orders WHERE session_id=? AND role='ENTRY'", (session["session"],)).fetchone()

@@ -48,9 +48,18 @@ services:
       nats: {condition: service_healthy}
   binance-collector:
     <<: *collector
+    group_add: ["${GG_BINANCE_REST_GID:-19901}"]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: binance-collector
     command: ["--config", "/app/config/binance.json", "--database", "/data/binance.sqlite"]
     volumes:
       - binance_data:/data
+      - type: bind
+        source: ${GG_BINANCE_REST_BUDGET_DIR:?set the shared absolute host directory for Binance REST}
+        target: /rest-budget
+        bind: {create_host_path: false}
       - type: bind
         source: ${GG_BINANCE_FEED_CONFIG:-./binance.json}
         target: /app/config/binance.json

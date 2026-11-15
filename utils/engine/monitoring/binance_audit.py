@@ -7,15 +7,18 @@ from decimal import Decimal
 import hashlib
 import json
 import os
+import random
 from pathlib import Path
 import signal
 import sqlite3
-from threading import Event
+from threading import Event, Thread
 import time
 
 from utils.engine.adapters.binance_futures_readonly import BinanceFuturesReadOnly, PreflightError
+from utils.engine.adapters.binance_rest_budget import RestDeferred
 
 DAY = 86_400_000
+SHORT_OVERLAP_MS = 10 * 60_000
 HISTORY = {
     "trade": ("/fapi/v1/userTrades", "id"),
     "order": ("/fapi/v1/allOrders", "orderId"),
@@ -30,6 +33,7 @@ SNAPSHOTS = {
 
 
 class BinanceAuditReads(BinanceFuturesReadOnly):
+    rest_background = True
     PRIVATE = BinanceFuturesReadOnly.PRIVATE | {endpoint for endpoint, _ in HISTORY.values()}
 
 
@@ -53,16 +57,24 @@ def capture(db, client, symbols, since, now):
     client.load_credentials()
     identity = hashlib.sha256(client._key.encode()).hexdigest()
     meta = dict(db.execute("SELECT key,value FROM metadata"))
-    if meta and (meta.get("owner"), meta.get("key_hash"), meta.get("symbols")) != (
+    if meta.keys() - {"process_heartbeat_ms"} and (meta.get("owner"), meta.get("key_hash"), meta.get("symbols")) != (
         "binance_broker_audit", identity, ",".join(symbols)
     ):
         raise ValueError("broker_audit_account_or_symbols_changed")
     if int(meta.get("coverage_through_ms", since)) > now:
         raise ValueError("broker_audit_clock_moved_backward")
-    start = max(since, int(meta.get("coverage_through_ms", since)) - 3 * DAY)
+    deep = now - int(meta.get("last_deep_scan_ms", now - DAY)) >= DAY
+    cursor = int(meta.get("coverage_through_ms", since))
+    start = max(since, cursor - (3 * DAY if deep else SHORT_OVERLAP_MS))
+    # Order history is creation-time filtered. A previously observed open
+    # order/algo can acquire a terminal result outside the short overlap.
+    # Once a day cover the same window as the previous audit implementation.
     if not 0 <= now - start <= 89 * DAY:
         raise ValueError("broker_audit_history_outside_retention_or_clock")
+    db.execute("CREATE TEMP TABLE IF NOT EXISTS capture_events AS SELECT * FROM events WHERE 0")
     with db:
+        db.execute("DELETE FROM capture_events")
+        # Stage in SQLite TEMP so the main archive is not locked across HTTP.
         for kind, (endpoint, field) in HISTORY.items():
             for symbol in (("",) if kind == "income" else symbols):
                 for left in range(start, now + 1, 7 * DAY):
@@ -75,13 +87,17 @@ def capture(db, client, symbols, since, now):
                         if kind == "income":
                             native_id = row["incomeType"] + ":" + native_id
                         payload = json.dumps(row, sort_keys=True, separators=(",", ":"), allow_nan=False)
-                        db.execute("INSERT OR IGNORE INTO events VALUES (?,?,?,?,?)",
+                        db.execute("INSERT INTO capture_events VALUES (?,?,?,?,?)",
                                    (kind, row.get("symbol", ""), native_id, payload, now))
+        snapshots = []
         for kind, endpoint in SNAPSHOTS.items():
             rows = client.get(endpoint)
             if not isinstance(rows, list):
                 raise ValueError("invalid_broker_snapshot")
             payload = json.dumps(rows, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            snapshots.append((kind, payload))
+        db.execute("INSERT OR IGNORE INTO events SELECT * FROM capture_events")
+        for kind, payload in snapshots:
             previous = db.execute("SELECT payload FROM events WHERE kind=? ORDER BY observed_ms DESC LIMIT 1",
                                   (kind,)).fetchone()
             if previous is None or previous[0] != payload:
@@ -90,6 +106,7 @@ def capture(db, client, symbols, since, now):
             ("owner", "binance_broker_audit"), ("key_hash", identity), ("symbols", ",".join(symbols)),
             ("coverage_from_ms", meta.get("coverage_from_ms", since)), ("coverage_through_ms", now),
             ("worker_heartbeat_ms", now),
+            ("last_deep_scan_ms", now if deep else meta["last_deep_scan_ms"]),
         ))
 
 
@@ -144,6 +161,17 @@ def compare_journals(db, journals):
         )
 
 
+def process_heartbeat(database, stop):
+    while not stop.is_set():
+        try:
+            with closing(sqlite3.connect(database, timeout=1)) as db, db:
+                db.execute("INSERT OR REPLACE INTO metadata VALUES (?,?)",
+                           ("process_heartbeat_ms", int(time.time() * 1000)))
+        except sqlite3.Error:
+            print('{"event":"broker_heartbeat_write_error"}', flush=True)
+        stop.wait(15)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)
@@ -193,20 +221,23 @@ def main(argv=None):
                  if args.since else int(existing[0]) if existing else int(time.time() * 1000) - 7 * DAY)
         if existing and since != int(existing[0]):
             parser.error("--since differs from the existing archive start")
+        if args.watch:
+            Thread(target=process_heartbeat, args=(args.database, stop), daemon=True).start()
+            stop.wait(random.uniform(0, 10))
         while not stop.is_set():
             try:
                 client.sync_time()
                 now = int(time.time() * 1000) + client.offset
                 capture(db, client, symbols, since, now)
                 print(json.dumps(dict(event="broker_archive_complete", through_ms=now)), flush=True)
-            except (PreflightError, ValueError, KeyError, TypeError, sqlite3.Error) as error:
+            except (RestDeferred, PreflightError, ValueError, KeyError, TypeError, sqlite3.Error) as error:
                 print(json.dumps(dict(event="broker_archive_error", error_type=type(error).__name__,
-                                      reason=str(error) if isinstance(error, PreflightError) else None)), flush=True)
+                                      reason=str(error) if isinstance(error, (RestDeferred, PreflightError)) else None)), flush=True)
                 if not args.watch:
                     return 1
             if not args.watch:
                 return 0
-            stop.wait(60)
+            stop.wait(120 + random.uniform(0, 10))
     return 0
 
 

@@ -5,6 +5,7 @@ x-worker: &worker
   restart: unless-stopped
   stop_grace_period: 30s
   init: true
+  group_add: ["${GG_BINANCE_REST_GID:-19901}"]
   read_only: true
   tmpfs: [/tmp]
   cap_drop: [ALL]
@@ -27,6 +28,10 @@ x-health: &health
 x-burst: &burst
   profiles: [burst]
   volumes:
+    - type: bind
+      source: ${GG_BINANCE_REST_BUDGET_DIR:?set the shared absolute host directory for Binance REST}
+      target: /rest-budget
+      bind: {create_host_path: false}
     - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
     - type: bind
       source: ${HYPE_BURST_SECRETS:?set the existing Burst secrets directory}
@@ -37,6 +42,10 @@ x-burst: &burst
 x-quiet-core: &quiet-core
   profiles: [quiet-core]
   volumes:
+    - type: bind
+      source: ${GG_BINANCE_REST_BUDGET_DIR:?set the shared absolute host directory for Binance REST}
+      target: /rest-budget
+      bind: {create_host_path: false}
     - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
     - type: bind
       source: ${QUIET_CORE_SECRETS:-./unconfigured-quiet-core}
@@ -47,6 +56,10 @@ x-quiet-core: &quiet-core
 x-quiet-tail: &quiet-tail
   profiles: [quiet-tail]
   volumes:
+    - type: bind
+      source: ${GG_BINANCE_REST_BUDGET_DIR:?set the shared absolute host directory for Binance REST}
+      target: /rest-budget
+      bind: {create_host_path: false}
     - ${HYPE_BURST_STATE:?set the persistent external state directory}:/data
     - type: bind
       source: ${QUIET_TAIL_SECRETS:-./unconfigured-quiet-tail}
@@ -57,6 +70,11 @@ x-quiet-tail: &quiet-tail
 services:
   hype-burst-live:
     <<: [*worker, *trading, *burst]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: hype-burst-live
+      BINANCE_REST_ACCOUNT: burst
     command:
       - --portfolio-model
       - burst_hypeusdt_16h_f_p1_initiative_add
@@ -77,6 +95,11 @@ services:
 
   inj-burst-live:
     <<: [*worker, *trading, *burst]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: inj-burst-live
+      BINANCE_REST_ACCOUNT: burst
     command:
       - --portfolio-model
       - burst_injusdt_24h_f_p15_initiative
@@ -97,6 +120,11 @@ services:
 
   uni-burst-live:
     <<: [*worker, *trading, *burst]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: uni-burst-live
+      BINANCE_REST_ACCOUNT: burst
     command:
       - --portfolio-model
       - burst_uniusdc_12h_f_p10_initiative
@@ -117,6 +145,11 @@ services:
 
   hype-quiet-stable:
     <<: [*worker, *trading, *quiet-core]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: hype-quiet-stable
+      BINANCE_REST_ACCOUNT: quiet-core
     command:
       - --portfolio-model
       - quiet_breakout_stable
@@ -135,6 +168,11 @@ services:
 
   eth-quiet-stable:
     <<: [*worker, *trading, *quiet-core]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: eth-quiet-stable
+      BINANCE_REST_ACCOUNT: quiet-core
     command:
       - --portfolio-model
       - quiet_breakout_ethusdc_stable
@@ -153,6 +191,11 @@ services:
 
   uni-quiet-stable:
     <<: [*worker, *trading, *quiet-core]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: uni-quiet-stable
+      BINANCE_REST_ACCOUNT: quiet-core
     command:
       - --portfolio-model
       - quiet_breakout_uniusdc_stable_position_addition
@@ -171,6 +214,11 @@ services:
 
   hype-quiet-tail:
     <<: [*worker, *trading, *quiet-tail]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: hype-quiet-tail
+      BINANCE_REST_ACCOUNT: quiet-tail
     command:
       - --portfolio-model
       - quiet_breakout_tail_dependent_position_addition
@@ -189,6 +237,11 @@ services:
 
   binance-broker-audit:
     <<: [*worker, *burst]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: binance-broker-audit
+      BINANCE_REST_ACCOUNT: burst
     entrypoint: ["python", "-m", "utils.engine.monitoring.binance_audit"]
     command:
       - --watch
@@ -208,10 +261,15 @@ services:
       - /run/account-secrets/passphrase
     healthcheck:
       <<: *health
-      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit.sqlite", "--keys", "worker_heartbeat_ms"]
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit.sqlite", "--keys", "process_heartbeat_ms"]
 
   binance-broker-audit-quiet-core:
     <<: [*worker, *quiet-core]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: binance-broker-audit-quiet-core
+      BINANCE_REST_ACCOUNT: quiet-core
     entrypoint: ["python", "-m", "utils.engine.monitoring.binance_audit"]
     command:
       - --watch
@@ -229,10 +287,15 @@ services:
       - /run/account-secrets/hmac-secret
     healthcheck:
       <<: *health
-      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit-quiet-core.sqlite", "--keys", "worker_heartbeat_ms"]
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit-quiet-core.sqlite", "--keys", "process_heartbeat_ms"]
 
   binance-broker-audit-quiet-tail:
     <<: [*worker, *quiet-tail]
+    environment:
+      BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
+      BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
+      BINANCE_REST_SERVICE: binance-broker-audit-quiet-tail
+      BINANCE_REST_ACCOUNT: quiet-tail
     entrypoint: ["python", "-m", "utils.engine.monitoring.binance_audit"]
     command:
       - --watch
@@ -246,7 +309,7 @@ services:
       - /run/account-secrets/hmac-secret
     healthcheck:
       <<: *health
-      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit-quiet-tail.sqlite", "--keys", "worker_heartbeat_ms"]
+      test: ["CMD", "python", "-m", "utils.engine.monitoring.service_health", "--database", "/data/binance-broker-audit-quiet-tail.sqlite", "--keys", "process_heartbeat_ms"]
 
 networks:
   market:

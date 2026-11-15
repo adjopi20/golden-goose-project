@@ -37,6 +37,10 @@ def load_config(path):
             raise ValueError('Invalid target identity/kind/path')
         if (not isinstance(t.get('heartbeat_key'),str) or type(t.get('max_age_seconds')) is not int
             or not 15<=t['max_age_seconds']<=3600):raise ValueError('Invalid target heartbeat')
+        if 'freshness_key' in t and (not isinstance(t['freshness_key'],str)
+            or type(t.get('freshness_max_age_seconds')) is not int
+            or not 15<=t['freshness_max_age_seconds']<=3600):
+            raise ValueError('Invalid target data freshness')
         seen.add(t['id'])
     return c
 
@@ -58,14 +62,24 @@ def inspect_target(target,now):
             if age < -5000:issues.append(issue('CLOCK_FUTURE','Timestamp heartbeat di masa depan; periksa waktu server.'))
             elif age>target['max_age_seconds']*1000:
                 issues.append(issue('HEARTBEAT_STALE','Worker/sumber tidak memperbarui heartbeat; periksa container dan koneksi.'))
-            if target['kind']=='heartbeat':return issues,True
+            if target['kind']=='heartbeat':
+                key=target.get('freshness_key')
+                if key and (key not in meta or not -5000<=now-int(meta[key])<=target['freshness_max_age_seconds']*1000):
+                    issues.append(issue('CAPTURE_STALE','Proses tersedia tetapi hasil audit belum diperbarui.'))
+                return issues,True
             if meta.get('worker_armed')!='1':
                 issues.append(issue('EXECUTOR_DISARMED','Executor tidak armed. Jika tidak disengaja, periksa mode deployment.',60,'WARNING'))
             if meta.get('worker_error'):
                 issues.append(issue('WORKER_ERROR','Error worker menetap; lihat status/log terlokal sebelum melanjutkan.',60))
             if meta.get('entries_blocked'):
                 issues.append(issue('ENTRIES_BLOCKED','Entry diblokir dan memerlukan review operator; jangan reset ledger.'))
-            active=db.execute("SELECT session,plan,state FROM sessions WHERE state NOT IN ('CLOSED','SKIPPED','DISARMED')").fetchall()
+            active=db.execute("SELECT session,plan,state,intention FROM sessions WHERE state NOT IN ('CLOSED','SKIPPED','DISARMED')").fetchall()
+            if any(s['state']!='PENDING' for s in active) and target.get('freshness_key'):
+                last=int(meta.get(target['freshness_key'], min(
+                    json.loads(s['intention']).get('eligible_timestamp_ms', 0) for s in active
+                    if s['state']!='PENDING')))
+                if not -5000<=now-last<=target['freshness_max_age_seconds']*1000:
+                    issues.append(issue('RECONCILIATION_STALE','Posisi/order aktif belum berhasil direkonsiliasi.',30))
             if len(active)>1:issues.append(issue('MULTIPLE_ACTIVE','Lebih dari satu lifecycle aktif pada satu allocation.'))
             for s in active:
                 orders=db.execute('SELECT role,state,response,cancel_pending,error FROM orders WHERE session_id=?',(s['session'],)).fetchall()

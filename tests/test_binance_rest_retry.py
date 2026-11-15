@@ -7,8 +7,11 @@ from utils.engine.adapters.binance_public import BinancePublic
 
 
 @pytest.fixture
-def api(monkeypatch):
+def api(monkeypatch, tmp_path):
     monkeypatch.setattr("utils.engine.adapters.binance_public.time.sleep", lambda _:None)
+    path = tmp_path / "rest.sqlite"
+    path.touch()
+    monkeypatch.setenv("BINANCE_REST_BUDGET_DB", str(path))
     return BinancePublic()
 
 

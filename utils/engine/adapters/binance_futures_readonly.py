@@ -1,5 +1,7 @@
 """Allowlisted Binance USD-M GETs only. No order, cancel, or account mutation API."""
 import base64
+from contextlib import contextmanager
+from contextvars import ContextVar
 import hmac
 from pathlib import Path
 import re
@@ -7,6 +9,20 @@ import time
 from urllib.parse import urlencode
 
 import requests
+
+from utils.engine.adapters.binance_rest_budget import RestBudget, RestReadThrottled
+
+
+_background = ContextVar("binance_rest_background", default=False)
+
+
+@contextmanager
+def background_reads():
+    token = _background.set(True)
+    try:
+        yield
+    finally:
+        _background.reset(token)
 
 
 class PreflightError(ValueError):
@@ -25,6 +41,7 @@ def secret_bytes(path, limit):
 
 
 class BinanceFuturesReadOnly:
+    rest_background = False
     BASE = 'https://fapi.binance.com'
     PUBLIC = {'/fapi/v1/time', '/fapi/v1/exchangeInfo', '/fapi/v1/ticker/bookTicker'}
     PRIVATE = {'/fapi/v3/account', '/fapi/v1/accountConfig', '/fapi/v3/positionRisk',
@@ -32,7 +49,7 @@ class BinanceFuturesReadOnly:
                '/fapi/v1/symbolConfig', '/fapi/v1/commissionRate'}
 
     def __init__(self, *, api_key_file=None, private_key_file=None, passphrase_file=None,
-                 hmac_secret_file=None, session=None, api_key=None):
+                 hmac_secret_file=None, session=None, api_key=None, budget=None):
         if hmac_secret_file is not None and (private_key_file is not None or passphrase_file is not None):
             raise PreflightError('Choose one Binance signing method per account')
         self.hmac_secret_file = hmac_secret_file
@@ -44,6 +61,7 @@ class BinanceFuturesReadOnly:
         self.http.trust_env = False
         self._key = self._signer = None
         self.offset = None
+        self.budget = budget if budget is not None else RestBudget()
 
     def load_credentials(self):
         from cryptography.exceptions import UnsupportedAlgorithm
@@ -101,6 +119,15 @@ class BinanceFuturesReadOnly:
             raise PreflightError('Binance account UID missing or invalid')
         return uid
 
+    def _reserve(self, method, path, params):
+        opens_risk = (method == 'POST' and path == '/fapi/v1/order' and params.get('reduceOnly') != 'true')
+        return self.budget.acquire(method, path, params, background=(
+            opens_risk or (method == 'GET' and (self.rest_background or _background.get()))))
+
+    def _observe(self, ticket, response, payload=None):
+        if ticket is not None:
+            self.budget.observe(ticket, response, payload)
+
     def _get(self, base, path, parameters, *, signed):
         if any(k in parameters for k in ('signature', 'timestamp', 'recvWindow')):
             raise PreflightError('Caller cannot override signing parameters')
@@ -109,6 +136,8 @@ class BinanceFuturesReadOnly:
             self.load_credentials()
             if self.offset is None:
                 raise PreflightError('Synchronize server time before authenticated reads')
+        ticket = self._reserve('GET', path, params)
+        if signed:
             params.update(timestamp=int(time.time() * 1000) + self.offset, recvWindow=5000)
             params['signature'] = self._signature(params)
             headers['X-MBX-APIKEY'] = self._key
@@ -116,21 +145,24 @@ class BinanceFuturesReadOnly:
             response = self.http.get(base + path, params=params, headers=headers,
                                      timeout=(5, 15), allow_redirects=False)
         except requests.RequestException:
+            if ticket is not None:
+                self.budget.transport_failure(ticket)
             # requests exceptions may contain a signed URL. Never display them.
             raise PreflightError('Binance GET connection/timeout failure; no retry or order sent') from None
-        if response.status_code != 200:
-            code = None
-            try:
-                result = response.json()
-                if isinstance(result, dict) and type(result.get('code')) is int:
-                    code = result['code']
-            except ValueError:
-                pass
-            raise PreflightError(f'Binance GET failed: HTTP {response.status_code}, code {code}; no automatic retry')
         try:
             result = response.json()
         except ValueError:
-            raise PreflightError('Invalid JSON from Binance GET') from None
+            self._observe(ticket, response)
+            if response.status_code == 200:
+                raise PreflightError('Invalid JSON from Binance GET') from None
+            result = None
+        else:
+            self._observe(ticket, response, result)
+        code = result.get('code') if isinstance(result, dict) and type(result.get('code')) is int else None
+        if response.status_code in (418, 429) or code in (-1003, -1015):
+            raise RestReadThrottled('venue_throttled_read', 1)
+        if response.status_code != 200 or (code is not None and code < 0):
+            raise PreflightError(f'Binance GET failed: HTTP {response.status_code}, code {code}; no automatic retry')
         if not isinstance(result, (dict, list)):
             raise PreflightError('Unexpected Binance GET response shape')
         return result

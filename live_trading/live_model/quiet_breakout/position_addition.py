@@ -14,6 +14,9 @@ ADD_FRACTION = Decimal("0.8")
 ADD_WINDOW_MS = 59_999
 
 
+from utils.engine.adapters.binance_futures_readonly import background_reads
+
+
 class PositionAdditionVenue(BurstFuturesOrders):
     def submit(self, role, params):
         return super().submit("ENTRY" if role == "ADD" else role, params)
@@ -63,13 +66,14 @@ class PositionAddition:
 
     def _offer_addition(self, session, now_ms):
         if not isinstance(self.shared_account, CoordinatedBurstAccount):
-            return self._submit_addition(session, now_ms)
+            with background_reads():
+                return self._submit_addition(session, now_ms)
         trigger = json.loads(self.s.meta("position_addition_trigger", "null"))
         if (not trigger or trigger["setup_id"] != session["id"]
                 or now_ms > trigger["timestamp_ms"] + ADD_WINDOW_MS):
             return
         try:
-            with self.shared_account.admission():
+            with self.shared_account.admission(), background_reads():
                 return self._submit_addition(session, now_ms)
         except EntryAdmissionBusy as error:
             with self.s.transaction():

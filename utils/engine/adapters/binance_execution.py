@@ -1,15 +1,28 @@
 """Narrow USD-M order adapter. Disarmed by default; no account-setting endpoints."""
+from contextlib import contextmanager
+from contextvars import ContextVar
 from decimal import Decimal, InvalidOperation
 import re
 import time
 
 import requests
 
+from utils.engine.adapters.binance_rest_budget import RestDeferred, RestReadThrottled
 from utils.engine.adapters.binance_futures_readonly import BinanceFuturesReadOnly, PreflightError
 
 
 ACKNOWLEDGEMENT = 'I_UNDERSTAND_REAL_MONEY'
 PREFIX = 'ggp-'
+_submit_deadline = ContextVar("binance_submit_deadline_ms", default=None)
+
+
+@contextmanager
+def submission_deadline(expires_ms):
+    token = _submit_deadline.set(expires_ms)
+    try:
+        yield
+    finally:
+        _submit_deadline.reset(token)
 
 
 def safe_venue_reason(message, sensitive_values=()):
@@ -55,20 +68,32 @@ class FuturesOrders(BinanceFuturesReadOnly):
         self.load_credentials()
         if self.offset is None:
             raise PreflightError('Synchronize server time before execution')
+        ticket = self._reserve(method, path, params)
         fields = dict(params, timestamp=int(time.time() * 1000) + self.offset, recvWindow=5000)
         fields['signature'] = self._signature(fields)
+        deadline = _submit_deadline.get()
+        if method == 'POST' and deadline is not None and int(time.time() * 1000) > deadline:
+            raise RestDeferred('entry_validity_elapsed', 0)
         try:
             r = self.http.request(method, self.BASE + path,
                                   params=fields if method != 'POST' else None,
                                   data=fields if method == 'POST' else None,
                                   headers={'X-MBX-APIKEY': self._key}, timeout=(5, 15), allow_redirects=False)
         except requests.RequestException:
+            if ticket is not None:
+                self.budget.transport_failure(ticket)
             raise VenueError(uncertain=method != 'GET') from None
         try:
             payload = r.json()
         except ValueError:
+            self._observe(ticket, r)
+            if method == 'GET' and r.status_code in (418, 429):
+                raise RestReadThrottled('venue_throttled_read', 1) from None
             raise VenueError(r.status_code, uncertain=method != 'GET') from None
+        self._observe(ticket, r, payload)
         code = payload.get('code') if isinstance(payload, dict) and type(payload.get('code')) is int else None
+        if method == 'GET' and (r.status_code in (418, 429) or code in (-1003, -1015)):
+            raise RestReadThrottled('venue_throttled_read', 1)
         if r.status_code != 200 or (code is not None and code < 0):
             # Only unambiguous venue rejections are safe to classify as not accepted.
             rejected = {-1013, -1100, -1102, -1111, -2019, -2021, -2022, -4003, -4004, -4005}

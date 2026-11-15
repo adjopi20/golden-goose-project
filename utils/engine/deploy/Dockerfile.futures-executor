@@ -15,6 +15,7 @@ COPY utils/engine/state/futures.py /app/utils/engine/state/futures.py
 COPY utils/engine/execution/preny_futures.py /app/utils/engine/execution/preny_futures.py
 COPY utils/engine/adapters/__init__.py /app/utils/engine/adapters/__init__.py
 COPY utils/engine/adapters/binance_futures_readonly.py /app/utils/engine/adapters/binance_futures_readonly.py
+COPY utils/engine/adapters/binance_rest_budget.py /app/utils/engine/adapters/binance_rest_budget.py
 COPY utils/engine/adapters/binance_execution.py /app/utils/engine/adapters/binance_execution.py
 COPY utils/engine/contracts.py /app/utils/engine/contracts.py
 COPY model_development/models/trend_following_preny_profile_15m/legacy/pilot_worker.py /app/model_development/models/trend_following_preny_profile_15m/legacy/
