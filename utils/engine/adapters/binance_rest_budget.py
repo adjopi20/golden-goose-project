@@ -1,8 +1,10 @@
 """Binance REST admission at the HTTP boundary; one SQLite file per egress IP."""
+from collections import deque
 from contextlib import closing, contextmanager
 from email.utils import parsedate_to_datetime
+from itertools import islice
 from pathlib import Path
-from time import time as wall_time
+from time import monotonic, time as wall_time
 import logging
 import os
 import re
@@ -83,38 +85,76 @@ class RestBudget:
             "orders10": limit(orders_10s, "ORDERS_10S", 240, 270),
             "orders60": limit(orders_1m, "ORDERS_1M", 960, 1080),
         }
-        self.backoff_until = 0
+        self._initialized = False
+        self._next_cleanup = 0.0
+        self._next_flush = monotonic() + 5
+        self._metrics = deque(maxlen=2048)
+        self._pending_observations = deque()
         self.settings = ",".join(str(n) for n in self.limits.values())
 
     @contextmanager
-    def _transaction(self):
+    def _transaction(self, *, timeout=.125):
         # Brief transactions only. No lock spans HTTP or an exchange retry.
-        with closing(sqlite3.connect(self.uri, uri=True, timeout=.075)) as db, db:
+        with closing(sqlite3.connect(self.uri, uri=True, timeout=timeout)) as db, db:
             db.execute("BEGIN IMMEDIATE")
-            db.execute("""CREATE TABLE IF NOT EXISTS reservations(
-                       id INTEGER PRIMARY KEY AUTOINCREMENT, stamp REAL, product TEXT, account TEXT,
-                       weight INTEGER, orders INTEGER, done INTEGER DEFAULT 0)""")
-            db.execute("CREATE INDEX IF NOT EXISTS rest_stamp ON reservations(stamp)")
-            db.execute("""CREATE TABLE IF NOT EXISTS floors(
-                       scope TEXT, seconds INTEGER, win INTEGER, used INTEGER,
-                       PRIMARY KEY(scope,seconds,win))""")
-            db.execute("CREATE TABLE IF NOT EXISTS cooldown(scope TEXT PRIMARY KEY, until REAL)")
-            db.execute("""CREATE TABLE IF NOT EXISTS metrics(
-                       minute INTEGER, service TEXT, method TEXT, endpoint TEXT, event TEXT,
-                       count INTEGER, weight INTEGER, wait_seconds REAL, header_max INTEGER,
-                       PRIMARY KEY(minute,service,method,endpoint,event))""")
-            db.execute("CREATE TABLE IF NOT EXISTS rest_config (id INTEGER PRIMARY KEY CHECK(id=1), limits TEXT)")
-            db.execute("INSERT OR IGNORE INTO rest_config VALUES (1,?)", (self.settings,))
+            if not self._initialized:
+                self._initialize(db)
             if db.execute("SELECT limits FROM rest_config WHERE id=1").fetchone()[0] != self.settings:
                 raise RestDeferred("coordinator_settings_mismatch", 5)
             yield db
+        self._initialized = True
 
-    def _metric(self, db, now, method, path, event, weight=0, wait=0, header=0):
-        db.execute("""INSERT INTO metrics VALUES (?,?,?,?,?,1,?,?,?)
-                   ON CONFLICT DO UPDATE SET count=count+1, weight=weight+excluded.weight,
-                   wait_seconds=wait_seconds+excluded.wait_seconds,
-                   header_max=max(header_max,excluded.header_max)""",
-                   (int(now // 60), self.service, method, path, event, weight, wait, header))
+    def _initialize(self, db):
+        db.execute("""CREATE TABLE IF NOT EXISTS reservations(
+                   id INTEGER PRIMARY KEY AUTOINCREMENT, stamp REAL, product TEXT, account TEXT,
+                   weight INTEGER, orders INTEGER, done INTEGER DEFAULT 0)""")
+        db.execute("CREATE INDEX IF NOT EXISTS rest_stamp ON reservations(stamp)")
+        db.execute("""CREATE TABLE IF NOT EXISTS floors(
+                   scope TEXT, seconds INTEGER, win INTEGER, used INTEGER,
+                   PRIMARY KEY(scope,seconds,win))""")
+        db.execute("CREATE TABLE IF NOT EXISTS cooldown(scope TEXT PRIMARY KEY, until REAL)")
+        db.execute("""CREATE TABLE IF NOT EXISTS metrics(
+                   minute INTEGER, service TEXT, method TEXT, endpoint TEXT, event TEXT,
+                   count INTEGER, weight INTEGER, wait_seconds REAL, header_max INTEGER,
+                   PRIMARY KEY(minute,service,method,endpoint,event))""")
+        db.execute("CREATE TABLE IF NOT EXISTS rest_config (id INTEGER PRIMARY KEY CHECK(id=1), limits TEXT)")
+        db.execute("INSERT OR IGNORE INTO rest_config VALUES (1,?)", (self.settings,))
+
+    def _metric(self, now, method, path, event, weight=0, wait=0, header=0):
+        self._metrics.append((int(now // 60), self.service, method, path, event, weight, wait, header))
+        if monotonic() >= self._next_flush:
+            self.flush_metrics()
+
+    def flush_metrics(self):
+        # Telemetry may wait for a later batch. It does not own reservations or cooldowns.
+        if not self._metrics:
+            return
+        self._next_flush = monotonic() + 5
+        started = monotonic()
+        batch = list(islice(self._metrics, 128))
+        try:
+            with self._transaction(timeout=0) as db:
+                db.executemany("""INSERT INTO metrics VALUES (?,?,?,?,?,1,?,?,?)
+                    ON CONFLICT DO UPDATE SET count=count+1, weight=weight+excluded.weight,
+                    wait_seconds=wait_seconds+excluded.wait_seconds,
+                    header_max=max(header_max,excluded.header_max)""", batch)
+        except (sqlite3.Error, RestDeferred) as error:
+            if not self._busy(error):
+                self._log_storage("metrics", error, started)
+        else:
+            for _ in batch:
+                self._metrics.popleft()
+
+    @staticmethod
+    def _busy(error):
+        code = getattr(error, "sqlite_errorcode", 0)
+        return (code & 0xff) in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+
+    def _log_storage(self, phase, error, started, *, path="-", status="-"):
+        LOG.warning("Binance REST coordinator %s failed: %s %s HTTP %s %s in %.1fms",
+                    phase, self.service, path, status,
+                    getattr(error, "sqlite_errorname", type(error).__name__),
+                    (monotonic() - started) * 1000)
 
     def _scopes(self, product, weight, orders):
         yield product, 60, weight, self.limits[product], "product", product, "weight", "x-mbx-used-weight-1m"
@@ -127,13 +167,20 @@ class RestBudget:
         weight = request_weight(method, path, params)
         product = "spot" if path.startswith("/api/") else "futures"
         orders = method == "POST"
+        while self._pending_observations:
+            if not self._write_observation(*self._pending_observations[0]):
+                raise RestDeferred("coordinator_response_pending", 1)
+            self._pending_observations.popleft()
         error = None
+        started = monotonic()
+        cleanup = started >= self._next_cleanup
         try:
             with self._transaction() as db:
                 now = self.clock()
-                db.execute("DELETE FROM reservations WHERE stamp <= ?", (now - 90,))
-                db.execute("DELETE FROM floors WHERE (win+1)*seconds < ?", (now - 60,))
-                db.execute("DELETE FROM metrics WHERE minute < ?", (int(now // 60) - 1440,))
+                if cleanup:
+                    db.execute("DELETE FROM reservations WHERE stamp <= ?", (now - 90,))
+                    db.execute("DELETE FROM floors WHERE (win+1)*seconds < ?", (now - 60,))
+                    db.execute("DELETE FROM metrics WHERE minute < ?", (int(now // 60) - 1440,))
                 ban = db.execute("SELECT max(until) FROM cooldown WHERE scope IN (?,?,?)",
                                  ("ip", product, "orders:" + self.account if orders else "")).fetchone()[0]
                 if ban is not None and ban > now:
@@ -165,86 +212,95 @@ class RestBudget:
                     for scope, span, cost, *_ in self._scopes(product, weight, orders):
                         db.execute("""INSERT INTO floors VALUES (?,?,?,?) ON CONFLICT DO UPDATE
                                    SET used=used+excluded.used""", (scope, span, int(now // span), cost))
-                    self._metric(db, now, method, path, "reserved", weight=weight)
-                    return row.lastrowid, now, method, path, product, weight, orders
-                self._metric(db, now, method, path, error.reason, wait=error.delay)
-        except sqlite3.Error:
+                    ticket = row.lastrowid, now, method, path, product, weight, orders
+        except sqlite3.Error as db_error:
+            self._log_storage("reservation", db_error, started, path=path)
             raise RestDeferred("coordinator_unavailable", 1) from None
-        raise error
+        if cleanup:
+            self._next_cleanup = started + 60
+        if error is not None:
+            self._metric(now, method, path, error.reason, wait=error.delay)
+            raise error
+        self._metric(now, method, path, "reserved", weight=weight)
+        return ticket
 
     def observe(self, ticket, response, payload=None):
         """Post-send persistence must never classify a transmitted order as deferred."""
-        path = ticket[3]
         status, now = response.status_code, self.clock()
         headers = {str(k).lower(): v for k, v in getattr(response, "headers", {}).items()}
         code = payload.get("code") if isinstance(payload, dict) else None
         throttle = status in (418, 429) or code in (-1003, -1015)
-        for _ in range(3 if throttle else 1):
-            if self._observe_once(ticket, status, now, headers, payload, code, throttle):
-                return
-        # Post-send storage failure never claims the mutation was not transmitted.
-        self.backoff_until = max(self.backoff_until, now + (3 * 86400 if status == 418 else 60))
-        LOG.error("Binance REST coordinator could not record response: %s %s HTTP %s",
-                  self.service, path, status)
+        match = re.search(r"banned until (\d{13})", str(payload.get("msg", "")), re.I) if (
+            status == 418 and isinstance(payload, dict)) else None
+        ban_until = int(match[1]) / 1000 if match else 0
+        observation = (ticket, status, now, headers, ban_until, code, throttle)
+        if not self._write_observation(*observation):
+            # Retry the database write before this client sends anything else.
+            # The caller still receives the actual HTTP result.
+            self._pending_observations.append(observation)
 
-    def _observe_once(self, ticket, status, now, headers, payload, code, throttle):
-        rid, sent, method, path, product, weight, orders = ticket
-        try:
-            with self._transaction() as db:
-                db.execute("UPDATE reservations SET done=1, stamp=? WHERE id=?", (now, rid))
-                self._metric(db, now, method, path, f"http_{status}")
-                for scope, span, _, _, field, key, units, header in self._scopes(product, weight, orders):
-                    if path == "/fapi/v1/ticker/bookTicker":
-                        continue  # Binance documents this route's weight header as inaccurate.
-                    value = integer(headers.get(header))
-                    if value is None:
-                        continue
-                    self._metric(db, now, method, path, header, header=value)
-                    stamp = now
+    def _write_observation(self, ticket, status, now, headers, ban_until, code, throttle):
+        started = monotonic()
+        for attempt in range(2):
+            try:
+                metrics = self._observe_once(ticket, now, headers, ban_until, status, code, throttle)
+                break
+            except (sqlite3.Error, RestDeferred) as failure:
+                if not self._busy(failure) or attempt == 1:
+                    self._log_storage("observation", failure, started, path=ticket[3], status=status)
+                    return False
+        for event, values in metrics:
+            self._metric(now, ticket[2], ticket[3], event, **values)
+        self._metric(now, ticket[2], ticket[3], f"http_{status}")
+        return True
+
+    def _observe_once(self, ticket, now, headers, ban_until, status, code, throttle):
+        rid, sent, _, path, product, weight, orders = ticket
+        metrics = []
+        with self._transaction() as db:
+            db.execute("UPDATE reservations SET done=1, stamp=? WHERE id=?", (now, rid))
+            for scope, span, _, _, field, key, units, header in self._scopes(product, weight, orders):
+                if path == "/fapi/v1/ticker/bookTicker":
+                    continue  # Binance documents this route's weight header as inaccurate.
+                value = integer(headers.get(header))
+                if value is None:
+                    continue
+                metrics.append((header, {"header": value}))
+                stamp = now
+                try:
+                    stamp = parsedate_to_datetime(headers.get("date", "")).timestamp()
+                except (ValueError, TypeError, OverflowError):
+                    if int(sent // span) != int(now // span):
+                        continue  # Cannot attribute a response spanning a boundary.
+                pending = db.execute(
+                    f"SELECT coalesce(sum({units}),0) FROM reservations WHERE {field}=? AND done=0 AND stamp>?",
+                    (key, now - 30)).fetchone()[0]
+                db.execute("""INSERT INTO floors VALUES(?,?,?,?) ON CONFLICT DO UPDATE
+                           SET used=max(used,excluded.used)""", (scope, span, int(stamp // span), value + pending))
+            if throttle:
+                retry = integer(headers.get("retry-after"))
+                if retry is None:
                     try:
-                        stamp = parsedate_to_datetime(headers.get("date", "")).timestamp()
+                        retry = max(0, parsedate_to_datetime(headers.get("retry-after", "")).timestamp() - now)
                     except (ValueError, TypeError, OverflowError):
-                        if int(sent // span) != int(now // span):
-                            continue  # Cannot attribute a response spanning a boundary.
-                    pending = db.execute(
-                        f"SELECT coalesce(sum({units}),0) FROM reservations WHERE {field}=? AND done=0 AND stamp>?",
-                        (key, now - 30)).fetchone()[0]
-                    db.execute("""INSERT INTO floors VALUES(?,?,?,?) ON CONFLICT DO UPDATE
-                               SET used=max(used,excluded.used)""", (scope, span, int(stamp // span), value + pending))
-                if throttle:
-                    retry = integer(headers.get("retry-after"))
-                    if retry is None:
-                        try:
-                            retry = max(0, parsedate_to_datetime(headers.get("retry-after", "")).timestamp() - now)
-                        except (ValueError, TypeError, OverflowError):
-                            pass
-                    if status == 418:
-                        match = re.search(r"banned until (\d{13})", str(payload.get("msg", "")), re.I) if isinstance(payload, dict) else None
-                        expires = max(now + (retry if retry is not None else 0), int(match[1])/1000 if match else 0)
-                        if expires <= now:
-                            expires = now + 3 * 86400
-                        scope = "ip"
-                    else:
-                        scope = "orders:" + self.account if code == -1015 else product if code == -1003 else "ip"
-                        expires = now + (retry if retry is not None else 60)
-                    expires = max(expires, now + 1)
-                    db.execute("""INSERT INTO cooldown VALUES (?,?) ON CONFLICT DO UPDATE
-                               SET until=max(until,excluded.until)""", (scope, expires))
-                    self._metric(db, now, method, path, "cooldown", wait=expires - now)
-            return True
-        except (sqlite3.Error, RestDeferred):
-            return False
+                        pass
+                if status == 418:
+                    expires = max(now + (retry if retry is not None else 0), ban_until)
+                    if expires <= now:
+                        expires = now + 3 * 86400
+                    scope = "ip"
+                else:
+                    scope = "orders:" + self.account if code == -1015 else product if code == -1003 else "ip"
+                    expires = now + (retry if retry is not None else 60)
+                expires = max(expires, now + 1)
+                db.execute("""INSERT INTO cooldown VALUES (?,?) ON CONFLICT DO UPDATE
+                           SET until=max(until,excluded.until)""", (scope, expires))
+                metrics.append(("cooldown", {"wait": expires - now}))
+        return metrics
 
     def transport_failure(self, ticket):
         _, _, method, path, *_ = ticket
-        try:
-            with self._transaction() as db:
-                self._metric(db, self.clock(), method, path, "transport_unknown")
-        except (sqlite3.Error, RestDeferred):
-            LOG.error("Binance REST transport metric unavailable: %s %s", self.service, path)
+        self._metric(self.clock(), method, path, "transport_unknown")
 
     def acquire(self, method, path, params, *, background=False):
-        delay = self.backoff_until - self.clock()
-        if delay > 0:
-            raise RestDeferred("coordinator_response_backoff", delay)
         return self.reserve(method, path, params, background=background)

@@ -4,6 +4,7 @@ from contextlib import closing
 from multiprocessing import get_context
 from pathlib import Path
 import sqlite3
+from time import monotonic, sleep
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -36,7 +37,7 @@ def test_atomic_across_spawned_processes(tmp_path):
     with ProcessPoolExecutor(max_workers=4, mp_context=get_context("spawn")) as pool:
         assert sum(pool.map(acquire_many, [str(path)]*4, ["audit", "collector", "worker1", "worker2"])) == 5
     with closing(sqlite3.connect(path)) as db:
-        assert db.execute("SELECT sum(weight) FROM metrics WHERE event='reserved'").fetchone()[0] == 100
+        assert db.execute("SELECT sum(weight) FROM reservations").fetchone()[0] == 100
 
 
 def pair(tmp_path, **kwargs):
@@ -111,9 +112,75 @@ def test_shared_429_ban_and_account_order_counter_are_distinct(tmp_path):
     with pytest.raises(RestDeferred, match="venue_cooldown") as e:
         b.acquire("GET", "/api/v3/account", {})
     assert e.value.delay == banned_until/1000 - now[0]
+    a.flush_metrics()
+    b.flush_metrics()
     with closing(sqlite3.connect(a.path)) as db:
         assert db.execute("SELECT sum(count) FROM metrics WHERE event='http_429'").fetchone()[0] == 2
         assert db.execute("SELECT sum(count) FROM metrics WHERE event='http_418'").fetchone()[0] == 1
+
+
+def test_metric_failure_cannot_discard_header_or_block_reconciliation(tmp_path, caplog):
+    a, b, _ = pair(tmp_path, futures=100)
+    ticket = a.acquire("GET", "/fapi/v3/positionRisk", {})
+    with closing(sqlite3.connect(a.path)) as db:
+        db.execute("""CREATE TRIGGER offline_metrics BEFORE INSERT ON metrics
+                   BEGIN SELECT RAISE(FAIL, 'test telemetry failure'); END""")
+    a.observe(ticket, response(200, **{"X-MBX-USED-WEIGHT-1M": "70"}))
+    a.flush_metrics()
+    assert "SQLITE_CONSTRAINT_TRIGGER" in caplog.text
+    with pytest.raises(RestDeferred, match="weight_budget"):
+        b.acquire("GET", "/fapi/v1/time", {}, background=True)
+    a.acquire("GET", "/fapi/v3/positionRisk", {})
+
+
+@pytest.mark.parametrize("status", [200, 429, 418])
+def test_locked_response_recovers_without_fixed_backoff_and_preserves_cooldown(tmp_path, status, caplog):
+    a, b, now = pair(tmp_path)
+    ticket = a.acquire("GET", "/fapi/v1/time", {})
+    with closing(sqlite3.connect(a.path)) as db:
+        db.execute("BEGIN IMMEDIATE")
+        a.observe(ticket, response(status, **{"Retry-After": "10", "X-MBX-USED-WEIGHT-1M": "100"}))
+        assert "SQLITE_BUSY" in caplog.text
+        with pytest.raises(RestDeferred, match="coordinator_response_pending"):
+            a.acquire("GET", "/fapi/v1/time", {})
+    if status == 200:
+        a.acquire("GET", "/fapi/v1/time", {})
+    else:
+        with pytest.raises(RestDeferred, match="venue_cooldown"):
+            a.acquire("GET", "/fapi/v1/time", {})
+        endpoint = "/api/v3/account" if status == 418 else "/fapi/v1/time"
+        with pytest.raises(RestDeferred, match="venue_cooldown"):
+            b.acquire("GET", endpoint, {})
+        now[0] += 10
+        b.acquire("GET", endpoint, {})
+
+
+def reconcile_burst(path, service):
+    budget = RestBudget(path, service=service, clock=lambda: 120)
+    def acquire():
+        deadline = monotonic() + 8
+        while True:
+            try:
+                return budget.acquire("GET", "/fapi/v1/time", {})
+            except RestDeferred as error:
+                assert error.reason in ("coordinator_unavailable", "coordinator_response_pending")
+                assert monotonic() < deadline, "budget did not recover from concurrent writes"
+                sleep(.015)
+
+    for _ in range(16):
+        budget.observe(acquire(), response(200))
+    acquire()  # The next admission must persist any deferred observation first.
+    budget.flush_metrics()
+
+
+def test_concurrent_worker_and_audit_observations_commit(tmp_path):
+    path = tmp_path / "portfolio.sqlite"
+    path.touch()
+    labels = [f"worker{i}" for i in range(7)] + ["audit"]
+    with ProcessPoolExecutor(max_workers=8, mp_context=get_context("spawn")) as pool:
+        list(pool.map(reconcile_burst, [str(path)] * len(labels), labels))
+    with closing(sqlite3.connect(path)) as db:
+        assert db.execute("SELECT count(*), sum(done) FROM reservations").fetchone() == (136, 128)
 
 
 def test_wrong_config_missing_db_and_lock_never_send(tmp_path):

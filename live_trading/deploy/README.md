@@ -111,17 +111,17 @@ Do not use NFS or independent volumes. Do not run out-of-band Binance REST
 tools on this host during cutover unless they use this file. A second egress
 host would need a different coordinator design.
 
-Reservations use SQLite rollback journaling and a 75ms lock wait. No lock spans
-HTTP. A restart or crash retains reservations and venue cooldown; unanswered
-attempts keep a 30s timeout allowance on top of their rolling window. Venue
-headers raise the estimate (which may conservatively count concurrent
-in-flight work twice); they cannot lower it in a window. A missing/inaccessible
-DB, contention timeout, or conflicting process configuration produces a
-deferral with no HTTP. If a response cannot be recorded even after bounded
-retries, the client backs off locally. As with any shared storage failure,
-a cooldown that never reached disk cannot be recovered by other clients; check
-the log, keep admission paused, and wait for the venue ban to expire before
-restoring service. Native accepted stops are held at Binance throughout.
+Reservations use SQLite rollback journaling. A write may wait up to 125 ms
+for a lock per attempt. No lock spans HTTP. A restart or crash retains
+committed reservations and venue cooldowns. Unanswered attempts keep a 30s
+timeout allowance on top of their rolling window. A missing database,
+contention timeout, or conflicting configuration defers admission before HTTP.
+A response write retries once for SQLite contention. If it still fails, the
+client retains the update and must persist it before sending another request.
+This includes the original expiry from any venue cooldown. A cooldown that
+never reached shared storage cannot inform peers. Check the SQLite error code
+and timing in the logs and verify venue state during a storage outage.
+Native accepted stops are held at Binance throughout.
 
 Set the same `GG_BINANCE_REST_FUTURES_1M` in both Compose projects; a new
 database defaults to 1920, with 1344 available to background work. If changing
@@ -130,8 +130,10 @@ clients stopped and positions safely protected; retain cooldown and reservations
 The metrics table keeps roughly 24h by UTC minute/service/method/endpoint:
 `reserved` count and weight, header maxima, `http_429`/`http_418`, transport
 unknown, cooldown and deferral count/wait. `reserved` can include a crashed
-attempt before it reached the wire; `http_*` is an observed response. Only the
-route and configured worker labels are recorded.
+attempt before it reached the wire. `http_*` is an observed response. Metrics
+are buffered and written separately every five seconds while the client is
+active. A process restart can lose an unflushed batch. Only the route and
+configured worker labels are recorded.
 
 1. Review and publish the exact commit; build from it and verify all package
    pins, rendered Compose mounts, UID/GID access, and coordinator behavior

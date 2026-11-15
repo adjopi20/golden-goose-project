@@ -15,8 +15,8 @@
   "source_run": "model_development/models/quiet_breakout/runs/ethusdc_combined_v01_p85_after/run.json",
   "source_run_sha256": "1b869cc3ee8918f5a8f3a110bf84df9fab7ceef27f69c43a6390fea7a38c9d9d",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261115_v8.json",
-    "sha256": "6d24363db1d888a8249b7ca454382f3ee9056f5f847d400b34f23835cd0b68a0"
+    "path": "utils/engine/releases/shared_engine_20261115_v9.json",
+    "sha256": "36fa85ccf06c54dbb31c5ea38a6cab5bb6c24d1da2db502fc4fe038dde4ddd7a"
   },
   "strategy_sha256": "d2eda25407de44b5b87c03a436d659d0d5ddbeba9ec9a77b6273931ee60a5b92",
   "dependencies": {

@@ -13,8 +13,8 @@
   "quantity_unit": "UNI",
   "pnl_unit": "USDC",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261115_v8.json",
-    "sha256": "6d24363db1d888a8249b7ca454382f3ee9056f5f847d400b34f23835cd0b68a0"
+    "path": "utils/engine/releases/shared_engine_20261115_v9.json",
+    "sha256": "36fa85ccf06c54dbb31c5ea38a6cab5bb6c24d1da2db502fc4fe038dde4ddd7a"
   },
   "strategy_sha256": "c93c5c6370c596874a446748c0f4108682480391fe382f71571665e07352c4a8",
   "dependencies": {

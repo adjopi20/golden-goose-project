@@ -247,3 +247,25 @@ for submission, unknown orders, child/fee/funding validation, periodic checks
 and recovery. Reduce individual polls only after comparing the private stream
 against REST/account journals in shadow mode, including partial stop children
 and disconnects. No private stream code is included in this patch.
+
+
+## Shared SQLite limiter write contention (2026-11-15 WIB)
+
+After v8 rollout, Burst INJ and UNI and Quiet HYPE Stable logged failed limiter
+writes following HTTP 200. Workers sometimes deferred reconciliation for up
+to a minute. No 429/418 was observed during the affected checks. This spans
+accounts and symbols. The previous adapter suppressed the SQLite error code,
+so the historical failure cannot be attributed conclusively to a specific
+SQLite or filesystem error.
+
+The updated limiter shortens the safety transactions, batches telemetry
+separately, and reports the SQLite code and elapsed time. It retries locally
+contended observation writes, retains any uncommitted observation, and requires
+it to be stored before that client sends another request. The response remains
+available to the caller for order and fill reconciliation. A failed metrics
+batch cannot roll back a request budget floor, reservation, or cooldown.
+
+Tests cover a failed telemetry write, a locked HTTP 200/429/418 observation,
+shared cooldown scope after recovery, and concurrent writes by seven simulated
+workers and an audit process. The original storage-failure caveat remains for a
+venue cooldown that could not be committed or shared before a process crash.
