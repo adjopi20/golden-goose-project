@@ -113,6 +113,15 @@ venue failure. Never log secrets, signed URLs, raw account responses or unfilter
 exception text to improve diagnostics. Keep historical facts and proposed work
 separate from implemented and deployed changes.
 
+For limiter or execution rollouts, use the
+[live deployment runbook](live_trading/deploy/README.md#shared-binance-rest-budget-rollout-and-rollback).
+Distinguish shared collateral admission from the shared IP REST budget and
+SQLite storage contention. Check venue status/code, SQLite result where
+applicable, and the freshness of reconciliation and audit capture. Treat
+manage-only as temporary. At handoff, record and verify the intended mode of
+each worker against its effective Compose configuration and running command.
+Use the incident record for the last verified deployment and its scope.
+
 ## Operational package placement — 2026-11-03
 
 This supersedes the earlier six-candidates-in-live placement. Research copies stay

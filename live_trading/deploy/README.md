@@ -135,33 +135,42 @@ are buffered and written separately every five seconds while the client is
 active. A process restart can lose an unflushed batch. Only the route and
 configured worker labels are recorded.
 
-1. Review and publish the exact commit; build from it and verify all package
-   pins, rendered Compose mounts, UID/GID access, and coordinator behavior
-   without trading. Save original image digests and configuration. Inventory
-   existing positions, native stop (including guard/child state), pending orders
-   and account identity read-only. Do not cut over a lane with an unresolved
-   mutation, a stop replacement in flight, or an imminent time exit without
-   resolving it under the current version first.
-2. Pause/replace the old audits first to relieve background load; keep
-   monitor and native stops running. Roll the collector without dropping
-   its volume or NATS checkpoints; check that coverage is fresh. Canary one
-   worker at a time with `--armed --manage-only`, the same journal and account,
-   never two writers for a symbol. Confirm the exact native position, protector,
-   fill attribution and exit timer before moving to peers. Mixed old/new
-   versions cannot share the local counter, so keep audit load off and watch
-   venue headers and 429 during this short period.
-3. Once seven lanes and the collector reconcile, restore audits with the
-   new heartbeat/freshness config and deploy the matching monitor config.
-   Check operation for several venue minutes, including DB deferrals,
-   `CAPTURE_STALE`, `RECONCILIATION_STALE`, unconfirmed stops and header
-   headroom. Remove `--manage-only` only after current coverage, no unknown
-   mutations and operator review. The original setup deadlines remain in force.
-4. Roll back a failing lane one at a time to its saved **b901f9c** image
-   (contains the ADD fix) and exact original command/mounts. Quiesce the
-   replacement writer, keep and reconcile the latest journal/position/STOPs,
-   and verify the old worker actually takes over. Keep the low-priority audits
-   paused if the old image would overload the IP. Restore the old monitor
-   config when restoring old audits. Never reset/relabel account data, replay
-   pending POSTs, or cancel existing protective stops just to roll back.
-   If still banned or protection is unclear, native protection alone is not
-   evidence that a timed or manual exit is available; follow operator recovery.
+1. Publish and verify the exact source commit on GitHub before building. Verify
+   model pins, the rendered Compose mounts, and read/write access for every
+   participating container UID/GID. Save the current image digests and effective
+   configuration, including per-worker command overrides. Use GET-only Binance
+   checks for account UID, signed position versus attributed fills, standard and
+   algo orders, protective stop identity and exit deadline. Leave a lane on its
+   current version while a mutation or stop replacement is unresolved or a
+   time exit is imminent.
+2. Roll workers one at a time with the same journal/account and one execution
+   writer per symbol. For the initial transition from an uncoordinated image,
+   pause or replace old audits to reduce background load. Monitor venue headers
+   and 429 during the mixed rollout. On a compatible shared-limiter upgrade,
+   preserve the existing coordinator database and confirm old and new images
+   use the same path, schema and limits. Preserve collector volumes and NATS
+   checkpoints and verify fresh market coverage after its restart. Roll the
+   audit and monitor together if their heartbeat/freshness contract changes.
+3. Use `--armed --manage-only` when a canary needs to keep reconciling and
+   protecting positions while holding new exposure. A running or Docker-healthy
+   process alone does not prove reconciliation is current. Check the last
+   successful reconciliation, unresolved orders, actual venue position/stop,
+   audit heartbeats and advancing capture, header headroom and cooldowns.
+   Compare the SQLite phase/code and recovery time with venue HTTP status.
+   A short SQLITE_BUSY before HTTP can recover on the next cycle. Repeated
+   failures or increasing reconciliation age call for investigation.
+4. Restore the intended mode explicitly after the checks pass. Removing
+   `--manage-only` restores ENTRY and, for models that support it, ADD. Verify
+   the effective override and running flags for every worker, not only the
+   last one restarted. Confirm fresh reconciliation and protection after the
+   switch. Setup and ADD deadlines stay in force during a pause.
+5. For rollback, use the saved compatible image and configuration for the
+   affected lane. Stop its current writer, retain its journal, check position
+   and native stops, and verify the replacement reconciles. Retain the latest
+   limiter state. If the rollback image predates shared budgeting, account
+   for its uncoordinated traffic and keep old audit load low. Restore matching
+   alert configuration if needed. Preserve protective stops and never replay
+   a pending POST as a recovery shortcut.
+
+See the [VPS rollout and recovery record](../../docs/operations/LIVE_EXECUTION_LESSONS.md#vps-rollout-and-recovery-record-2026-11-15-wib)
+for deployed commits, final worker modes, and validation observed on the server.

@@ -35,6 +35,8 @@ raw account payloads and production journals never belong in this record.
 | Partial/delayed fill history | Keep quantity/price unresolved until evidence matches; defer new risk/admission within the original setup validity window. Preserve native protection, time exits and position reconciliation. Never invent price/quantity. |
 | Timeout/lost acknowledgement after order mutation | Preserve intent and client ID; query that ID plus fills/position. Never blindly resend POST or assume cancellation/rejection from absence alone. |
 | HTTP 429 / Binance -1003 | Treat as a shared IP request-budget problem, including other services/accounts. Design centralized budgeting, bounded retries/backoff respecting venue delay, and prioritized protection/exit reconciliation. A catch-and-retry loop is not a rate-limit fix. |
+| Local limiter storage failure before HTTP | Defer admission, record the SQLite code and wait time, and reconcile on the next cycle. Check the age of the last completed cycle. |
+| Limiter storage failure after HTTP | Keep the actual venue response, retry only the database write, and persist the pending counter/cooldown update before the client sends again. |
 | HTTP 418 / ban or non-retryable venue rejection | Respect the venue restriction/rejection; avoid request storms. Preserve structured status/code and confirmed protection; reconcile uncertain mutations. Do not retry every VenueError identically. |
 | KeyError/TypeError/schema defect | Capture safe diagnostic location/phase and an allowlisted field name; reproduce with saved sanitized data. A runtime retry is containment, not repair. |
 | Account identity, ownership or position mismatch | Block new exposure and alert; reconcile against broker state. Do not silently rewrite bindings or flatten an unexplained position. |
@@ -108,7 +110,7 @@ permanent block or expired setup. Test pending-intent outcomes as well as proces
 recovery before changing pause/retry policy. Do not silently extend validity or
 backdate entries. Better safe diagnostics are recommended, not yet implemented.
 
-## Separate unresolved issue: shared-IP request exhaustion
+## Historical symptoms: shared-IP request exhaustion
 
 Worker heartbeat/order logs show HTTP 429, Binance -1003, with a reported IP limit
 of 2400 requests/minute. Multiple active workers and audit/collector services share
@@ -269,3 +271,40 @@ Tests cover a failed telemetry write, a locked HTTP 200/429/418 observation,
 shared cooldown scope after recovery, and concurrent writes by seven simulated
 workers and an audit process. The original storage-failure caveat remains for a
 venue cooldown that could not be committed or shared before a process crash.
+
+
+## VPS rollout and recovery record (2026-11-15 WIB)
+
+| Release | Deployment and observed outcome |
+| --- | --- |
+| [b901f9c](https://github.com/adjopi20/golden-goose-project/commit/b901f9c7e2464a5d1ac2002895b500827bdcd07d) | Starting worker release. ENTRY, ADD and peer margin use verified fills when avgPrice is missing. This release predates the shared limiter. |
+| [cfa6d84](https://github.com/adjopi20/golden-goose-project/commit/cfa6d84b31960694b58b6db3c57bae0b23bcc708) | Shared limiter v8 deployed to seven workers, the Binance collector and three broker audits. The matching alerts image was deployed. Canary and peer cutovers used the same journals and native stops. Initial sample showed 1,246 weight/minute and zero 429/418. All workers started in manage-only. Burst HYPE, Quiet UNI and Quiet HYPE Tail later resumed ENTRY/ADD. Four workers remained in manage-only after intermittent local write failures. |
+| [63b6ba7](https://github.com/adjopi20/golden-goose-project/commit/63b6ba70301d991b1019d7083840f2b236a2ca26) | Limiter v9 deployed to all seven workers, collector and three audits. 177 targeted tests passed and the image verified all seven model pins. The alerts image remained at cfa6d84. The rollout reused the same limiter database, venue accounts, worker journals and collector volumes. The seven workers were verified in normal mode at 11:03 WIB. |
+
+Before and after the v9 cutover, GET-only Binance checks matched account UIDs,
+fills, positions and orders. The three open positions at the time (Burst INJ,
+Burst UNI and Quiet HYPE Stable) each had a confirmed native close-position stop.
+All three audits completed the following capture. In that observation window
+the recorded weight peaked at 1,055/minute, with no 429/418 or active cooldown.
+Two v9 reservations logged SQLITE_BUSY before HTTP and recovered. Those logs
+confirm contention in the new release. The old logs lack the error codes needed
+to classify every v8 failure retrospectively. After the four workers resumed,
+all seven had fresh reconciliation (0–3 seconds at the final check) and no
+worker still used manage-only. These observations apply to the rollout window.
+
+The collateral-admission lock and REST budget use separate databases.
+Burst HYPE and INJ share USDT collateral in the Burst account with separate
+journals and equity histories. Burst UNI uses USDC in that account. Quiet HYPE
+Stable uses the Quiet Core account and also logged limiter storage failures.
+Treat peer ENTRY/ADD margin deferrals as account/asset checks. Treat limiter
+SQLite failures during ordinary polling as coordination of the shared IP budget.
+Treat missing avgPrice as a fill attribution issue. These can occur together and
+have different fixes.
+
+Manage-only is a per-worker rollout or recovery mode. It preserves live order
+reconciliation, protection and exits while disabling new ENTRY and ADD.
+Removing it enables both where the model supports ADD. Existing setup validity
+still applies, including the roughly 60-second ADD trigger window. Check the
+effective Compose override and running command at handoff so the pause does not
+persist unintentionally. Use the [deployment runbook](../../live_trading/deploy/README.md#shared-binance-rest-budget-rollout-and-rollback)
+for the live readiness checks and rollback procedure.
