@@ -8,15 +8,15 @@
   "mode": "signal_monitor",
   "orders_enabled": false,
   "capital_required": false,
-  "strategy_sha256": "a7fba1a441a449b89272be354f6ac7aa197bb27bc3499c2a9ea719f37b715646",
+  "strategy_sha256": "ab3423112cefe3ba10f90a2d1b6bc1239b3c174ec7e786a46d99dc4a1af99068",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261115_v9.json",
-    "sha256": "36fa85ccf06c54dbb31c5ea38a6cab5bb6c24d1da2db502fc4fe038dde4ddd7a"
+    "path": "utils/engine/releases/shared_engine_20261119_v11.json",
+    "sha256": "5de6fa4f79f6fb059768c39945f2fa3462d0d53561258a5ac93ac503d1607a4d"
   },
   "dependencies": {
     "utils/model_registry.py": "bb0ce739c0d9268890f9b81575006c2a1c4a571100a0e89847535e518bdca750",
     "utils/engine/state/mvrv.py": "d0879c3aa25467faede47d460329d683bcb7cd530fa483bfe7df61ab476ee98d",
-    "utils/engine/monitoring/mvrv_notify.py": "77cc7f45a5083ae729eee79ba45580a935de0ad5f11042b2f2d3e270e1855111"
+    "utils/engine/monitoring/mvrv_notify.py": "0d0ace908e4561df1abbe8444c6d7c0a603d0b8a6f9bbcf4fd71c708c3f8700a"
   },
   "model_files": {
     "model_config.json": "5fa782e11cfe806e1cb4bcf5d5e457e34569131421a9fd1744676659f0f5b804"

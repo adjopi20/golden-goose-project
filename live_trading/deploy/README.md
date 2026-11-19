@@ -78,6 +78,51 @@ instead of --armed to check the broker settings without sending orders.
 A fresh worker needs native market warmup before a signal can become eligible.
 Start BTC MVRV via its own signal-monitor Compose template and signal volume.
 
+## BTC MVRV signal recovery — 2026-11-19
+
+This candidate changes the operational BTC strategy and shared MVRV notifier.
+Its BTC contract selects shared_engine_20261119_v11. Use the candidate image
+only for the BTC signal service. The seven Futures workers keep their current
+images and contracts. Existing historical manifest hashes remain immutable.
+
+For a separately approved rollout:
+
+1. Publish the verified source commit, build the exact revision with
+   utils/engine/deploy/Dockerfile.burst-live and CODE_VERSION, and verify
+   utils.model_registry.verify_model for
+   live_trading/live_model/btc_mvrv/strategy.py inside the isolated image.
+   The local regression command is
+   `python -m pytest tests/test_btc_mvrv_signal_monitor.py tests/test_ops_alerts.py`.
+2. Inspect the running BTC container's Compose project, files and external
+   environment source. Confirm btc-mvrv-signals and the existing named volume
+   btc-mvrv-signals_signal_data at /data. Keep the original image and environment
+   reference. Take a consistent SQLite online backup of signals.sqlite to an
+   external backup location, including all history, vintages, decisions, meta
+   and queued outbox entries. A plain copy of a live WAL database is insufficient.
+3. Before cutover, run the candidate's `once` against a disposable copy of that
+   backup with TELEGRAM_ENABLED=false. This explicitly checks the actual latest
+   Coin Metrics input and may update the disposable copy. Confirm a fresh data
+   date, retained historical values and archived incoming data. A remaining
+   material revision requires review before proceeding.
+4. Select the new image through HYPE_BURST_IMAGE in the existing external
+   configuration. Reuse
+   model_development/models/bitcoin_onchain_cycles/live_mvrv/compose.signal-monitor.yaml
+   with the verified existing project name. Recreate only btc-mvrv-signals with
+   `up -d --no-deps btc-mvrv-signals`. Retain its signal_data volume and existing
+   Telegram token/chat settings. Keep a single monitor writer on that volume.
+5. Observe report/health and read notification_error after the hourly data
+   attempt and minute delivery retries. Check last_data_date, error clearance,
+   expected supersession of old error/status entries and confirmed delivery of
+   the newest queued message. Retained delivered rows are normal. Outbox history
+   is not deleted during recovery. If Telegram remains at HTTP_502 or a transport
+   category, inspect server connectivity before claiming recovery. Token changes
+   and test messages require their own explicit instruction.
+
+Rollback selects the previous BTC image on the same project and volume after
+stopping the candidate writer. The schema and strategy configuration remain
+compatible. Preserve the candidate's database and archive evidence. Rolling back
+also restores the old narrow tolerance, which can reintroduce the data error.
+
 
 ## ADD fill reconciliation — 2026-11-15
 

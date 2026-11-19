@@ -4,6 +4,10 @@ import os
 import requests
 
 
+class TelegramDeliveryError(RuntimeError):
+    """Only locally generated categories and validated HTTP codes may be included."""
+
+
 def _api(method, parameters, session=requests):
     """Never expose token-bearing URLs, exception strings or response bodies."""
     token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
@@ -12,14 +16,23 @@ def _api(method, parameters, session=requests):
     try:
         response = session.post(f"https://api.telegram.org/bot{token}/{method}",
                                 json=parameters, timeout=(10, 20))
-        if response.status_code != 200:
-            raise RuntimeError(f"Telegram request rejected (HTTP {response.status_code}); check token, recipient/Start and rate limits")
+        status = response.status_code
+        if type(status) is not int or not 100 <= status <= 599:
+            raise TelegramDeliveryError("INVALID_RESPONSE")
+        if status != 200:
+            raise TelegramDeliveryError(f"HTTP_{status}")
         payload = response.json()
         if not isinstance(payload, dict) or payload.get("ok") is not True:
-            raise RuntimeError("Telegram request rejected; response details hidden")
+            raise TelegramDeliveryError("API_REJECTED")
         return payload.get("result")
-    except (requests.RequestException, ValueError):
-        raise RuntimeError("Telegram request failed; credential-bearing details hidden") from None
+    except requests.Timeout:
+        raise TelegramDeliveryError("TIMEOUT") from None
+    except requests.ConnectionError:
+        raise TelegramDeliveryError("CONNECTION_ERROR") from None
+    except ValueError:
+        raise TelegramDeliveryError("INVALID_RESPONSE") from None
+    except requests.RequestException:
+        raise TelegramDeliveryError("REQUEST_ERROR") from None
 
 
 def discover(session=requests):
@@ -82,7 +95,10 @@ def deliver(c, when, session=requests):
                 with c:
                     c.execute("UPDATE outbox SET delivered_at=? WHERE id=?", ("superseded:" + when, row["id"]))
                 continue
-        _api("sendMessage", {"chat_id": chat, "text": row["message"]}, session)
+        result = _api("sendMessage", {"chat_id": chat, "text": row["message"]}, session)
+        if (not isinstance(result, dict) or type(result.get("message_id")) is not int
+                or not isinstance(result.get("chat"), dict) or str(result["chat"].get("id")) != chat):
+            raise TelegramDeliveryError("UNCONFIRMED_DELIVERY")
         with c:
             c.execute("UPDATE outbox SET delivered_at=? WHERE id=?", (when, row["id"]))
         count += 1

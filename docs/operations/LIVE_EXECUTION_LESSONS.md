@@ -308,3 +308,44 @@ still applies, including the roughly 60-second ADD trigger window. Check the
 effective Compose override and running command at handoff so the pause does not
 persist unintentionally. Use the [deployment runbook](../../live_trading/deploy/README.md#shared-binance-rest-budget-rollout-and-rollback)
 for the live readiness checks and rollback procedure.
+
+## BTC MVRV numeric drift and delivery diagnostics — 2026-11-19
+
+The operator's VPS investigation reported the signal monitor on image 8a8f904,
+with last successful input date 2026-11-16. Incoming Coin Metrics CapMVRVCur
+values for 9–16 November differed slightly from stored history. One supplied
+pair was 1.3937829711692236 versus 1.3937829935, approximately 0.016 ppm apart.
+The old 1e-12 relative tolerance rejected this drift. This local patch accepts
+MVRV differences up to 5e-8 times the stored value plus 1e-10 absolute, or
+0.05 ppm plus the absolute floor. This bounded choice gives approximately
+three times the supplied drift. It is a numerical acceptance policy, and
+does not establish why the provider changed its values. PriceUSD and
+CapMrktCurUSD retain 1e-12 relative and 1e-10 absolute tolerances.
+
+Accepted overlaps retain their original stored values and fetched_at. Only
+new dates enter raw history. Fetch vintages remain archived before validation.
+Material revisions still raise DataError, roll back raw/decision changes and
+require operator review. Z-score, zone rules, causal percentiles, evaluation
+dates and freshness retain their formulas and behavior.
+
+The same investigation reported a queued signal-error:2026-11-19 and HTTP 502
+from later getMe/getChat checks. The original send failure response was not
+retained, so its cause remains unproven. The existing run loop already retries
+notifications every 60 seconds. The patch preserves that retry and records
+safe categories such as HTTP_502, TIMEOUT and CONNECTION_ERROR instead of
+discarding the category in notify(). Response bodies, token-bearing URLs and
+request exception text are excluded. Delivery requires an API success with
+message and configured recipient confirmation. Failures retain the outbox.
+A successful retry clears notification_error. A successful data evaluation
+still supersedes old queued error/status messages through the normal cycle.
+
+Offline tests cover the supplied drift, multiple metric scales and acceptance
+boundaries, strict USD revisions, material-revision/stale-data rollback,
+archived incoming data, error/status supersession, HTTP/transport/malformed
+responses, safe diagnostics and the existing 60-second recovery loop.
+The candidate updates the BTC contract and creates shared_engine_20261119_v11
+without rewriting historical manifests. Only the BTC package adopts it.
+This entry records a local implementation and operator-supplied VPS findings.
+External Telegram recovery still depends on a working server connection.
+Use the [BTC rollout procedure](../../live_trading/deploy/README.md#btc-mvrv-signal-recovery--2026-11-19)
+when deployment is separately authorized.

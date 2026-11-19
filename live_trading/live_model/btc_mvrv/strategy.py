@@ -12,6 +12,9 @@ import requests
 URL = "https://community-api.coinmetrics.io/v4/timeseries/asset-metrics"
 METRICS = ["PriceUSD", "CapMrktCurUSD", "CapMVRVCur"]
 ORIGIN = "2010-07-18"
+# Accept at most 0.05 ppm of MVRV representation drift; USD metrics stay strict.
+HISTORY_RTOL = {"PriceUSD": 1e-12, "CapMrktCurUSD": 1e-12, "CapMVRVCur": 5e-8}
+HISTORY_ATOL = 1e-10
 
 
 class DataError(ValueError):
@@ -73,7 +76,8 @@ def merged_history(connection, incoming, fetched_at):
     if not old.empty:
         overlap = old.merge(incoming, on="time", suffixes=("_old", "_new"))
         for metric in METRICS:
-            if not np.isclose(overlap[metric + "_old"], overlap[metric + "_new"], rtol=1e-12, atol=1e-10).all():
+            if not np.isclose(overlap[metric + "_new"], overlap[metric + "_old"],
+                              rtol=HISTORY_RTOL[metric], atol=HISTORY_ATOL).all():
                 raise DataError("Historical revision detected; archived fetch requires operator review")
         incoming = incoming.loc[~incoming.time.isin(old.time)]
     combined = pd.concat([old, incoming], ignore_index=True).sort_values("time").reset_index(drop=True)
@@ -129,7 +133,7 @@ def configuration():
         raise ValueError("Frozen config changed; create and test a new contract version")
     return config
 from utils.engine.state.mvrv import archive, backup, connect, get_meta, message, set_meta
-from utils.engine.monitoring.mvrv_notify import deliver
+from utils.engine.monitoring.mvrv_notify import TelegramDeliveryError, deliver
 
 import argparse
 from datetime import timedelta
@@ -230,7 +234,8 @@ def notify(c, now):
         deliver(c, now.isoformat())
         with c: set_meta(c, 'notification_error', '')
     except (ValueError, RuntimeError, OSError) as error:
-        with c: set_meta(c, 'notification_error', type(error).__name__ + ': Telegram delivery failed; outbox retained')
+        reason = str(error) if isinstance(error, TelegramDeliveryError) else type(error).__name__
+        with c: set_meta(c, 'notification_error', reason + ': Telegram delivery failed; outbox retained')
 
 
 def checked_cycle(c, now=None):
