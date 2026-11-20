@@ -349,3 +349,29 @@ This entry records a local implementation and operator-supplied VPS findings.
 External Telegram recovery still depends on a working server connection.
 Use the [BTC rollout procedure](../../live_trading/deploy/README.md#btc-mvrv-signal-recovery--2026-11-19)
 when deployment is separately authorized.
+
+### VPS recovery rollout — 2026-11-20 WIB
+
+Published source commit 404725d40fde0490af081e794a6ea5c9b33883c6 was built on
+VPS and verified against the BTC contract and all 55 v11 source hashes. An
+online backup of the existing signal database was taken before cutover.
+The candidate accepted current Coin Metrics data on a disposable backup copy,
+preserving every historical raw row and decision while adding 17–19 November.
+Only btc-mvrv-signals was recreated, retaining btc-mvrv-signals_signal_data
+and the existing bot/recipient. The other 19 running services retained their
+container identities and start times.
+
+Production evaluated 2026-11-19 at 2026-11-20T14:51:21 UTC. Telegram confirmed
+the normal signal-status:2026-11-19 notification at 14:51:25 UTC. Both error
+fields were empty, pending outbox count was zero, and container health was
+healthy with zero restarts. Production checks retained all pre-cutover raw
+history, decisions, vintages and outbox message content. The dedicated
+signal database still contained no accounts, actions, fills or marks.
+The existing watchdog marked both MVRV_DATA_ERROR and MVRV_DELIVERY_ERROR
+inactive and recorded successful recovery notification delivery.
+
+The original signal-error:2026-11-19 had already been delivered by the old
+service at 2026-11-19T05:03:31 UTC. Telegram connectivity therefore recovered
+before this rollout. This deployment proves successful delivery during the
+verification window; it does not identify the cause of the earlier 502s.
+The image remains pinned to 404725d; this later rollout record is documentation.
