@@ -19,6 +19,14 @@ ACCOUNTS = {
 CONTROLS = {"gap", "connected", "snapshot", "heartbeat"}
 GRACE_MS = 15_000
 RETENTION_MS = 2 * 86_400_000
+ORDER_STAGES = ("PENDING_NEW", "NEW", "PARTIALLY_FILLED")
+ORDER_TERMINAL = {"FILLED", "CANCELED", "EXPIRED", "EXPIRED_IN_MATCH", "REJECTED"}
+ALGO_STAGES = ("NEW", "TRIGGERING", "TRIGGERED")
+ALGO_TERMINAL = {"FINISHED", "CANCELED", "EXPIRED", "REJECTED"}
+EVENTS_TABLE = """CREATE TABLE IF NOT EXISTS events(
+    kind TEXT, symbol TEXT, entity TEXT, revision INTEGER, digest TEXT, fields TEXT,
+    epoch TEXT, received INTEGER, venue_ms INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(kind,symbol,entity,revision,epoch,venue_ms,digest))"""
 
 
 def now_ms():
@@ -138,6 +146,36 @@ def key_for(kind, fields):
     return fields["symbol"], fields[attr]
 
 
+def lifecycle_change(kind, previous, incoming):
+    """Return forward, equivalent, stale, or incompatible progress for a native ID."""
+    before, after = previous["status"], incoming["status"]
+    if kind == "order":
+        stages, terminal = ORDER_STAGES, ORDER_TERMINAL
+        if any(previous[key] != incoming[key] for key in ("client_id", "side")):
+            return None
+        old_progress, new_progress = number(previous["filled"]), number(incoming["filled"])
+        if before == after and before in terminal and old_progress != new_progress:
+            return None
+    else:
+        stages, terminal = ALGO_STAGES, ALGO_TERMINAL
+        old_child, new_child = previous.get("child_order_id"), incoming.get("child_order_id")
+        if previous["algo_client_id"] != incoming["algo_client_id"] or (
+                old_child and new_child and old_child != new_child):
+            return None
+        old_progress, new_progress = bool(old_child), bool(new_child)
+
+    status_change = 0
+    if before != after:
+        rank = {**{status: i for i, status in enumerate(stages)}, **dict.fromkeys(terminal, len(stages))}
+        if before not in rank or after not in rank or rank[before] == rank[after]:
+            return None
+        status_change = 1 if rank[after] > rank[before] else -1
+    progress_change = (new_progress > old_progress) - (new_progress < old_progress)
+    if status_change * progress_change < 0:
+        return None
+    return status_change or progress_change
+
+
 @contextmanager
 def readonly(path):
     # Never create an evidence database or take a write transaction.
@@ -218,31 +256,42 @@ class ShadowStore:
         self.db = sqlite3.connect(path, timeout=5, isolation_level="IMMEDIATE")
         try:
             self.db.execute("PRAGMA journal_mode=WAL")
-            self.db.executescript("""
-                CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS receipts(seq INTEGER PRIMARY KEY, digest TEXT, created INTEGER);
-                CREATE TABLE IF NOT EXISTS events(
-                    kind TEXT, symbol TEXT, entity TEXT, revision INTEGER, digest TEXT, fields TEXT,
-                    epoch TEXT, received INTEGER, PRIMARY KEY(kind,symbol,entity,revision));
-                CREATE TABLE IF NOT EXISTS facts(
-                    kind TEXT, symbol TEXT, entity TEXT, revision INTEGER, fields TEXT,
-                    PRIMARY KEY(kind,symbol,entity));
-                CREATE TABLE IF NOT EXISTS findings(
-                    identity TEXT PRIMARY KEY, first_evidence INTEGER, last_evidence INTEGER,
-                    status TEXT NOT NULL);
-                CREATE INDEX IF NOT EXISTS private_event_age ON events(received);
-            """)
             with self.db:
+                self.db.execute("BEGIN IMMEDIATE")
+                self.db.execute("CREATE TABLE IF NOT EXISTS metadata(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
                 if self.get("account") not in (None, account) or self.get("uid_hash") not in (None, uid_hash):
                     raise ValueError("shadow_database_identity_mismatch")
                 self.put("account", account)
                 self.put("uid_hash", uid_hash)
+                self._prepare_tables()
         except BaseException:
             self.db.close()
             raise
 
     def close(self):
         self.db.close()
+
+    def _prepare_tables(self):
+        self.db.execute("CREATE TABLE IF NOT EXISTS receipts(seq INTEGER PRIMARY KEY, digest TEXT, created INTEGER)")
+        self.db.execute("""CREATE TABLE IF NOT EXISTS findings(
+            identity TEXT PRIMARY KEY, first_evidence INTEGER, last_evidence INTEGER, status TEXT NOT NULL)""")
+        self.db.execute(EVENTS_TABLE)
+        if "venue_ms" not in {column[1] for column in self.db.execute("PRAGMA table_info(events)")}:
+            self.db.execute("ALTER TABLE events RENAME TO events_v1")
+            self.db.execute(EVENTS_TABLE)
+            self.db.execute("""INSERT INTO events(kind,symbol,entity,revision,digest,fields,epoch,received)
+                SELECT kind,symbol,entity,revision,digest,fields,epoch,received FROM events_v1""")
+            self.db.execute("DROP TABLE events_v1")
+        self.db.execute("CREATE INDEX IF NOT EXISTS private_event_age ON events(received)")
+        self.db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS private_fill_id
+            ON events(symbol,entity) WHERE kind='fill'""")
+        self.db.execute("""CREATE TABLE IF NOT EXISTS facts(
+            kind TEXT, symbol TEXT, entity TEXT, revision INTEGER, fields TEXT,
+            venue_ms INTEGER NOT NULL DEFAULT 0, epoch TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY(kind,symbol,entity))""")
+        if "venue_ms" not in {column[1] for column in self.db.execute("PRAGMA table_info(facts)")}:
+            self.db.execute("ALTER TABLE facts ADD COLUMN venue_ms INTEGER NOT NULL DEFAULT 0")
+            self.db.execute("ALTER TABLE facts ADD COLUMN epoch TEXT NOT NULL DEFAULT ''")
 
     def get(self, key, default=None):
         row = self.db.execute("SELECT value FROM metadata WHERE key=?", (key,)).fetchone()
@@ -358,36 +407,66 @@ class ShadowStore:
 
         symbol, identity = key_for(kind, fields)
         revision = event["transaction_ms"]
-        dedupe_revision = 0 if kind == "fill" else revision
+        venue_ms = event["venue_ms"]
+        end = int(self.get("baseline_through", 0))
+        if kind not in ("fill", "trigger_reject") and end and int(self.get("baseline_start", end)) <= revision <= end:
+            self.put("snapshot_overlap", 1)
+
         encoded = canonical(fields)
         digest = hashlib.sha256(encoded).hexdigest()
-        existing = self.db.execute(
-            "SELECT digest FROM events WHERE kind=? AND symbol=? AND entity=? AND revision=?",
-            (kind, symbol, identity, dedupe_revision)).fetchone()
-        if existing and existing[0] != digest:
-            self.put("coverage", "conflicting_event")
-            self.put("conflicts", int(self.get("conflicts", 0)) + 1)
+        if kind == "fill":
+            existing = self.db.execute("SELECT digest FROM events WHERE kind='fill' AND symbol=? AND entity=?",
+                                       (symbol, identity)).fetchone()
+            if existing:
+                if existing[0] != digest:
+                    self._conflict(kind)
+                return
+        recorded = self.db.execute("""INSERT INTO events(kind,symbol,entity,revision,digest,fields,epoch,received,venue_ms)
+            VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING""",
+            (kind, symbol, identity, revision, digest, encoded.decode(), epoch, received, venue_ms)).rowcount
+        if not recorded or kind in ("fill", "trigger_reject") or not end or revision <= end:
             return
-        if not existing:
-            self.db.execute("INSERT INTO events VALUES (?,?,?,?,?,?,?,?)",
-                            (kind, symbol, identity, dedupe_revision, digest, encoded.decode(), epoch, received))
-        if kind in ("fill", "trigger_reject"):
-            return  # Neither an algo status nor a rejection creates a synthetic fill.
 
-        end = int(self.get("baseline_through", 0))
-        if not end:
-            return  # Evidence is retained, but no baseline exists to update.
-        if revision <= end:
-            if revision >= int(self.get("baseline_start", end)):
-                self.put("snapshot_overlap", 1)
-            return
-        self._fact(kind, symbol, identity, revision, fields)
+        fact = self.db.execute("SELECT revision,venue_ms,epoch,fields FROM facts WHERE kind=? AND symbol=? AND entity=?",
+                               (kind, symbol, identity)).fetchone()
+        if fact:
+            previous_revision, previous_venue_ms, previous_epoch, previous_payload = fact
+            if revision < previous_revision:
+                return
+            previous = json.loads(previous_payload)
+            if kind in ("order", "algo"):
+                progress = lifecycle_change(kind, previous, fields)
+                if progress is None:
+                    self._conflict(kind)
+                    return
+                if progress < 0 or (progress == 0 and revision == previous_revision):
+                    return
+            elif revision == previous_revision:
+                # The event timestamp is an ordering hint within the same user-data connection.
+                amount = "quantity" if kind == "position" else "wallet_balance"
+                if previous_epoch != epoch or previous_venue_ms in (0, venue_ms):
+                    if number(previous[amount]) != number(fields[amount]):
+                        self._conflict(kind)
+                    return
+                if venue_ms < previous_venue_ms:
+                    return
+            if revision == previous_revision:
+                self._increment("same_ms_updates:" + kind)
+        self._fact(kind, symbol, identity, revision, fields, venue_ms, epoch)
 
-    def _fact(self, kind, symbol, identity, revision, fields):
-        self.db.execute("""INSERT INTO facts VALUES (?,?,?,?,?) ON CONFLICT DO UPDATE SET
-                          revision=excluded.revision, fields=excluded.fields
-                          WHERE excluded.revision>facts.revision""",
-                        (kind, symbol, identity, revision, canonical(fields).decode()))
+    def _increment(self, key):
+        self.put(key, int(self.get(key, 0)) + 1)
+
+    def _conflict(self, kind):
+        self.put("coverage", "conflicting_event")
+        self._increment("conflicts")
+        self._increment("conflicts:" + kind)
+
+    def _fact(self, kind, symbol, identity, revision, fields, venue_ms=0, epoch=""):
+        self.db.execute("""INSERT INTO facts(kind,symbol,entity,revision,fields,venue_ms,epoch)
+            VALUES (?,?,?,?,?,?,?) ON CONFLICT DO UPDATE SET revision=excluded.revision,
+            fields=excluded.fields, venue_ms=excluded.venue_ms, epoch=excluded.epoch""",
+            (kind, symbol, identity, revision, canonical(fields).decode(), venue_ms, epoch))
 
     def _verdict(self, key, finding, checkpoint, counts):
         row = self.db.execute("SELECT first_evidence,last_evidence,status FROM findings WHERE identity=?",
@@ -409,6 +488,10 @@ class ShadowStore:
                 "snapshot_overlap": bool(int(self.get("snapshot_overlap", 0))),
                 "broker_gaps": int(self.get("gap_count", 0)),
                 "conflicts": int(self.get("conflicts", 0)),
+                "conflicts_by_kind": dict(self.db.execute(
+                    "SELECT substr(key,11),CAST(value AS INTEGER) FROM metadata WHERE key GLOB 'conflicts:*'")),
+                "same_ms_updates": dict(self.db.execute(
+                    "SELECT substr(key,17),CAST(value AS INTEGER) FROM metadata WHERE key GLOB 'same_ms_updates:*'")),
                 "invalid_events": int(self.get("invalid_events", 0)),
                 "last_delivery_lag_ms": int(self.get("last_delivery_lag_ms", 0)),
                 "last_venue_lag_ms": self.get("last_venue_lag_ms")}

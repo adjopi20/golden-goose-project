@@ -48,7 +48,7 @@ services:
       - ./nats.private.conf:/etc/nats/nats.conf:ro
   private-burst-manager:
     <<: *manager
-    command: ["manager","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    command: ["manager","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}"]
     environment:
       BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
       BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
@@ -70,7 +70,7 @@ services:
         bind: {create_host_path: false}
   private-burst-consumer:
     <<: *consumer
-    command: ["consumer","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    command: ["consumer","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}"]
     volumes:
       - *observed
       - private_burst_consumer:/data
@@ -81,7 +81,7 @@ services:
         bind: {create_host_path: false}
   private-burst-init:
     <<: *init
-    command: ["init","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    command: ["init","burst","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}"]
     volumes:
       - type: bind
         source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/burst.init
@@ -90,7 +90,7 @@ services:
         bind: {create_host_path: false}
   private-quiet-core-manager:
     <<: *manager
-    command: ["manager","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}","--hmac"]
+    command: ["manager","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}","--hmac"]
     environment:
       BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
       BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
@@ -112,7 +112,7 @@ services:
         bind: {create_host_path: false}
   private-quiet-core-consumer:
     <<: *consumer
-    command: ["consumer","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    command: ["consumer","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}"]
     volumes:
       - *observed
       - private_quiet_core_consumer:/data
@@ -123,7 +123,7 @@ services:
         bind: {create_host_path: false}
   private-quiet-core-init:
     <<: *init
-    command: ["init","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    command: ["init","quiet-core","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}"]
     volumes:
       - type: bind
         source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/quiet-core.init
@@ -132,7 +132,7 @@ services:
         bind: {create_host_path: false}
   private-quiet-tail-manager:
     <<: *manager
-    command: ["manager","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}","--hmac"]
+    command: ["manager","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}","--hmac"]
     environment:
       BINANCE_REST_BUDGET_DB: /rest-budget/binance.sqlite
       BINANCE_REST_FUTURES_1M: ${GG_BINANCE_REST_FUTURES_1M:-1920}
@@ -154,7 +154,7 @@ services:
         bind: {create_host_path: false}
   private-quiet-tail-consumer:
     <<: *consumer
-    command: ["consumer","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    command: ["consumer","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}"]
     volumes:
       - *observed
       - private_quiet_tail_consumer:/data
@@ -165,7 +165,7 @@ services:
         bind: {create_host_path: false}
   private-quiet-tail-init:
     <<: *init
-    command: ["init","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified v10 manifest hash}"]
+    command: ["init","quiet-tail","--state","/data","--release-hash","${GG_PRIVATE_RELEASE_SHA256:?set the verified shadow manifest hash}"]
     volumes:
       - type: bind
         source: ${GG_PRIVATE_PASSWORD_DIR:?set the external shadow password directory}/quiet-tail.init

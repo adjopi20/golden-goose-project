@@ -210,11 +210,16 @@ Build the shadow image with utils/engine/deploy/Dockerfile.burst-live and keep
 the established Compose base file first when rendering it with the
 private_shadow.compose.yaml overlay in utils/engine/deploy/market_feed.
 Set GG_PRIVATE_SHADOW_IMAGE and GG_PRIVATE_RELEASE_SHA256 to the verified
-image and v10 manifest digest. Point GG_PRIVATE_OBSERVED_DIR at the journal
+image and matching shadow manifest digest. Point GG_PRIVATE_OBSERVED_DIR at the journal
 directory and GG_BINANCE_REST_BUDGET_DIR at the existing coordinator, with
 the same GID and budget settings. The observed journal bind is read-only.
 Each consumer owns a separate shadow SQLite volume. Never mount its volume
 over a trading journal.
+
+The v12 image upgrades its existing shadow SQLite schema in place. Keep a
+consistent backup of each shadow DB before switching consumers. Roll back to
+v10 with the matching pre-upgrade shadow DB backup. A broker sequence gap after
+restore requires a fresh baseline. Use the v12 image for the shadow roles only.
 
 Supply the broker's external GG_PRIVATE_NATS_ENV_FILE with
 GG_PUBLIC_NATS_FALLBACK_PASSWORD and unique high-entropy

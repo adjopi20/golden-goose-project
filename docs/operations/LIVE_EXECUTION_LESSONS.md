@@ -338,3 +338,27 @@ coverage separately. A snapshot after a gap establishes a new current view.
 It cannot make the missing streaming interval complete. For commissioning
 and evidence required before changing REST polling, see the
 [private shadow runbook](../../live_trading/deploy/README.md#binance-private-user-data-shadow).
+
+### Same-millisecond private order updates (2026-11-23 WIB)
+
+The deployed v10 shadow retained a HYPEUSDT order as `NEW` while REST showed
+`FILLED` at the same transaction timestamp. The two native fill IDs were
+stored separately. Similar collisions appeared on Quiet Core and Quiet Tail.
+The shadow event key admitted one payload per entity and millisecond, and
+its current state required a strictly newer transaction time. Previously
+dropped payloads cannot be reconstructed from the retained shadow data.
+
+The v12 shadow records distinct payloads even when both venue timestamps tie.
+Native status progression and cumulative executed quantity advance order
+state. An obsolete update cannot reopen a terminal order. Each fill still
+deduplicates by symbol and native trade ID within its account. Equal-time
+position and balance updates use the event clock within the same connection.
+Ambiguous or incompatible updates retain their evidence and mark coverage
+incomplete until the next baseline. The migration preserves receipts, broker
+generation and cursor, and historical counters. The regression reproduces
+the two fills and checks the final order against the corresponding REST
+revision, including replay, state ambiguity and v10 database upgrade.
+
+This is a shadow-only release. Existing worker images and REST polling remain
+on their own pins. The shadow runbook covers backing up its SQLite volumes
+before upgrade.

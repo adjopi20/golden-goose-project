@@ -47,11 +47,12 @@ def seed(store):
         push(store, seq, value)
 
 
-def trade(who=ACCOUNT, epoch=EPOCH, qty="0.10", trade_id=181, status="PARTIALLY_FILLED"):
+def trade(who=ACCOUNT, epoch=EPOCH, qty="0.10", trade_id=181, status="PARTIALLY_FILLED", *, cumulative=None):
     return stream.normalize({"e": "ORDER_TRADE_UPDATE", "E": WHEN + 13, "T": WHEN + 12,
                              "api_key": "synthetic private material intentionally discarded",
                              "o": {"s": SYM, "i": 123, "c": "test-native", "X": status,
-                                   "z": qty, "S": "SELL", "x": "TRADE", "l": qty, "L": "20",
+                                   "z": qty if cumulative is None else cumulative,
+                                   "S": "SELL", "x": "TRADE", "l": qty, "L": "20",
                                    "t": trade_id, "T": WHEN + 12}},
                             who, epoch, WHEN + 15)
 
@@ -163,6 +164,124 @@ def test_conflicting_fill_and_invalid_payload_are_diagnosed(tmp_path):
         assert s.health()["coverage"] == "invalid_event"
         assert s.health()["invalid_events"] == 1
         assert s.get("sequence") == "7"
+
+
+def test_same_ms_order_progress_and_fills_match_rest_revision(tmp_path):
+    partial, first_fill = trade(qty="0.42")
+    filled, final_fill = trade(qty="0.18", cumulative="0.60", trade_id=182, status="FILLED")
+    new = {**partial, "fields": {**partial["fields"], "status": "NEW", "filled": "0"}}
+    through = WHEN + 30_000
+    journal, audit = prepare_evidence(tmp_path, through)
+    with closing(sqlite3.connect(journal)) as db, db:
+        db.execute("UPDATE fills SET quantity='0.42' WHERE id=?", (f"{SYM}:181",))
+        db.execute("INSERT INTO fills VALUES (?,?,?,?)", (f"{SYM}:182", "123", "0.18", "20"))
+    with closing(sqlite3.connect(audit)) as db, db:
+        row = dict(symbol=SYM, orderId=123, clientOrderId="test-native", status="FILLED",
+                   executedQty="0.6", side="SELL", updateTime=WHEN + 12)
+        db.execute("INSERT INTO events VALUES (?,?,?,?,?)", ("order", SYM, "123", json.dumps(row), through))
+        for identity, qty in (("181", "0.42"), ("182", "0.18")):
+            row = dict(orderId=123, side="SELL", qty=qty, price="20", time=WHEN + 12)
+            db.execute("INSERT INTO events VALUES (?,?,?,?,?)", ("trade", SYM, identity, json.dumps(row), through))
+    with closing(ShadowStore(tmp_path / "shadow.sqlite", ACCOUNT, UID, clock=lambda: through)) as s:
+        seed(s)
+        for seq, value in enumerate((new, partial, first_fill, filled, final_fill), 5):
+            push(s, seq, value)
+        push(s, 10, {**filled, "received_ms": WHEN + 18})  # Same event, different broker sequence.
+        push(s, 11, {**partial, "venue_ms": WHEN + 17})  # A larger E cannot regress a terminal order.
+        push(s, 12, {**new, "venue_ms": WHEN + 19, "transaction_ms": WHEN + 18})
+        assert s.health()["same_ms_updates"] == {"order": 2}
+        assert s.health()["conflicts"] == 0
+        assert s.db.execute("SELECT revision,fields FROM facts WHERE kind='order'").fetchone() == (
+            WHEN + 12, canonical(filled["fields"]).decode())
+        assert s.db.execute("SELECT entity,revision FROM events WHERE kind='fill' ORDER BY entity").fetchall() == [
+            ("181", WHEN + 12), ("182", WHEN + 12)]
+        assert s.compare(tmp_path)["match"] == 3
+
+        push(s, 13, {**filled, "fields": {**filled["fields"], "status": "CANCELED"}})
+        assert s.health()["conflicts_by_kind"] == {"order": 1}
+        assert s.health()["coverage"] == "conflicting_event"
+        assert s.db.execute("SELECT fields FROM facts WHERE kind='order'").fetchone() == (
+            canonical(filled["fields"]).decode(),)
+
+
+@pytest.mark.parametrize("kind,fields,amount", [
+    ("position", {"symbol": SYM, "position_side": "BOTH"}, "quantity"),
+    ("balance", {"asset": "USDT"}, "wallet_balance"),
+])
+def test_same_ms_account_updates_use_connection_event_time(tmp_path, kind, fields, amount):
+    with closing(ShadowStore(tmp_path / "shadow.sqlite", ACCOUNT, UID)) as s:
+        seed(s)
+        update = event(kind, {**fields, amount: "1"})
+        for seq, venue_ms, value in [(5, 11, "1"), (6, 13, "2"), (7, 12, "3"), (8, 14, "1")]:
+            push(s, seq, {**update, "venue_ms": WHEN + venue_ms, "fields": {**fields, amount: value}})
+        push(s, 9, {**update, "venue_ms": WHEN + 14, "fields": {**fields, amount: "1.0"}})
+        assert s.health()["same_ms_updates"] == {kind: 2}
+        assert s.health()["conflicts"] == 0
+        push(s, 10, {**update, "venue_ms": WHEN + 14, "fields": {**fields, amount: "3"}})
+        assert s.health()["conflicts_by_kind"] == {kind: 1}
+        assert s.db.execute("SELECT venue_ms,fields FROM facts").fetchone() == (
+            WHEN + 14, canonical(update["fields"]).decode())
+
+
+def test_same_ms_algo_progress_keeps_child_without_synthesizing_fill(tmp_path):
+    with closing(ShadowStore(tmp_path / "shadow.sqlite", ACCOUNT, UID)) as s:
+        seed(s)
+        new = event("algo", {"symbol": SYM, "algo_id": "12", "algo_client_id": "test-stop", "status": "NEW"})
+        triggered = {**new, "fields": {**new["fields"], "status": "TRIGGERED", "child_order_id": "123"}}
+        finished = {**triggered, "fields": {**triggered["fields"], "status": "FINISHED"}}
+        push(s, 5, new)
+        push(s, 6, triggered)
+        push(s, 7, finished)
+        push(s, 8, {**new, "venue_ms": WHEN + 15})
+        push(s, 9, {**finished, "fields": {**finished["fields"], "child_order_id": "124"}})
+        assert s.health()["same_ms_updates"] == {"algo": 2}
+        assert s.health()["conflicts_by_kind"] == {"algo": 1}
+        assert s.db.execute("SELECT fields FROM facts").fetchone() == (canonical(finished["fields"]).decode(),)
+        assert s.db.execute("SELECT count(*) FROM events WHERE kind='fill'").fetchone() == (0,)
+
+
+def test_existing_shadow_database_migrates_without_losing_receipts(tmp_path):
+    path = tmp_path / "shadow.sqlite"
+    partial, first_fill = trade(qty="0.42")
+    # Preserve the v10 table shape with evidence already acknowledged by the durable consumer.
+    with closing(ShadowStore(path, ACCOUNT, UID)) as s:
+        seed(s)
+        s.bind_stream("old")
+        push(s, 5, partial)
+        push(s, 6, first_fill)
+        s.db.executescript("""
+            DROP INDEX private_event_age;
+            DROP INDEX private_fill_id;
+            ALTER TABLE events RENAME TO events_v2;
+            CREATE TABLE events(kind TEXT, symbol TEXT, entity TEXT, revision INTEGER, digest TEXT,
+                fields TEXT, epoch TEXT, received INTEGER, PRIMARY KEY(kind,symbol,entity,revision));
+            INSERT INTO events SELECT kind,symbol,entity,CASE WHEN kind='fill' THEN 0 ELSE revision END,
+                digest,fields,epoch,received FROM events_v2;
+            DROP TABLE events_v2;
+            CREATE INDEX private_event_age ON events(received);
+            ALTER TABLE facts DROP COLUMN venue_ms;
+            ALTER TABLE facts DROP COLUMN epoch;
+        """)
+    with pytest.raises(ValueError, match="shadow_database_identity_mismatch"):
+        ShadowStore(path, ACCOUNT, "d" * 64)
+    with closing(sqlite3.connect(path)) as db:
+        assert "venue_ms" not in {col[1] for col in db.execute("PRAGMA table_info(events)")}
+    with closing(ShadowStore(path, ACCOUNT, UID)) as s:
+        assert s.get("generation") == "old"
+        assert s.get("sequence") == "6"
+        assert s.db.execute("SELECT count(*) FROM receipts").fetchone() == (6,)
+        assert s.db.execute("SELECT count(*) FROM events WHERE venue_ms=0").fetchone() == (2,)
+        push(s, 6, first_fill)
+        push(s, 7, {**first_fill, "venue_ms": WHEN + 16})
+        final, last_fill = trade(qty="0.18", cumulative="0.60", trade_id=182, status="FILLED")
+        push(s, 8, final)
+        push(s, 9, last_fill)
+        assert s.health()["conflicts"] == 0
+    with closing(ShadowStore(path, ACCOUNT, UID)) as s:
+        assert s.get("sequence") == "9"
+        assert s.db.execute("SELECT count(*) FROM events WHERE kind='fill'").fetchone() == (2,)
+        assert s.db.execute("SELECT fields FROM facts WHERE kind='order'").fetchone() == (
+            canonical(final["fields"]).decode(),)
 
 
 def prepare_evidence(directory, through):

@@ -392,7 +392,7 @@ def main():
     p.add_argument("--release-hash", required=True)
     args = p.parse_args()
     try:
-        verify_release(Path(__file__).resolve().parents[1] / "releases/shared_engine_20261115_v10.json",
+        verify_release(Path(__file__).resolve().parents[1] / "releases/shared_engine_20261123_v12.json",
                        expected_sha256=args.release_hash)
         def stop(*_):
             raise KeyboardInterrupt
