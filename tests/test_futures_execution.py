@@ -7,11 +7,12 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+import sqlite3
 from urllib.parse import urlencode
 
 import pytest
 
-from utils.engine.adapters.binance_execution import FuturesOrders, VenueError, safe_venue_reason
+from utils.engine.adapters.binance_execution import FuturesOrders, PrivateOrderReader, VenueError, safe_venue_reason
 from utils.engine.execution.preny_futures import FuturesExecutor, millis, order_id, plan_order
 from utils.engine.state.futures import FuturesStore
 from model_development.models.trend_following_preny_profile_15m.legacy.pilot_worker import import_proposals, live_proposal, load_policy
@@ -231,6 +232,93 @@ def test_restart_never_reposts_entry(env):
     finally:s2.close()
     # fixture owns the original handle; close is deliberately idempotent here.
     s.db = __import__('sqlite3').connect(':memory:')
+
+
+@pytest.mark.parametrize('role,fallback', [
+    ('ENTRY', case) for case in (None, 'wrong_account', 'wrong_uid', 'gap', 'stale', 'backlog', 'overlap',
+                                'missing_fill', 'old_revision', 'old_epoch', 'cancel_pending')
+] + [('ADD', None), ('ADD', 'gap')])
+def test_market_order_stream_uses_confirmed_identity_and_falls_back_to_rest(env, tmp_path, monkeypatch, role, fallback):
+    s, v, executor, _ = env
+    if role == 'ENTRY':
+        v.initial_fill = '0.04'
+        enter(env)
+        cid = next(p['newClientOrderId'] for _, p in v.posts)
+    else:
+        from live_trading.live_model.quiet_breakout.hypeusdt.strategy import QuietAdditionExecutor
+
+        enter(env)
+        executor = QuietAdditionExecutor(s, v, executor.c)
+        with s.transaction():
+            s.set_meta('position_addition_plan', canonical_json(dict(expires_ms=NOW+59_999)))
+        cid = executor._prepare(s.active()['session'], 'ADD', dict(symbol='ETHUSDC', side='BUY',
+                                positionSide='BOTH', type='MARKET', quantity='0.10', newClientOrderId='ggp-test-add',
+                                newOrderRespType='RESULT'))
+        assert executor.drive(cid)['state'] == 'NEW'
+        v.fill(cid, quantity='0.04', terminal=False)
+    v.orders[cid]['updateTime'] = NOW + 1_000
+    assert executor.drive(cid)['state'] == 'PARTIALLY_FILLED'
+    v.clock = NOW + 2_000
+    v.fill(cid, price='1001')
+    v.orders[cid]['updateTime'] = v.clock
+    native = v.orders[cid]
+    symbol, oid = native['symbol'], str(native['orderId'])
+    path = tmp_path / 'shadow.sqlite'
+    now_ms = NOW + 3_000
+    monkeypatch.setattr('utils.engine.execution.preny_futures.time.time_ns', lambda: now_ms * 1_000_000)
+    metadata = dict(account='burst', uid_hash='expected', generation='same-generation', epoch='epoch-current',
+                    connection='up', coverage='snapshot_baseline', last_backlog='0', snapshot_overlap='0',
+                    heartbeat_ms=str(now_ms), baseline_through=str(NOW-100))
+    corrections = {'wrong_account': ('account', 'quiet-core'), 'wrong_uid': ('uid_hash', 'other'),
+                   'gap': ('coverage', 'broker_gap'), 'stale': ('heartbeat_ms', str(now_ms-60_000)),
+                   'backlog': ('last_backlog', '1'), 'overlap': ('snapshot_overlap', '1')}
+    if fallback in corrections:
+        key, value = corrections[fallback]
+        metadata[key] = value
+    with sqlite3.connect(path) as db:
+        db.executescript('''CREATE TABLE metadata(key TEXT PRIMARY KEY, value TEXT);
+            CREATE TABLE facts(kind TEXT,symbol TEXT,entity TEXT,revision INTEGER,fields TEXT,venue_ms INTEGER,epoch TEXT);
+            CREATE TABLE events(kind TEXT,symbol TEXT,fields TEXT,venue_ms INTEGER,epoch TEXT);''')
+        db.executemany('INSERT INTO metadata VALUES (?,?)', metadata.items())
+        order = dict(symbol=symbol, order_id=oid, client_id=cid, side=native['side'], status='FILLED',
+                     filled=native['executedQty'])
+        revision = NOW + 999 if fallback == 'old_revision' else v.clock
+        epoch = 'epoch-old' if fallback == 'old_epoch' else metadata['epoch']
+        db.execute('INSERT INTO facts VALUES (?,?,?,?,?,?,?)', ('order', symbol, oid, revision,
+                   canonical_json(order), v.clock, epoch))
+        order_fills = [fill for fill in v.fills if str(fill['orderId']) == oid]
+        for fill in order_fills[:-1] if fallback == 'missing_fill' else order_fills:
+            field = dict(symbol=symbol, order_id=oid, client_id=cid, side=fill['side'],
+                         quantity=fill['qty'], price=fill['price'], trade_id=str(fill['id']), trade_ms=fill['time'])
+            db.execute('INSERT INTO events VALUES (?,?,?,?,?)', ('fill', symbol, canonical_json(field),
+                       fill['time'], metadata['epoch']))
+    if fallback == 'cancel_pending':
+        with s.transaction():
+            s.db.execute('UPDATE orders SET cancel_pending=1 WHERE client_id=?', (cid,))
+
+    rest_queries = []
+    original_query = v.query
+
+    def query(client, **kwargs):
+        rest_queries.append(client)
+        return original_query(client, **kwargs)
+
+    monkeypatch.setattr(v, 'query', query)
+    executor.private_order_reader = PrivateOrderReader(path, 'burst', 'expected')
+    before = path.read_bytes()
+    final = executor.drive(cid)
+    assert final['state'] == 'FILLED'
+    assert D(json.loads(final['response'])['avgPrice']) == D(native['avgPrice'])
+    assert rest_queries == ([cid] if fallback else [])
+    events = s.db.execute("SELECT payload FROM audit WHERE kind='order_observed' ORDER BY id DESC")
+    assert json.loads(events.fetchone()[0])['observation_source'] == ('query' if fallback else 'private_stream')
+    executor.sync_fills(final)  # Fees and P&L still use authoritative REST receipts.
+    restarted = type(executor)(s, v, executor.c)
+    restarted.private_order_reader = PrivateOrderReader(path, 'burst', 'expected')
+    restarted.sync_fills(restarted.drive(cid))
+    assert s.db.execute('SELECT count(*) FROM fills WHERE order_id=?', (oid,)).fetchone()[0] == 2
+    assert [posted for posted, _ in v.posts].count(role) == 1
+    assert path.read_bytes() == before
 
 
 def test_crash_before_http_remains_unknown_no_blind_retry(env):

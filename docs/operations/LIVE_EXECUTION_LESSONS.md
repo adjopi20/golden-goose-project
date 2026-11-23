@@ -269,3 +269,15 @@ Tests cover a failed telemetry write, a locked HTTP 200/429/418 observation,
 shared cooldown scope after recovery, and concurrent writes by seven simulated
 workers and an audit process. The original storage-failure caveat remains for a
 venue cooldown that could not be committed or shared before a process crash.
+
+## Private stream market-order read candidate (2026-11-24 WIB)
+
+The v12 shadow has sufficient evidence to confirm a known market order with
+matched final quantity and native trades. Its normalized trade records lack
+commission and realized P&L, so the worker continues to book signed REST fill
+receipts. It consumes only complete `FILLED` evidence from the current account
+and connection, with the existing order template and native ID already verified.
+Fallback uses the same reconciliation and submission rules. Restart does not
+re-POST or duplicate fill receipts. Offline coverage includes partial-to-full
+fills, mismatched account and UID, stale heartbeat, backlog, broker gap, snapshot
+overlap, incomplete trades, older revisions and cancellation in flight.

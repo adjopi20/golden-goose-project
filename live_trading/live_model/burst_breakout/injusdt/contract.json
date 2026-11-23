@@ -13,8 +13,8 @@
   "quantity_unit": "INJ",
   "pnl_unit": "USDT",
   "engine_release": {
-    "path": "utils/engine/releases/shared_engine_20261115_v9.json",
-    "sha256": "36fa85ccf06c54dbb31c5ea38a6cab5bb6c24d1da2db502fc4fe038dde4ddd7a"
+    "path": "utils/engine/releases/shared_engine_20261124_v13.json",
+    "sha256": "fe8ef884ac27ad4029223106ab334d6c042aceb103b5cc9fbe2bc50341f54143"
   },
   "strategy_sha256": "c50db8f10161a576325836909ad8c61a442db231f298c54dd64c15b37bc00c6d",
   "dependencies": {
@@ -22,7 +22,7 @@
     "live_trading/burst_runtime.py": "f6c2f6627a5b9bbc0f7b4a3e426a1bd67c552d077c3ecd7eb54945cf27cc5798",
     "live_trading/burst_signals.py": "7d12e64233179266c6f2061b897bb265151ea9612cf526d6456400a070ce41bb",
     "indicator/volume_profile.py": "84536122366bd0f70b9770474bc930e17a31d56046b4aef5218742708a309075",
-    "utils/engine/execution/burst_futures.py": "f1c4112a59cbf2113ec16acb7774137ada3f9caa5e170aeddf3d0774e438ffc2",
+    "utils/engine/execution/burst_futures.py": "883c7b0af98f9733a5b062ab9d034eb29844e2c339a2e9ee6b8f6f3e42f44be8",
     "utils/engine/adapters/burst_market.py": "e97a454f621dd75b9ecb58428cf33ccc7e7690770ede2a1efbb9b3c95327672c",
     "live_trading/live_model/quiet_breakout/hypeusdt/strategy.py": "23396e12e0e8dae891d59e83b4809ccf6b6e3e5f31ae5eb6d67eeee08b53f9f5",
     "live_trading/live_model/quiet_breakout/position_addition.py": "307ec1d5beb2586b22e7fd5547ddb575a7883d7f53c17d0add28bea3e5f575dd"

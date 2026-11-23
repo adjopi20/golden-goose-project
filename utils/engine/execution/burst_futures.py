@@ -3,13 +3,14 @@ from contextlib import ExitStack, closing, contextmanager, nullcontext
 from decimal import Decimal
 import hashlib
 import json
+import os
 import re
 import sqlite3
 import time
 from types import SimpleNamespace
 from uuid import uuid4
 
-from utils.engine.adapters.binance_execution import FuturesOrders, VenueError
+from utils.engine.adapters.binance_execution import FuturesOrders, PrivateOrderReader, VenueError
 from utils.engine.adapters.binance_futures_readonly import PreflightError, background_reads
 from utils.engine.adapters.binance_rest_budget import RestDeferred
 from utils.engine.contracts import canonical_json, content_hash
@@ -238,6 +239,9 @@ class CoordinatedBurstAccount(SharedBurstAccount):
             store.set_meta("coordinated_account", "1")
             if store.meta("funding_start_ms") is None:
                 store.set_meta("funding_start_ms", now_ms)
+        shadow_db = os.getenv("BINANCE_PRIVATE_SHADOW_DB")
+        if shadow_db:
+            self.local.private_order_reader = PrivateOrderReader(shadow_db, self.group, identity)
 
     @contextmanager
     def admission(self):

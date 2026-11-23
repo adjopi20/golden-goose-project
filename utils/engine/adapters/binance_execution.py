@@ -1,8 +1,11 @@
 """Narrow USD-M order adapter. Disarmed by default; no account-setting endpoints."""
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from contextvars import ContextVar
 from decimal import Decimal, InvalidOperation
+import json
+from pathlib import Path
 import re
+import sqlite3
 import time
 
 import requests
@@ -42,6 +45,63 @@ class VenueError(RuntimeError):
         self.status, self.code, self.uncertain = status, code, uncertain
         self.reason = safe_venue_reason(reason)
         super().__init__(f'Binance Futures HTTP {status}, code {code}; {self.reason or "no safe venue reason available"}')
+
+
+class PrivateOrderReader:
+    """Read a confirmed market order's final update from the v12 shadow volume."""
+
+    def __init__(self, path, account, uid_hash):
+        self.uri = Path(path).absolute().as_uri() + '?mode=ro'
+        self.account = account
+        self.uid_hash = uid_hash
+
+    def filled_order(self, previous, now_ms):
+        if (not isinstance(previous, dict) or (previous.get('type'), previous.get('positionSide')) != ('MARKET', 'BOTH')
+                or previous.get('status') not in ('NEW', 'PARTIALLY_FILLED', 'FILLED')
+                or type(previous.get('updateTime')) is not int):
+            return None
+        try:
+            with closing(sqlite3.connect(self.uri, uri=True, timeout=.05)) as db:
+                db.execute('BEGIN')  # Coverage, order state and fills come from the same SQLite snapshot.
+                meta = dict(db.execute('SELECT key,value FROM metadata'))
+                if ((meta.get('account'), meta.get('uid_hash')) != (self.account, self.uid_hash)
+                        or meta.get('connection') != 'up' or not meta.get('generation') or not meta.get('epoch')
+                        or meta.get('coverage') != 'snapshot_baseline' or meta.get('last_backlog') != '0'
+                        or meta.get('snapshot_overlap') != '0' or not 0 <= now_ms - int(meta['heartbeat_ms']) < 60_000
+                        or not 0 <= now_ms - int(meta['baseline_through']) < 16 * 60_000):
+                    return None
+                symbol, order_id = previous['symbol'], str(previous['orderId'])
+                fact = db.execute("""SELECT revision,fields FROM facts
+                    WHERE kind='order' AND symbol=? AND entity=? AND epoch=? AND venue_ms>0""",
+                    (symbol, order_id, meta['epoch'])).fetchone()
+                if (not fact or fact[0] < previous['updateTime']
+                        or not int(meta['baseline_through']) < fact[0] <= now_ms):
+                    return None
+                revision, encoded = fact
+                order = json.loads(encoded)
+                if (order['symbol'], order['order_id'], order['client_id'], order['side'], order['status']) != (
+                        symbol, order_id, previous['clientOrderId'], previous['side'], 'FILLED'):
+                    return None
+                executed = Decimal(order['filled'])
+                if executed <= 0 or executed != Decimal(previous['origQty']):
+                    return None
+                rows = db.execute("""SELECT fields FROM events WHERE kind='fill' AND symbol=? AND epoch=?
+                    AND venue_ms>0 AND json_extract(fields, '$.order_id')=?""", (symbol, meta['epoch'], order_id))
+                qty, quote = Decimal(0), Decimal(0)
+                for (payload,) in rows:
+                    fill = json.loads(payload)
+                    amount, price = Decimal(fill['quantity']), Decimal(fill['price'])
+                    if ((fill['symbol'], fill['client_id'], fill['side']) != (symbol, order['client_id'], order['side'])
+                            or amount <= 0 or price <= 0 or fill['trade_ms'] > revision):
+                        return None
+                    qty += amount
+                    quote += amount * price
+                if qty != executed:
+                    return None
+                return dict(previous, status='FILLED', executedQty=str(qty), avgPrice=str(quote / qty),
+                            cumQuote=str(quote), updateTime=revision)
+        except (sqlite3.Error, ValueError, TypeError, KeyError, InvalidOperation):
+            return None  # Missing or unusable stream evidence leaves the signed REST query in charge.
 
 
 class FuturesOrders(BinanceFuturesReadOnly):

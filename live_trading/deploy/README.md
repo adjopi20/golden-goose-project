@@ -165,3 +165,23 @@ configured worker labels are recorded.
    pending POSTs, or cancel existing protective stops just to roll back.
    If still banned or protection is unclear, native protection alone is not
    evidence that a timed or manual exit is available; follow operator recovery.
+
+## Private stream market-order read pilot
+
+The coordinated portfolio workers can use the v12 shadow database to confirm
+`FILLED` for a known market ENTRY, ADD or CLOSE after a verified venue response.
+The stream must provide the complete executed quantity and matching trade IDs.
+The worker binds the reader to the account UID verified during startup and
+falls back to signed REST for missing, stale, incomplete or unattributed data.
+Orders with unknown submission outcomes or a cancellation in progress use REST.
+
+The candidate defaults to REST. A separately approved canary can set
+`BINANCE_PRIVATE_SHADOW_DB=/private-shadow/shadow.sqlite` and mount that
+account's existing shadow consumer volume read-only at `/private-shadow`.
+Mount the volume directory so SQLite can read its WAL, and keep its UID access
+consistent with the worker. The audit source `private_stream` identifies a
+stream confirmation. Removing the variable restores REST for all order reads.
+
+Position, conditional orders, TP limit status, fees, realized P&L and funding
+still reconcile through REST. Use this candidate image for the portfolio
+workers. The running private shadow and MVRV services retain separate images.

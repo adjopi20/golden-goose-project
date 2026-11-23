@@ -606,11 +606,18 @@ def test_portfolio_uses_local_equity_and_distinct_native_accounts(portfolio, mon
     for model in (hype, inj):
         burst_journals = {symbol: journals[symbol] for symbol in ("HYPEUSDT", "INJUSDT")}
         CoordinatedBurstAccount(model, burst_journals, group="burst").bind_portfolio_account(NOW)
+        assert not hasattr(model, "private_order_reader")
     shared = CoordinatedBurstAccount(uni, {"UNIUSDC": journals["UNIUSDC"]}, group="quiet-core")
     with pytest.raises(ValueError, match="portfolio_account_already_used_or_changed"):
         shared.bind_portfolio_account(NOW)
     uid[0] = 1002
+    shadow = index.with_name("shadow.sqlite")
+    monkeypatch.setenv("BINANCE_PRIVATE_SHADOW_DB", str(shadow))
     shared.bind_portfolio_account(NOW)
+    reader = uni.private_order_reader
+    assert reader.account == "quiet-core" and reader.uid_hash == hashlib.sha256(b"1002").hexdigest()
+    assert reader.filled_order(dict(type="MARKET", positionSide="BOTH", status="NEW", updateTime=NOW), NOW) is None
+    assert not shadow.exists()
     uid[0] = 1003
     with pytest.raises(ValueError, match="portfolio_journal_account_changed"):
         shared.bind_portfolio_account(NOW)

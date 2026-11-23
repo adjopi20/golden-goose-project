@@ -270,9 +270,15 @@ class FuturesExecutor:
             # Query, never re-POST SENDING/UNKNOWN/ACKed orders.
             try:
                 started = time.perf_counter_ns()
-                r = self.v.query(cid, stop=row['role'] == 'STOP', symbol=self.symbol)
+                reader = getattr(self, 'private_order_reader', None)
+                response = None
+                if (reader and row['role'] in ('ENTRY', 'ADD', 'CLOSE') and row['response']
+                        and not row['cancel_pending'] and row['state'] in ('NEW', 'PARTIALLY_FILLED', 'FILLED')):
+                    response = reader.filled_order(json.loads(row['response']), time.time_ns() // 1_000_000)
+                r = response if response is not None else self.v.query(cid, stop=row['role'] == 'STOP', symbol=self.symbol)
                 if r is not None:
-                    self._accept(row, r, request_duration_ms=(time.perf_counter_ns()-started)/1000000)
+                    self._accept(row, r, source='private_stream' if response is not None else 'query',
+                                 request_duration_ms=(time.perf_counter_ns()-started)/1000000)
                 elif row['state'] not in TERMINAL:
                     with self.s.transaction():
                         self.s.db.execute("UPDATE orders SET state='UNKNOWN',error='native_order_not_found' WHERE client_id=?", (cid,))
